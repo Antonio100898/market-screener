@@ -1,0 +1,44 @@
+name: market-screener-local
+
+services:
+  postgres:
+    image: postgres:18.6-trixie@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-market_screener}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-market_screener_local}
+      POSTGRES_DB: ${POSTGRES_DB:-market_screener}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.47@sha256:ce9e796f1fe6f06968f4c04bdaf8f678dad9c8acdfef3d244133d71bfa6bf882
+    command: ["mini", "-dir=/data"]
+    stop_grace_period: 30s
+    environment:
+      AWS_ACCESS_KEY_ID: ${SCREENER_S3_ACCESS_KEY_ID:-market_screener}
+      AWS_SECRET_ACCESS_KEY: ${SCREENER_S3_SECRET_ACCESS_KEY:-market_screener_local}
+      S3_BUCKET: ${SCREENER_S3_BUCKET:-market-screener-evidence}
+    ports:
+      - "127.0.0.1:${SCREENER_S3_PORT:-8333}:8333"
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8333/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 18
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  seaweedfs-data:

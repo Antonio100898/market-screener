@@ -2,5 +2,9 @@ fastapi
 uvicorn
 httpx
 pytest
+SQLAlchemy==2.0.54
+alembic==1.20.0
+psycopg[binary]==3.3.6
+boto3==1.43.102
 openpyxl==3.1.5
 xlrd==2.0.2
