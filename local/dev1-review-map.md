@@ -1,6 +1,6 @@
 # Developer 1 — review map
 
-Current item: **inventory committed code and storage boundaries**  
+Current item: **inventory committed code and storage boundaries**
 Review state: **ACCEPTED — revision 1; uncommitted by owner policy**
 
 The developer writes only under `## Developer update`. The reviewer writes only

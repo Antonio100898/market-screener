@@ -77,4 +77,3 @@ state; it must not silently acquire new meaning.
 
 See [release mechanics](../docs/production-architecture.md#compatibility-and-deployment)
 for the proposed implementation and tests.
-

@@ -43,4 +43,3 @@ Official sources:
 - <https://github.com/seaweedfs/seaweedfs/releases/tag/4.47>
 - <https://github.com/minio/minio>
 - <https://docs.docker.com/engine/storage/volumes/>
-

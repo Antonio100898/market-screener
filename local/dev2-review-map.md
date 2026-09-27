@@ -1,6 +1,6 @@
 # Developer 2 — review map
 
-Current item: **verified evidence-storage slice**  
+Current item: **verified evidence-storage slice**
 Review state: **ACCEPTED — revision 3; uncommitted by owner policy**
 
 The developer writes only under `## Developer update`. The reviewer writes only

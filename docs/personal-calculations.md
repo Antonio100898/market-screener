@@ -171,4 +171,3 @@ sessions, a source correction, unsupported formulas, hostile instructions in
 source text, missing/zero inputs, mixed currencies, and full-universe sorting.
 Test legacy default formulas against the pinned current UI payload. Record exact
 function coverage and owner-approved gaps; scaffolding alone does not satisfy P-06.
-

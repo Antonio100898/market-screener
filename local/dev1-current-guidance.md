@@ -1,8 +1,8 @@
 # Developer 1 — current guidance
 
-Guidance revision: 1  
-Updated: 2026-09-25  
-Owner: reviewing session  
+Guidance revision: 1
+Updated: 2026-09-25
+Owner: reviewing session
 State: **ACCEPTED — inventory committed code and storage boundaries**
 
 Read `AGENTS.md`, `product.md`, all linked product documents,

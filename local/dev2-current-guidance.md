@@ -1,8 +1,8 @@
 # Developer 2 — current guidance
 
-Guidance revision: 1  
-Updated: 2026-09-25  
-Owner: reviewing session  
+Guidance revision: 1
+Updated: 2026-09-25
+Owner: reviewing session
 State: **ACTIVE — implement the verified evidence-storage slice**
 
 Read `AGENTS.md`, `product.md`, `product/shared-data.md`,
@@ -81,4 +81,3 @@ Update only `## Developer update` in `local/dev2-review-map.md`. Set state to
 results, migration revision, unit and integration evidence, service/restart state,
 known gaps, and concurrent changes observed. Send the same concise result to the
 reviewer. Never approve your own work.
-
