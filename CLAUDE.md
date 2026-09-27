@@ -1,4 +1,15 @@
-# Graham Enterprising Screener
+# Market Screener
+
+## Product authority
+
+Read `product.md` before any work and the linked `product/*.md` documents for all
+affected areas. These are the owner's highest-priority product requirements in
+this repository. Identify affected decision IDs, preserve them, and verify the
+result before claiming completion. Proposals, code, and tests do not authorize
+overriding them. Obtain an explicit owner decision for conflicts and record the
+approved change. Follow `AGENTS.md` for the full repository workflow and gates.
+
+Graham screening is an existing calculation set, not the product boundary.
 
 Screens every US-listed SEC filer against Graham's Enterprising Investor criteria
 (Intelligent Investor, ch. 15), from primary XBRL filings with per-figure provenance.
@@ -32,8 +43,11 @@ web/   React SPA (Vite, no runtime deps beyond React). One fetch of dashboard.js
 - **Grade precedence** (pinned by `web/test/grade.test.mjs`): definitive non-price
   FAIL → BLOCKED, any uncomputable criterion → UNGRADEABLE, valuation-only fails →
   NEAR-PASS/CLOSE. The engine verdict ranks a measured FAIL above INDETERMINATE.
-- **Refetch on new filings only.** Engine changes are recomputed locally: bump
-  `store.ENGINE_VERSION`, run `make derive`. Never refetch to fix a code bug.
+- **Ingest incrementally and reconcile source changes.** New filings, verified
+  corrections, withdrawals, and changed source responses follow
+  `product/shared-data.md`. An existing filing ID does not prove unchanged content.
+  Engine changes use retained evidence: bump `store.ENGINE_VERSION`, run
+  `make derive`. Never refetch to fix a code bug.
 - Routine derive/export recomputes every ticker-eligible snapshot and defers
   tickerless or preferred-only cache rows until they can enter the dashboard.
   `make derive-all` remains available for exhaustive cache maintenance.

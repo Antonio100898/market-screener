@@ -1,3 +1,0 @@
-interface:
-  display_name: "Share Screener"
-  short_description: "Securely share the local screener through ngrok"

@@ -1,4 +1,10 @@
-# Graham Enterprising Screener
+# Market Screener
+
+Owner decisions: [product.md](product.md). Target design:
+[production architecture](docs/production-architecture.md) and
+[personal calculations](docs/personal-calculations.md).
+The design describes planned work. The implementation below remains the current
+local application, with Graham screening as its existing calculation set.
 
 Evaluates US-listed SEC filers against Benjamin Graham's Enterprising Investor
 criteria (The Intelligent Investor, ch. 15), computed from primary SEC XBRL

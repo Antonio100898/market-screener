@@ -1,9 +1,24 @@
-# Graham Enterprising Screener
+# Market Screener
 
-This repository screens US-listed SEC filers against Benjamin Graham's
-Enterprising Investor criteria using primary XBRL filings and per-figure
-provenance.
-dasd
+This repository builds Market Screener from primary filings with per-figure
+provenance. Graham screening is an existing calculation set, not the product boundary.
+
+## Product authority
+
+Read `product.md` before any work, then read the linked `product/*.md` documents
+for every area the work affects. They record the owner's decisions and are the
+highest-priority product requirements in this repository. Architecture proposals,
+existing code, and tests do not authorize changing those decisions.
+
+Before editing, identify the affected decision IDs and how the work preserves
+them. Verify those decisions through relevant checks before claiming completion.
+If the work conflicts with a decision, explain the conflict and obtain an explicit
+owner decision before implementing it. Record approved changes in the product
+documents; label recommendations and unresolved questions separately.
+
+Keep current behavior working during migration. A target design does not claim
+that its services or features already exist.
+
 ## Repository map
 
 - `api/`: Python. Data flows from `sources/` through `normalize.py` into
@@ -31,8 +46,11 @@ dasd
 - Grade precedence, pinned by `web/test/grade.test.mjs`, is: definitive non-price
   `FAIL` -> `BLOCKED`; any uncomputable criterion -> `UNGRADEABLE`; valuation-only
   failures -> `NEAR-PASS`/`CLOSE`. A measured `FAIL` outranks `INDETERMINATE`.
-- Refetch only for new filings. For engine changes, bump `store.ENGINE_VERSION`
-  and run `make derive`; do not refetch to repair a code defect.
+- Use incremental ingestion for new filings and verified source changes. Reconcile
+  corrections, withdrawals, and mutable source responses as defined in
+  `product/shared-data.md`; an existing filing ID is not proof it is unchanged.
+  For engine changes, bump `store.ENGINE_VERSION` and run `make derive` from
+  retained evidence; do not refetch to repair a code defect.
 - Routine derive/export recomputes every ticker-eligible snapshot and defers
   tickerless or preferred-only cache rows until they can enter the dashboard.
   Use `make derive-all` only for exhaustive cache maintenance.

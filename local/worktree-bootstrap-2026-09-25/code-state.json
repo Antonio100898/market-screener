@@ -1,0 +1,127 @@
+{
+  "recorded_at_utc": "2026-09-25T12:47:14.8527745Z",
+  "scope": "committed application inventory; runtime data not opened",
+  "worktree": {
+    "path": "C:/Users/amwor/.codex/worktrees/market-screener-platform/graham-screener",
+    "branch": "codex/market-screener-platform",
+    "head": "697ef24750ea5a40f545073498168dc33070ef43",
+    "parent": "b16165ead9008b16fe62821a9704085481ef8e90",
+    "commit_time": "2026-09-25T00:22:53+03:00",
+    "commit_subject": "Document production architecture",
+    "remote": {
+      "name": "origin",
+      "fetch": "https://github.com/Antonio100898/market-screener.git",
+      "push": "https://github.com/Antonio100898/market-screener.git"
+    },
+    "other_worktree": {
+      "path": "C:/Dev/graham-screener",
+      "branch": "main",
+      "head": "697ef24750ea5a40f545073498168dc33070ef43"
+    },
+    "dirty_at_inventory_start": true,
+    "application_paths_clean": [
+      "api/",
+      "web/",
+      "Makefile"
+    ],
+    "pre_existing_modified_tracked": [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "README.md",
+      "docs/production-architecture.md"
+    ],
+    "pre_existing_untracked": [
+      "docs/auth-database-agent-choices.md",
+      "docs/implementation-rollout.md",
+      "docs/personal-calculations.md",
+      "local/",
+      "product.md",
+      "product/"
+    ]
+  },
+  "runtimes": {
+    "python": "3.14.3",
+    "node": "v24.13.0",
+    "npm": "11.6.2",
+    "project_python_environment_present": false,
+    "node_modules_present": false
+  },
+  "tools": {
+    "git": "C:/Program Files/Git/cmd/git.exe",
+    "docker_cli": "Docker version 29.2.0, build 0b9d198",
+    "docker_daemon": "UNVERIFIED",
+    "gnu_make": "UNAVAILABLE",
+    "wsl_launcher": "C:/Windows/system32/wsl.exe",
+    "wsl_distribution": "UNAVAILABLE",
+    "bash": "C:/Windows/system32/bash.exe; WSL launcher, not usable without a distribution"
+  },
+  "manifests": [
+    {
+      "path": "Makefile",
+      "sha256": "ad494d68281baad26e4898b0436e76a68282ca55dfd443b0e84986e0edb0583e",
+      "bytes": 3218
+    },
+    {
+      "path": "api/requirements.txt",
+      "sha256": "f61636cb6a8cc342a4de1414a52e74b1ce069e30fc2625784664437697c64e9d",
+      "bytes": 63
+    },
+    {
+      "path": "web/package.json",
+      "sha256": "8e5e4086b7e2171a84a1bc228cf85e7e93b18048d5c380216df52abbea5ab66d",
+      "bytes": 389
+    },
+    {
+      "path": "web/package-lock.json",
+      "sha256": "19e5a46c27e04a20de26d13bc9555ea120af2f930283c479b7566edcdab8681f",
+      "bytes": 61398
+    }
+  ],
+  "declared_python_dependencies": [
+    "fastapi",
+    "uvicorn",
+    "httpx",
+    "pytest",
+    "openpyxl==3.1.5",
+    "xlrd==2.0.2"
+  ],
+  "declared_web_dependencies": {
+    "runtime": [
+      "react@^19.0.0",
+      "react-dom@^19.0.0"
+    ],
+    "development": [
+      "@vitejs/plugin-react@^4.3.4",
+      "vite@^6.0.7"
+    ]
+  },
+  "available_commands_from_manifests": [
+    "make test",
+    "make regress",
+    "make audit",
+    "make audit-filings",
+    "make verify-coverage",
+    "cd api && .venv/bin/pytest -q",
+    "cd web && npm test --silent",
+    "cd web && node --test test/*.test.mjs"
+  ],
+  "test_execution": {
+    "state": "UNVERIFIED",
+    "ran": false,
+    "reason": "Assignment forbids installs, services, network, and tests; project dependencies are absent."
+  },
+  "runtime_data": {
+    "sqlite_database": "UNVERIFIED_NOT_OPENED",
+    "source_cache": "UNVERIFIED_NOT_OPENED",
+    "dashboard_payload": "UNVERIFIED_NOT_OPENED"
+  },
+  "machine_headroom": {
+    "evidence_time_utc": "2026-09-25T12:47:14.8527745Z",
+    "total_visible_memory_kib": 16495096,
+    "free_physical_memory_kib": 7069032,
+    "c_drive_used_bytes": 592728174592,
+    "c_drive_free_bytes": 114520604672,
+    "services_started": false,
+    "databases_started": false
+  }
+}

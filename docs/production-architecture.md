@@ -1,614 +1,414 @@
-# Production architecture
+# Market Screener architecture
 
-## Status
+Status: proposed design, rewritten from the owner's requirements on 2026-09-25.
+The [product index](../product.md) owns accepted decisions. This document proposes
+how to implement them. S3, PostgreSQL, durable ingestion, and personal AI editing
+are target capabilities, not claims about the current local application.
 
-Proposed target architecture. This document defines the intended production
-boundary and migration order; it does not claim that PostgreSQL, authentication,
-or hosted deployment already exists.
+## System boundary
 
-## Objective
-
-Turn the local Graham Screener into a durable web application that can serve
-multiple users while preserving the current calculation, evidence, and audit
-invariants.
-
-The production system has these properties:
-
-- PostgreSQL is the single application source of truth across every client.
-- React reads filtered, sorted, paginated data from FastAPI. It does not load a
-  complete `dashboard.json` universe and does not initiate data refreshes.
-- One Python application service serves the API and runs automatic scheduled
-  ingestion jobs.
-- Long jobs are durable and resumable. A restart cannot silently lose their
-  progress or leave a partial dataset published.
-- Raw SEC and EDINET source documents are retained in object storage with
-  hashes, source identity, and retrieval timestamps.
-- A completed data version is published atomically. Readers never see a mixture
-  of old and new derived snapshots.
-- Public company data is shared. Watchlists, portfolios, saved screens, and
-  notes belong to authenticated users.
-- The existing normalization, screening, missing-data, security-identity, and
-  provenance rules remain authoritative.
-
-## Non-goals
-
-The first production migration will not:
-
-- rewrite the financial engine merely to rearrange modules;
-- replace filing-backed facts with aggregator fundamentals;
-- introduce MongoDB, Redis, Kafka, or a separate worker deployment without a
-  measured need;
-- compute screens from raw filings during an interactive HTTP request;
-- use browser state, GitHub Actions cache, or a generated JSON file as the
-  authoritative database;
-- make automatic buy or sell recommendations;
-- introduce microservices before operational load requires them.
-
-## Architectural decision
-
-Use a modular monolith:
+One Python service serves FastAPI requests and runs scheduled jobs. PostgreSQL
+stores shared financial data, publication state, jobs, and private workspaces.
+S3 retains captured source documents. Next.js provides the React frontend and
+requests filtered results from FastAPI (owner decision P-12).
 
 ```text
-Browsers
-   |
-   v
-React frontend
-   |
-   v
-One Python application service
-   |-- FastAPI request handlers
-   |-- automatic scheduler
-   |-- durable job runner
-   |-- SEC / EDINET / JPX / quote adapters
-   |-- normalization and screening engine
-   |
-   +--> PostgreSQL         application source of truth
-   +--> Object storage     immutable filing artifacts
+SEC / EDINET / other approved sources
+                  |
+          automatic source jobs
+                  |
+             S3 revisions
+                  |
+       extract -> validate -> select facts
+                  |
+       PostgreSQL shared official data
+                  |
+       standard metrics + published revision
+                  |
+       personal formula evaluation <--- private definitions <--- dashboard AI
+                  |
+              FastAPI
+                  |
+         Next.js / React clients
 ```
 
-The API and job runner are separate modules and responsibilities, but initially
-run in the same deployed service. If ingestion later competes with HTTP traffic,
-the same codebase can be started in two roles without changing data contracts:
+All users share official inputs. A private formula changes a derived answer, not
+the reported fact. Quotes, FX, and standard ratios are shared inputs/derivations
+with their own provenance; they are not presented as official reported figures.
 
-```text
-python -m screener.server
-python -m screener.worker
-```
+Initially use one continuously running service instance, one web process, bounded
+I/O threads, and bounded child processes for heavy computation. Reserve resources
+for HTTP traffic. A sleeping or request-only host cannot meet automatic refresh
+requirements. S3 and PostgreSQL are managed infrastructure, not extra Python apps.
 
-That is an operational split, not a rewrite into separate products.
+Keep ingestion, storage, fact selection, evaluation, and HTTP handling in separate
+modules in the same codebase. A separate worker deployment is unnecessary initially;
+it remains possible if measured ingestion load harms API responsiveness. No Redis,
+message broker, or microservice split is required for the first implementation.
 
-## Why PostgreSQL rather than MongoDB
+## Source records and corrections
 
-The domain has stable relationships and constraints: issuers own securities;
-filings contain facts; facts have periods, units, dimensions, and provenance;
-snapshots depend on evidence and ruleset versions; portfolios own immutable
-trades. Correctness depends on transactions, uniqueness, foreign keys, exact
-decimal values, and reproducible joins.
+There are three distinct things to track:
 
-PostgreSQL provides those guarantees and still supports JSONB for structured
-payloads whose shape evolves, such as compact derived snapshots, job parameters,
-warnings, and provenance summaries. JSONB is a deliberate boundary inside a
-relational model, not a reason to make every record an untyped document.
+1. A filing identity: SEC accession or EDINET document ID.
+2. A captured resource revision: the exact bytes downloaded at a given time.
+3. A financial observation: a value reported for a defined period and scope.
 
-## Sources of truth
+Do not use ticker or last filing date as the identity of a filing. Keep stable
+issuer and security IDs, with source identifiers and time-aware ticker mappings.
 
-There are two related meanings of source:
+An amendment may add a new filing. A later normal filing may restate comparative
+years. A source may correct metadata, change access status, or remove a resource.
+Some amendments change no financial values. Therefore neither “newest document
+replaces all facts” nor “stored document IDs never need checking” is correct.
+Source evidence and references are in [shared data](../product/shared-data.md).
 
-1. Primary filing documents are the evidentiary source of financial facts.
-   Their immutable bytes live in object storage and are addressed by source ID
-   and content hash.
-2. PostgreSQL is the application's operational source of truth. Every API
-   client reads the same active company, snapshot, price, and user records.
+SEC Company Facts and submissions JSON are mutable source aggregates, not
+immutable individual filings. The SEC updates these APIs as filings disseminate.
+Capture their responses by hash and retain per-fact accession provenance; fetch
+the original filing evidence needed to reproduce accepted values.
+[SEC API documentation](https://www.sec.gov/search-filings/edgar-application-programming-interfaces)
 
-Derived values are disposable and reproducible, but their active published
-version is stored in PostgreSQL. Object storage is not queried to render an
-ordinary company list.
+## Incremental ingestion and reconciliation
 
-Caches are never authoritative. A cache entry may be deleted at any time and
-reconstructed from PostgreSQL or object storage.
+Bootstrap the approved universe once, then run independent jobs for:
 
-## Application service
+- Discovery of new filings and source status events.
+- Fetching resources that are new, changed, missing, or previously unavailable.
+- Reconciliation of known source inventories and metadata.
+- Extraction and re-selection of affected facts.
+- Quote, FX, and security metadata refresh.
+- Historical backfill in bounded batches.
+- Re-derivation after parser or calculation changes, using retained S3 evidence.
 
-### HTTP responsibility
+Use a persisted source cursor plus a configurable recent overlap window. Deduplicate
+by source identity and resource revision. A discovered document can remain pending
+until its downloadable files or aggregate facts become available. Advance discovery
+only after each discovered item has a durable outcome or pending work record.
 
-FastAPI handles short interactive operations:
+For SEC, reconcile rebuilt full/quarterly indexes as well as recent submissions.
+The SEC notes that older daily indexes do not reflect later removals and that
+full/quarterly indexes are rebuilt weekly. Reconcile the covered historical
+partitions, not only the current quarter.
+[SEC source-change guidance](https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data)
 
-- company screening queries;
-- company detail and provenance queries;
-- market summaries and filter facets;
-- authentication and current-user identity;
-- tracked companies and saved screens;
-- portfolios, trades, manual assets, and notes;
-- read-only system freshness and job status.
+For EDINET, process operation events, parent-document links, withdrawal/edit/
+disclosure states, and recheck affected original-date metadata. Reconcile older
+covered dates on a bounded rolling schedule. Distinguish source retention expiry
+from a withdrawal; do not infer financial invalidity from a missing download alone.
+[EDINET API specification](https://disclosure2dl.edinet-fsa.go.jp/guide/static/disclosure/download/ESE140206.pdf)
 
-Public clients do not receive an endpoint that starts SEC, EDINET, price, or
-derive jobs. Data refresh policy is owned by the server.
+Use reliable conditional HTTP validators where available. Otherwise compare
+metadata and periodically validate relevant resources. A content hash deduplicates
+stored bytes, but cannot prove a remote resource is unchanged without checking it.
+Some verification downloads are unavoidable when the source offers no change token.
+Record this cost separately from ordinary new-filing ingestion.
 
-### Scheduler responsibility
+Schedules, overlap windows, and reconciliation horizons are configuration values.
+Proposed starting policy: intraday discovery, a daily catch-up, weekly SEC index
+reconciliation, and budgeted historical metadata checks. Actual intervals require
+an owner-approved freshness target and measurements against provider limits.
 
-During application startup, one instance acquires a PostgreSQL advisory lock and
-becomes scheduler leader. It evaluates schedules and creates durable job rows.
-If the lock is already held, that instance serves HTTP requests but does not
-schedule duplicate work.
+Current updates have priority over backfill. Historical jobs yield between batches;
+they cannot occupy the entire source request budget or delay daily discovery.
+Ten-year coverage records available fiscal periods, gaps, and unsupported sources.
+It is not a promise that ten years of every document type can be downloaded.
 
-Initial schedules:
+## S3 contract
 
-| Job | Initial cadence |
+Keep private objects at content-addressed keys, such as `raw/sha256/<hash>`.
+PostgreSQL maps source identity and resource path to each observed hash. Record
+retrieval time, source URL without secrets, media type, byte size, and HTTP validators.
+
+Write and verify the object before committing an artifact row that ingestion may
+use. An upload and PostgreSQL transaction are not one atomic operation: retries
+must tolerate an uploaded orphan or an existing identical object. Reconcile orphans
+after a grace period; never remove referenced evidence as temporary data.
+
+A parser version and artifact hash identify an extraction attempt. Preserve raw
+values and exact source locations. Replacing a parser does not overwrite the source.
+Retain historical evidence for reproducibility, but restrict withdrawn/non-public
+documents from public serving. Retention/access rules must accommodate source
+restrictions; S3 retention is not permission to republish every captured byte.
+
+## PostgreSQL model
+
+Start with the tables needed for these responsibilities, reusing current payload
+contracts where possible. This is a logical model, not a mandate for one table per
+bullet or a complete XBRL warehouse before the first usable API.
+
+| Responsibility | Stored records |
 |---|---|
-| SEC daily filing discovery | Daily after the SEC filing day |
-| EDINET filing discovery | Daily after the Japanese filing day |
-| Material filing events | Daily |
-| Security cover/identity completion | After a new annual filing |
-| Current quotes | Hourly during supported market sessions |
-| Price history | Daily, and when a new security becomes eligible |
-| Listing and index metadata | Daily or source-appropriate cadence |
-| Retry pending filings | Bounded recurring retry |
-| Engine/ruleset migration | Enqueued once after a new deployed version |
+| Identity | issuer, security, source identifier, listing history, identity evidence |
+| Evidence | filing, source status event, artifact revision, extraction run, fact observation |
+| Fact selection | selected observation, statement basis, supersession/rejection reason |
+| Shared market inputs | quote observation, FX observation, price history, provider status |
+| Derived data | standard metric definition, financial snapshot, evaluated snapshot |
+| Publication | immutable data release, release membership, active-release pointer |
+| Operations | schedule occurrence, job, job item, checkpoint, bounded job events |
+| Private research | user, workspace, definition revision, column layout, AI edit audit |
+| Existing private features | tracking, notes, portfolios, trades, manual assets and cash |
 
-Schedules use UTC internally and record the intended market timezone where it
-matters. A missed schedule after downtime is detected from persisted state and
-queued on startup; it is not silently skipped.
+Use PostgreSQL NUMERIC for exact source decimals and financial ledger amounts.
+JSONB holds nested payloads and formula trees; typed fields cover query keys,
+constraints, provenance links, and commonly filtered metrics. Store decimal values
+in API contracts without accidental binary rounding; presentation may round them.
 
-### Job-runner responsibility
+Keep distinct source observations even when they map to the same canonical metric.
+A uniqueness constraint on canonical concept/period alone would discard conflicting
+tags or duplicate-context evidence. Identify an extracted observation by artifact,
+extraction revision, and source occurrence/context; resolve duplicates explicitly.
 
-The embedded job runner claims queued work from PostgreSQL. Network-bound source
-requests use bounded asynchronous concurrency or threads. CPU-heavy snapshot
-derivation uses a process pool so it cannot block the API event loop.
+## Selecting the latest adjusted facts
 
-The service initially runs one application process and one replica. It must not
-start multiple Uvicorn web workers until scheduler leadership and job claiming
-have been validated under multiple processes.
+The selector owns the default current answer, not React or the AI. It retains all
+observations and records why one is selected. A selection key includes issuer,
+concept, period start/end or instant, currency/unit, dimensions, consolidation
+scope, accounting basis, and security/share basis where relevant.
 
-FastAPI `BackgroundTasks` is not used for ingestion. It does not provide durable
-ownership, checkpoints, recovery, or progress after a process restart.
+For each new or changed filing:
 
-## Durable jobs and checkpoints
+1. Extract its current and comparative periods with original provenance.
+2. Identify explicitly replaced statements, corrections, and non-reliance notices.
+3. Compare only equivalent observations. A quarterly or segment value cannot
+   replace annual consolidated data merely because it was filed later.
+4. Prefer the latest valid authoritative observation for that basis. Keep validated
+   checks for known scale/tag/context errors; timestamp ordering alone is insufficient.
+5. Apply partial amendments only to their stated scope. Absent replacement facts
+   do not delete still-valid earlier values.
+6. Rebuild coherent statement groups when a restatement changes scope or basis.
+   Preserve unchanged dependencies when compatible; otherwise mark a conflict.
+7. Recompute dependent historical metrics, current ratios, and personal outputs.
 
-Every long operation is represented in PostgreSQL. A minimal job record contains:
+Record reporting period, source publication/acceptance time, first observed time,
+and selected-in-release identity. This preserves both latest-restated research and
+the evidence known at an earlier date. A retained decision snapshot must not be
+silently rewritten with hindsight; default live research uses the new selection.
 
-```text
-job
-  id
-  kind
-  status                 QUEUED | RUNNING | SUCCEEDED | FAILED | CANCELLED
-  parameters             JSONB
-  checkpoint             JSONB
-  data_version_id
-  attempts
-  progress_current
-  progress_total
-  scheduled_for
-  started_at
-  heartbeat_at
-  finished_at
-  error_code
-  error_summary
-  created_at
-```
+A non-reliance notice can invalidate an input before replacement numbers exist.
+Mark affected inputs and results unavailable/pending review rather than guessing.
+Reviewed supplements remain separate attributed inputs; newer contradictory
+evidence requires revalidation. Personal assumptions never overwrite this layer.
 
-Workers claim jobs with row locking (`FOR UPDATE SKIP LOCKED`) and record a
-lease/heartbeat. On startup, a job whose lease expired is made resumable. Recovery
-continues from its last committed checkpoint rather than restarting the entire
-range.
+### Historical change history
 
-Checkpoints are source-specific:
+P-09 requires a user-visible history, not only retained files. Reuse immutable
+observations, artifact revisions, and release selections. Record a change linking
+the previous and replacement observation or invalidation, its cause category,
+source event, detection time, and activation release. Preserve the full chain.
+Use a stable transition identity so retries cannot duplicate a history entry.
 
-- SEC bulk: archive identity plus completed member/CIK;
-- SEC daily: last completed filing date and accession;
-- EDINET: last completed filing date and document ID;
-- derive: last completed entity/security key and ruleset fingerprint;
-- prices: last completed security and provider batch;
-- export compatibility: last completed active data version.
+Publish the change record with the changed selection. Keep discovered changes
+pending until validated; do not show an unaccepted candidate as the current value.
+Separate a source revision from an extraction fix or a formula revision. An
+unchanged number can still receive new provenance; do not call that a numerical
+adjustment. Link a derived ratio's change to its input or definition revisions.
 
-A checkpoint advances in the same database transaction as the facts or snapshots
-it covers. It cannot claim progress that was not committed.
+Expose history for a security, metric, and financial period through the API and
+the figure's UI. Return before/after values, units and scope, comparable difference,
+both source references, source/detection/activation times, and any filing-backed
+explanation or adjustment components. Missing explanations remain unknown. Mark
+unavailable earlier evidence and respect document access restrictions. These records
+must survive pruning of transient browsing releases.
 
-Jobs are idempotent. Reprocessing the same accession, EDINET document, quote
-observation, or derived dependency set updates or confirms the same logical
-record rather than creating duplicates.
+Acceptance cases are defined in
+[shared data](../product/shared-data.md#historical-change-history).
 
-## Atomic data publication
+## Standard metrics and personal calculations
 
-Ingestion and publication are separate states. A refresh may update raw artifacts
-and normalized facts incrementally, but readers continue to use the current
-active derived version until the replacement passes validation.
+Reuse the existing engine and its provenance/missing-data rules. Preserve strict
+stored results and keep disclosed zero-assumption views separate. Basic shared
+ratios have named definitions, units, period selectors, input IDs, and engine revision.
 
-```text
-active version 184
-        |
-        |  ingest and derive version 185 in staging
-        v
-validate identities, row counts, provenance, and arithmetic
-        |
-        v
-single transaction: mark 185 ACTIVE and 184 SUPERSEDED
-```
+Do not turn the owner's Graham and Return Quality choices into unchangeable global
+policy. Expose them as identifiable existing/default calculation sets. Users can
+derive private definitions without changing the default or official inputs.
 
-Every list and detail response identifies its `data_version` and generation
-time. One request is evaluated against one active version. A company list cannot
-contain version 185 rows while its detail endpoint still reads version 184.
+The mandatory [personal-calculation design](personal-calculations.md) defines the
+dashboard AI, bounded formula language, validation, revision history, and execution.
+P-10 also requires read-only company research and ad hoc calculations through the
+agent. Store private workspace configuration in PostgreSQL JSONB with typed owner
+and revision fields; provider credentials stay separate. User-funded versus
+service-funded AI connections remain an investigation, not an assumed capability.
+Its boundary must exist in the first schema and API design. The platform is not
+feature-complete until the agreed first set of AI edits works end to end.
 
-The current atomic file replacement behavior of `dashboard.json` therefore
-becomes an atomic database version switch.
+## Publication and client freshness
 
-## Core data model
+A release pins selected fact/snapshot revisions, quote and FX observations,
+security identity, and standard metric engine revision. Unchanged records can be
+referenced from a new release; there is no need to duplicate raw evidence hourly.
 
-Names below describe responsibilities, not final migration names.
+Build changed results privately, validate, and switch one active-release pointer
+in a short transaction. The publisher compares the expected parent revision. If
+another job has published meanwhile, rebase and revalidate the candidate; do not
+overwrite newer data with an older candidate. Initial publication is serialized.
 
-### Filing and market data
+List, detail, facets, exports, and personal calculations carry the release ID.
+Cursors bind release, query, sort, tie-breaker, and private workspace revision.
+Requests for an expired release return an explicit restart response. Retention
+for transient browse releases is bounded; saved decision evidence has separate
+retention so pruning a browsing release cannot break a portfolio audit record.
 
-- `issuer`: SEC CIK, EDINET code, legal identity, jurisdiction, metadata.
-- `security`: independently keyed traded security, ticker, exchange, security
-  kind, quote currency, active state, and verified issuer relationship.
-- `security_identity_evidence`: cover accession/document, receipt ratio, share
-  class, verification status, and warnings.
-- `filing`: source, form/document type, accession/document ID, submission time,
-  period, issuer, correction relationship, and artifact hash.
-- `filing_artifact`: object key, media type, byte size, content hash, retrieval
-  time, and source URL.
-- `fact`: canonical concept, exact decimal value, unit, start/end period,
-  dimensions/scope, filing, and source tag/namespace.
-- `reviewed_fact`: the durable supplement/correction layer described in
-  `docs/future-work/reviewed-filing-data.md`.
-- `quote`: security, price, currency, timestamp, session, provider, and source
-  state.
-- `price_history`: security, observation date, adjusted/validated close, source,
-  and validation metadata.
-- `fx_observation`: base/counter currencies, rate, date/time, and source.
-- `filing_event`: filing-backed material event and exact source identity.
+The browser learns of new releases through lightweight polling initially, checks
+again on focus/reconnect, and refreshes the entire current query coherently. It
+does not fetch new pages against a different release or trigger source refreshes.
+Historical views are labelled; default live views must not stay pinned indefinitely.
 
-### Derivation and publication
+Publication consistency is not freshness. Also expose per-source checked-through
+time, discovered-but-unprocessed changes, and per-company input age. A lightweight
+current validity status can invalidate an older browse release when a correction
+or withdrawal is known; it must not substitute newer numeric values into that
+release. The UI then shows pending/unavailable state and refreshes.
 
-- `ruleset`: engine/stage fingerprints and deployed code identity.
-- `evidence_bundle`: artifact/fact hashes used to construct a snapshot.
-- `financial_snapshot`: price-free normalized output for one issuer/security and
-  ruleset, stored in typed columns plus JSONB where the structure is genuinely
-  nested.
-- `evaluated_snapshot`: price/FX-settled criteria, grades, profiles, notes, and
-  compact detail evidence for one data version.
-- `data_version`: BUILDING, VALIDATING, ACTIVE, SUPERSEDED, or REJECTED, with
-  universe counts and validation results.
-- `job` and `job_event`: durable execution state and bounded diagnostic history.
+The owner must approve freshness budgets and outage behavior before production.
+No implementation can guarantee zero lag or know a correction before the source
+discloses it. Never describe an old validated release as current merely because
+the ingestion job failed to publish a new one.
 
-### User data
+## Durable jobs in one service
 
-- `user_account`: external authentication subject and application status.
-- `tracked_company`: user and issuer/security relationship plus note.
-- `saved_screen`: named filter/sort configuration owned by a user.
-- `portfolio`: user-owned portfolio and base currency.
-- `portfolio_trade`: immutable decimal-valued execution record and decision
-  snapshot reference.
-- `portfolio_asset` and `portfolio_cash`: current non-stock/manual holdings.
-- `company_note`: private user research attached to an issuer/security.
+Store job kind, parameters, status, priority, due time, attempts, next retry time,
+owner, lease expiry, ownership generation, heartbeat, checkpoint, and error summary.
+Schedule occurrences have a unique key so leadership changes cannot enqueue the
+same occurrence twice. Persist job items when batches may finish out of order;
+a highest-seen document ID is not proof all earlier work completed.
 
-Public market data is shared by every user. Private rows always carry an owner
-and are protected by authorization checks in the API and database access layer.
+Claim a job with a short PostgreSQL transaction using row locking. Release the
+database lock before network or CPU work. Renew the lease while progressing.
+Each result/checkpoint transaction checks the ownership generation. An expired
+worker cannot commit after a replacement claims the job. Recover expired jobs
+periodically while the API is running, not only at process startup.
 
-## API design
+Commit completed work and its checkpoint together. Use at-least-once execution
+with idempotent writes; a crash between upload and checkpoint can repeat work.
+Retries have bounded exponential backoff, jitter, deadlines, and visible failure.
+Malformed documents have per-item outcomes so one failure does not erase a batch.
 
-### Company list
+If using a session advisory lock for scheduler leadership, hold a dedicated direct
+database session, monitor loss, stop scheduling on loss, and retry acquisition.
+Do not assume a transaction-pooled connection holds a session lock reliably.
+Unique schedule keys remain necessary even with leadership.
+[PostgreSQL advisory locks](https://www.postgresql.org/docs/current/explicit-locking.html#ADVISORY-LOCKS)
 
-React requests only the rows it needs:
+Bound source concurrency and enforce provider limits across current jobs and
+backfills. Keep source clients, keys, and request budgets on the server. Drain jobs
+on shutdown; resume from checkpoints after forced termination. HTTP request
+background tasks are not the persistence mechanism for this job system.
 
-```http
-GET /api/companies
-    ?query=steel
-    &exchange=NYSE
-    &max_pe=15
-    &max_pe3=20
-    &min_positive_eps_years=7
-    &sort=pe
-    &direction=asc
-    &limit=100
-    &cursor=...
-```
+## API and storage queries
 
-Example response shape:
-
-```json
-{
-  "data_version": 185,
-  "generated_at": "2026-09-25T04:30:00Z",
-  "items": [],
-  "next_cursor": "opaque-value",
-  "total": 428
-}
-```
-
-Cursor pagination is preferred over large offsets for stable traversal. Sort
-keys have deterministic tie-breakers, normally security/issuer ID.
-
-Filtering occurs on stored evaluated fields. An interactive request never parses
-XBRL or recalculates the universe.
-
-### Detail and supporting endpoints
-
-Initial public/read endpoints:
+Proposed endpoints:
 
 ```text
-GET /api/companies/{security_id}
-GET /api/companies/{security_id}/fundamentals
-GET /api/companies/{security_id}/filings
-GET /api/filters
-GET /api/market-summary
-GET /api/data-version
-GET /api/system/freshness
+GET  /api/v1/capabilities
+GET  /api/v1/data-status
+GET  /api/v1/companies?release=...&workspace_revision=...&max_pe=...&cursor=...
+GET  /api/v1/companies/{security_id}?release=...
+GET  /api/v1/companies/{security_id}/evidence?release=...
+GET  /api/v1/facets?release=...&workspace_revision=...
+GET  /api/v1/me/workspaces/{id}
+POST /api/v1/me/workspaces/{id}/ai-edits
+GET  /api/v1/me/calculation-runs/{id}
 ```
 
-Initial authenticated endpoints:
-
-```text
-GET/POST/DELETE /api/me/tracked/...
-GET/POST/PATCH/DELETE /api/me/saved-screens/...
-GET/POST/PATCH/DELETE /api/me/portfolios/...
-GET/POST/DELETE /api/me/portfolios/{id}/trades/...
-```
-
-Operational job mutation endpoints are private administrative interfaces, not
-buttons available to ordinary React clients.
-
-### Facets and counts
-
-The API returns filter options and counts for the active data version. Expensive
-facet combinations may use short-lived caches or precomputed summaries, but a
-cache key always includes the data version and relevant authorization scope.
-
-## Indexing strategy
-
-The first PostgreSQL indexes should follow measured UI access patterns:
-
-- active data version plus ticker/security ID;
-- active version plus exchange, profile, sector, and alignment status;
-- active version plus positive P/E, P/E3, market cap, and criteria-passed count;
-- filing source plus accession/document ID unique indexes;
-- fact uniqueness across filing, concept, period, unit, and dimension hash;
-- quote security plus timestamp;
-- job status plus scheduled time and lease expiry;
-- user-owned rows by user ID and stable child key.
-
-Do not create an index for every possible payload field. Use query plans and
-production measurements to add composite or partial indexes.
-
-## Caching policy
-
-PostgreSQL is queried directly at first. Add only these low-risk layers:
-
-- HTTP `ETag` or version-aware conditional responses;
-- a small in-process cache for public filter metadata and market summaries;
-- CDN caching for explicitly public, versioned GET responses;
-- PostgreSQL connection pooling.
-
-No cache stores authoritative job progress, facts, portfolios, or notes. Redis is
-deferred until measurements show that cross-instance cache sharing or queue
-throughput justifies another operational dependency.
-
-## Object storage
-
-Use an S3-compatible API so development and hosting are portable. Local
-development can use MinIO; production can use AWS S3, Cloudflare R2, Backblaze
-B2, or a compatible managed service.
-
-Object keys are content- or source-addressed and never contain secrets. Metadata
-in PostgreSQL records the expected hash and source identity. Upload completes
-before the corresponding filing is eligible for derivation.
-
-Retention policy:
-
-- primary filing archives and reviewed source documents: retain indefinitely;
-- reproducible temporary extraction products: lifecycle-managed;
-- generated compatibility artifacts: short retention and never authoritative;
-- user uploads, if later supported: private bucket/prefix with explicit access
-  policy and deletion semantics.
-
-## Ten-year EDINET backfill
-
-One annual cycle (about 400 days) is enough to discover current filers, but it is
-not equivalent to the SEC ten-year evidence path. SEC Company Facts commonly
-returns many historical periods in one issuer response. EDINET exposes separate
-dated filing lists and separate archives.
-
-The parity target is approximately September 2016 through September 2026, subject
-to verified API/archive availability. The backfill must:
-
-1. Enumerate filing dates in bounded chunks.
-2. Retain only supported annual reports and corrections for current verified JPX
-   common-equity listings.
-3. Record each date/document checkpoint transactionally.
-4. Cache the dated list response and store every downloaded archive by hash.
-5. Treat malformed or unsupported filings as explicit per-document outcomes, not
-   fatal errors for the range.
-6. Merge successive annual filings without duplicating the same document.
-7. Preserve taxonomy/source tag, document ID, unit, period, currency, and exact
-   source row for every accepted fact.
-8. Produce ten-year evidence only from actually available fiscal periods; missing
-   years remain missing.
-9. Retry bounded transient failures without restarting completed years.
-10. Publish the Japanese universe only after uniqueness, currency, quote identity,
-    provenance, and payload regression gates pass.
-
-Backfill progress is visible through administrative status but is not initiated
-by React. Normal daily EDINET discovery continues from its own cursor after the
-historical job completes.
-
-## Failure and recovery
-
-- A process restart expires its job lease; the next scheduler leader resumes from
-  the committed checkpoint.
-- A source outage fails or delays only its job. The active data version remains
-  available.
-- A malformed filing is recorded with a stable unsupported/error reason and does
-  not abort unrelated filings.
-- Repeated transient failures use capped exponential backoff and eventually move
-  to a visible failed state.
-- A validation failure marks the candidate data version REJECTED. It does not
-  replace the active version.
-- Database migrations are forward-only in production and run before application
-  traffic reaches code that requires the new schema.
-- PostgreSQL has automated backups and tested point-in-time recovery.
-- Object storage uses versioning or equivalent protection for primary artifacts.
-
-## Authentication and authorization
-
-Use an external OpenID Connect provider rather than storing passwords in this
-application. The provider may change without changing the internal `user_account`
-identity contract.
-
-Public company research endpoints may remain anonymous. Portfolio, tracking,
-saved-screen, notes, and administrative endpoints require authentication.
-
-Authorization is server-side on every private operation. A client-supplied user
-ID is never trusted. Administrative job controls require a separate role and are
-not inferred from possession of an ordinary account.
-
-## Deployment
-
-Keep provider-specific choices outside the domain code.
-
-Minimum production resources:
-
-- one containerized Python application service;
-- one managed PostgreSQL database;
-- one S3-compatible object store;
-- one static React deployment/CDN;
-- one OpenID Connect application registration;
-- centralized logs and an error-reporting destination.
-
-The application service runs one process initially. Health checks distinguish:
-
-- liveness: the process/event loop responds;
-- readiness: required schema and database connectivity are available;
-- freshness: sources and active data version are within disclosed expectations.
-
-Freshness degradation does not necessarily make the API unready; stale data stays
-available with explicit timestamps and warnings.
-
-## Local development
-
-Use Docker Compose for PostgreSQL and MinIO. Run React and FastAPI normally from
-the repository. Provide deterministic seed/migration commands.
-
-SQLite may remain temporarily as a compatibility backend while repository
-boundaries are introduced. Production features must not depend on SQLite-specific
-SQL or file-copy behavior. Once migration parity is proven, SQLite becomes an
-optional lightweight mode rather than the reference implementation.
-
-## Observability
-
-Structured logs include job ID, data version, source, issuer/security identity,
-filing/accession/document ID, and bounded error codes. They never include API
-keys or private portfolio contents unnecessarily.
-
-Initial metrics:
-
-- HTTP request latency/error rate by route;
-- database pool saturation and query latency;
-- active data version age;
-- latest successful SEC, EDINET, quote, and metadata refresh;
-- queued/running/failed jobs and expired leases;
-- filings discovered, accepted, skipped, failed, and retried;
-- snapshot derivation throughput and validation failures;
-- universe, identity, quote, and provenance counts.
-
-Alert on missing daily discovery, repeated job failure, stuck heartbeat, rejected
-publication, database capacity, and unexpectedly large universe/identity changes.
-
-## Validation and release gates
-
-The repository invariants and current mandatory payload gate remain in force.
-The migration adds these checks:
-
-1. SQLite/PostgreSQL parity on a pinned fixture database during transition.
-2. Full-universe reconstruction against the exact pre-change active payload.
-3. API list/detail agreement for one active data version.
-4. Atomic-publication tests proving BUILDING rows cannot leak to readers.
-5. Job restart tests proving checkpoints neither skip nor duplicate filings.
-6. Concurrent scheduler tests proving only one leader queues each scheduled job.
-7. Object hash tests proving stored artifacts match recorded bytes.
-8. Authorization tests proving one user cannot read or mutate another user's data.
-9. Backup/restore rehearsal for PostgreSQL and primary filing artifacts.
-10. Load tests for representative filter, sort, pagination, and detail queries.
-
-No migration is complete merely because unit tests pass. Production-shaped data,
-filing provenance, row identity, price/FX behavior, and every changed verdict must
-remain explainable.
-
-## Migration plan
-
-### Phase 0 — contracts and decisions
-
-- Accept this architecture and record provider-neutral configuration contracts.
-- Inventory every direct `sqlite3` call and filesystem cache dependency.
-- Pin the current full dashboard payload, database statistics, and audit output.
-- Define typed repository interfaces without changing financial behavior.
-
-### Phase 1 — PostgreSQL foundation
-
-- Add PostgreSQL development services and Alembic migrations.
-- Implement issuer, security, filing, artifact, job, data-version, and user tables.
-- Port the current local ledger with exact decimals and ownership-ready keys.
-- Add a one-time SQLite-to-PostgreSQL migration command and reconciliation report.
-
-### Phase 2 — durable artifacts and ingestion
-
-- Introduce an object-store interface and local MinIO implementation.
-- Move SEC/EDINET raw-cache writes behind that interface.
-- Make source ingest idempotent and checkpointed.
-- Preserve the current `EvidenceLoader` and normalization contracts.
-
-### Phase 3 — automatic jobs in the application service
-
-- Add scheduler leadership, durable job claiming, leases, heartbeats, and retries.
-- Move hourly quotes and filing discovery out of request-triggered behavior.
-- Add private operational status and administrative controls.
-- Prove restart/resume behavior under forced termination.
-
-### Phase 4 — versioned API reads
-
-- Persist price-free and evaluated snapshots by data version.
-- Implement filtered, sorted, cursor-paginated company endpoints.
-- Implement detail, provenance, facets, market summary, and freshness endpoints.
-- Switch React from full-payload filtering to API queries.
-- Retain `dashboard.json` only as a temporary compatibility/export tool.
-
-### Phase 5 — multi-user application
-
-- Add OpenID Connect authentication.
-- Associate tracked companies, saved screens, portfolios, trades, assets, cash,
-  and notes with a user account.
-- Migrate the current local portfolio into an explicitly selected initial user.
-- Add authorization and audit logging for private mutations.
-
-### Phase 6 — historical backfills and deployment
-
-- Deploy the database, object store, application service, and React frontend.
-- Migrate and reconcile the current SEC universe.
-- Run the resumable ten-year EDINET backfill.
-- Run full regression, audit, filing audit, identity, and uniqueness gates.
-- Atomically activate the first production data version.
-
-### Phase 7 — measured scaling
-
-Only after observing production load:
-
-- add API replicas;
-- run the same application package in a separate worker role;
-- introduce Redis or another queue/cache if PostgreSQL job claiming or query
-  caching becomes a measured bottleneck;
-- add read replicas or analytical storage if reporting load warrants them.
-
-## Definition of done
-
-The production migration is complete when:
-
-- two different clients receive the same active public data version;
-- no client action is required to refresh market or filing data;
-- a forced restart during SEC or EDINET ingestion resumes without a duplicate or
-  missing accepted filing;
-- a candidate refresh cannot partially alter public API results;
-- the full SEC and ten-year EDINET evidence sets can be rebuilt from retained
-  primary artifacts;
-- every displayed fact retains its required provenance;
-- user A cannot observe or mutate user B's private research or portfolio data;
-- the complete UI-payload/API regression and filing audits pass with every
-  intentional change explained;
-- deployment and database restoration have been rehearsed from documented steps.
+Apply authentication and ownership checks to every private route and query.
+Keep operational mutations administrative. React requests never start source
+ingestion; user formula execution is a different, permitted operation.
+
+Preserve current filter semantics, null ordering, multi-column sorting, counts,
+and strict versus assumption views. Positive maximum-P/E filters must exclude
+missing and non-positive values. Stable security IDs break sort ties.
+
+Add indexes for measured queries, starting with release/security, common filters,
+source document identity, source revision, job due/lease state, and owner/workspace.
+Query shared rows directly first. Cache keys include all data/engine/formula/view
+revisions plus authorization scope. Cache deletion cannot lose authoritative data.
+
+## Compatibility and deployment
+
+Frontend and backend ship together initially, but open tabs can lag. Keep build,
+API contract, database schema, data release, metric engine, formula-language, and
+workspace revisions distinct. See [compatibility](../product/compatibility.md).
+
+Generate client types from the API contract and test supported old/new client
+fixtures. The capability response declares API support, formula-language support,
+available fields, and reload requirements. Breaking changes get an explicit
+contract transition; unsupported clients must not render misinterpreted responses.
+
+Use expand/migrate/contract database changes: add compatible schema, deploy code,
+migrate/reconcile data, and remove obsolete schema after old readers are retired.
+Run migrations once per deployment. Keep rollback-compatible code until the
+transition completes. Recompute semantic engine changes into a new data release.
+
+Use one PostgreSQL database, S3, the Python service, and a Next.js deployment
+with server-rendering support. The Python backend remains one service; Next.js adds
+a frontend server runtime or managed equivalent. Provider choice and cost are
+separate deployment decisions.
+
+P-14 requires local implementation and testing first. Follow the
+[incremental rollout](implementation-rollout.md); do not provision Railway to
+start development. Railway's PostgreSQL template is unmanaged: backups, upgrades,
+and recovery remain our responsibility, unlike a fully managed database offering.
+[Railway PostgreSQL](https://docs.railway.com/databases/postgresql)
+
+The Next.js public site includes company pages, blogs/articles, educational guides,
+and product/use-case pages for discovery around fundamentals and agent-assisted
+financial research (P-12). Serve useful rendered HTML with metadata, canonical URLs,
+internal links, and sitemap entries. Editorial content carries authorship, sources,
+and update dates. Static generation can serve editorial pages; dynamic financial
+pages follow the shared data freshness policy. Choose authoring/publishing tooling
+separately; a new CMS or automatic publishing is not implied by this requirement.
+
+Next.js server rendering of financial data reads the same versioned FastAPI
+contract as browser interactions, not a separate database path. Public page caches
+must be refreshed or invalidated on data publication within the agreed freshness
+budget. Include the rendered data revision so client hydration stays consistent.
+Keep private workspaces authenticated, outside public caches, and non-indexable.
+
+Agent execution remains in Python; Next.js does not need to host another agent
+loop. Browser SSE connections terminate at FastAPI through the deployment's routing;
+any proxy must permit streaming without buffering and support the run's connection
+lifetime. UI reconnection and agent-run recovery remain separate responsibilities.
+
+Back up PostgreSQL with tested recovery and retain referenced S3 revisions.
+Rehearse a consistent restore across both stores. Monitor source lag, pending
+changes, failed jobs, lease expiry, publication age, invalidated evidence,
+formula failures, and HTTP latency. Separate readiness from freshness.
+
+## Migration and verification
+
+1. Freeze the exact current UI payload and its evidence/price inputs. Inventory
+   current SQLite records, cache paths, filters, calculation definitions, and
+   private data. Record reuse: `store.py` owns persistence; `EvidenceLoader`,
+   `normalize.py`, and `sync.py` own existing extraction/derivation; `App.jsx`
+   and `sort.js` own current query/display behavior. Preserve their contracts.
+2. Add PostgreSQL and S3 behind the existing boundaries. Migrate with identity,
+   decimal, count, provenance, and content-hash reconciliation. Keep SQLite only
+   for transition unless offline mode is explicitly requested.
+3. Implement durable automatic discovery, source reconciliation, corrections,
+   and versioned publication. Compare against the frozen inputs, not moving quotes.
+4. Migrate the frontend from Vite to Next.js, reusing React components and existing
+   calculations. Switch to API filtering with contract/parity tests and automatic
+   revision refresh. Verify public rendered HTML and private-route/cache isolation.
+   Preserve the existing calculated view during the transition.
+5. Deliver authenticated workspaces and the agreed AI formula/column editing scope.
+   Preserve existing owner research as named definitions and attributed private data.
+6. Deploy after recovery/freshness tests; expand history through resumable backfill.
+
+Each stage preserves P-02/P-04/P-07 and the existing financial evidence invariants.
+The first usable shared-data milestone is not completion of mandatory P-06.
+
+Required checks include the repository's full payload regression and filing audits
+for affected engine/data changes, plus correction and non-reliance scenarios,
+unchanged-resource deduplication, out-of-order job items, stale-owner rejection,
+publication races, versioned pagination, automatic browser refresh, private formula
+isolation, full-universe custom sorting, old-tab compatibility, and restore rehearsal.
+Record missing data or credentials as unverified checks, never as passing results.
+
+## Decisions still needed
+
+The structure above does not require a daily reload from zero or separate worker
+deployment. The remaining owner choices are freshness/outage policy, supported
+source scope, the first personal function set, and the AI edit confirmation policy.
+These are tracked in [product.md](../product.md), not silently chosen by code.

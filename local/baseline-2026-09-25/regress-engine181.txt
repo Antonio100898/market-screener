@@ -1,0 +1,1024 @@
+  6676 companies queued for recomputation
+  250/6676 recomputed
+  500/6676 recomputed
+  750/6676 recomputed
+  1000/6676 recomputed
+  1250/6676 recomputed
+  1500/6676 recomputed
+  1750/6676 recomputed
+  2000/6676 recomputed
+  2250/6676 recomputed
+  2500/6676 recomputed
+  2750/6676 recomputed
+  3000/6676 recomputed
+  3250/6676 recomputed
+  3500/6676 recomputed
+  3750/6676 recomputed
+  4000/6676 recomputed
+  4250/6676 recomputed
+  4500/6676 recomputed
+  4750/6676 recomputed
+  5000/6676 recomputed
+  5250/6676 recomputed
+  5500/6676 recomputed
+  5750/6676 recomputed
+  6000/6676 recomputed
+  6250/6676 recomputed
+  6500/6676 recomputed
+  250/6676 compared
+  500/6676 compared
+  750/6676 compared
+  1000/6676 compared
+  1250/6676 compared
+  1500/6676 compared
+  1750/6676 compared
+  2000/6676 compared
+  2250/6676 compared
+  2500/6676 compared
+  2750/6676 compared
+  3000/6676 compared
+  3250/6676 compared
+  3500/6676 compared
+  3750/6676 compared
+  4000/6676 compared
+  4250/6676 compared
+  4500/6676 compared
+  4750/6676 compared
+  5000/6676 compared
+  5250/6676 compared
+  5500/6676 compared
+  5750/6676 compared
+  6000/6676 compared
+  6250/6676 compared
+  6500/6676 compared
+
+4355 changes across 6676 companies:
+
+  owner_earnings.annual_per_share.2022.cash_flow_bridge.free_cash_flow  —  20 companies (0.3%)
+      ... and 20 more
+  owner_earnings.annual_per_share.2022.free_cash_flow  —  20 companies (0.3%)
+      ... and 20 more
+  owner_earnings.annual_per_share.2022.free_cash_flow_per_share  —  20 companies (0.3%)
+      ... and 20 more
+  owner_earnings.annual_per_share.2025.cash_flow_bridge.free_cash_flow  —  20 companies (0.3%)
+      ... and 20 more
+  owner_earnings.annual_per_share.2025.free_cash_flow  —  20 companies (0.3%)
+      ... and 20 more
+  owner_earnings.annual_per_share.2025.free_cash_flow_per_share  —  20 companies (0.3%)
+      ... and 20 more
+  owner_earnings.fcf_reconciliation.methods.cash_flow_statement.components  —  20 companies (0.3%)
+      ... and 20 more
+  owner_earnings.fcf_reconciliation.methods.cash_flow_statement.value  —  20 companies (0.3%)
+      ... and 20 more
+  owner_earnings.free_cash_flow  —  20 companies (0.3%)
+      ... and 20 more
+  owner_earnings.free_cash_flow_components  —  20 companies (0.3%)
+      ... and 20 more
+  owner_earnings.sources.operating_cash_flow.end  —  20 companies (0.3%)
+      ... and 20 more
+  owner_earnings.annual_per_share.2023.cash_flow_bridge.free_cash_flow  —  19 companies (0.3%)
+      ... and 19 more
+  owner_earnings.annual_per_share.2023.free_cash_flow  —  19 companies (0.3%)
+      ... and 19 more
+  owner_earnings.annual_per_share.2023.free_cash_flow_per_share  —  19 companies (0.3%)
+      ... and 19 more
+  owner_earnings.annual_per_share.2022.cash_flow_bridge.operating_cash_flow  —  18 companies (0.3%)
+      ... and 18 more
+  owner_earnings.annual_per_share.2022.cash_flow_bridge.other_operating_cash_flow_adjustments  —  18 companies (0.3%)
+      ... and 18 more
+  owner_earnings.annual_per_share.2024.cash_flow_bridge.free_cash_flow  —  18 companies (0.3%)
+      ... and 18 more
+  owner_earnings.annual_per_share.2024.free_cash_flow  —  18 companies (0.3%)
+      ... and 18 more
+  owner_earnings.annual_per_share.2024.free_cash_flow_per_share  —  18 companies (0.3%)
+      ... and 18 more
+  owner_earnings.fcf_reconciliation.missing  —  18 companies (0.3%)
+      ... and 18 more
+  owner_earnings.annual_per_share.2021.cash_flow_bridge.free_cash_flow  —  17 companies (0.3%)
+      ... and 17 more
+  owner_earnings.annual_per_share.2021.free_cash_flow  —  17 companies (0.3%)
+      ... and 17 more
+  owner_earnings.annual_per_share.2021.free_cash_flow_per_share  —  17 companies (0.3%)
+      ... and 17 more
+  owner_earnings.annual_per_share.2025.cash_flow_bridge.operating_cash_flow  —  17 companies (0.3%)
+      ... and 17 more
+  owner_earnings.annual_per_share.2025.cash_flow_bridge.other_operating_cash_flow_adjustments  —  17 companies (0.3%)
+      ... and 17 more
+  owner_earnings.annual_per_share.2025.cash_flow_bridge.total_capital_expenditure  —  17 companies (0.3%)
+      ... and 17 more
+  owner_earnings.sources.operating_cash_flow.accn  —  17 companies (0.3%)
+      ... and 17 more
+  owner_earnings.sources.operating_cash_flow.filed  —  17 companies (0.3%)
+      ... and 17 more
+  owner_earnings.sources.operating_cash_flow.form  —  17 companies (0.3%)
+      ... and 17 more
+  owner_earnings.sources.operating_cash_flow.tag  —  17 companies (0.3%)
+      ... and 17 more
+  owner_earnings.sources.total_capex.tag  —  17 companies (0.3%)
+      ... and 17 more
+  owner_earnings.annual_per_share.2021.cash_flow_bridge.operating_cash_flow  —  16 companies (0.2%)
+      ... and 16 more
+  owner_earnings.annual_per_share.2021.cash_flow_bridge.other_operating_cash_flow_adjustments  —  16 companies (0.2%)
+      ... and 16 more
+  owner_earnings.annual_per_share.2022.cash_flow_bridge.total_capital_expenditure  —  16 companies (0.2%)
+      ... and 16 more
+  owner_earnings.annual_per_share.2023.cash_flow_bridge.operating_cash_flow  —  16 companies (0.2%)
+      ... and 16 more
+  owner_earnings.annual_per_share.2023.cash_flow_bridge.other_operating_cash_flow_adjustments  —  16 companies (0.2%)
+      ... and 16 more
+  owner_earnings.annual_per_share.2023.cash_flow_bridge.total_capital_expenditure  —  16 companies (0.2%)
+      ... and 16 more
+  owner_earnings.annual_per_share.2025.all_capex_floor  —  16 companies (0.2%)
+      ... and 16 more
+  owner_earnings.annual_per_share.2025.all_capex_floor_per_share  —  16 companies (0.2%)
+      ... and 16 more
+  owner_earnings.annual_per_share.2025.earnings_after_total_capex  —  16 companies (0.2%)
+      ... and 16 more
+  owner_earnings.annual_per_share.2025.earnings_after_total_capex_per_share  —  16 companies (0.2%)
+      ... and 16 more
+  owner_earnings.all_capex_floor  —  16 companies (0.2%)
+      ... and 16 more
+  owner_earnings.components  —  16 companies (0.2%)
+      ... and 16 more
+  owner_earnings.annual_per_share.2020.all_capex_floor  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.all_capex_floor_per_share  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.cash_flow_bridge.depreciation_and_amortisation  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.cash_flow_bridge.free_cash_flow  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.cash_flow_bridge.net_income  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.cash_flow_bridge.operating_cash_flow  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.cash_flow_bridge.other_operating_cash_flow_adjustments  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.cash_flow_bridge.total_capital_expenditure  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.diluted_shares  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.earnings_after_total_capex  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.earnings_after_total_capex_per_share  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.end  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.free_cash_flow  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.free_cash_flow_per_share  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.maintenance_estimate  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.maintenance_estimate_per_share  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.reported_earnings_assumption  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2020.reported_earnings_assumption_per_share  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2021.all_capex_floor  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2021.all_capex_floor_per_share  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2021.cash_flow_bridge.total_capital_expenditure  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2021.earnings_after_total_capex  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2021.earnings_after_total_capex_per_share  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2022.all_capex_floor  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2022.all_capex_floor_per_share  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2022.earnings_after_total_capex  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2022.earnings_after_total_capex_per_share  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2023.all_capex_floor  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2023.all_capex_floor_per_share  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2023.earnings_after_total_capex  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2023.earnings_after_total_capex_per_share  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2024.cash_flow_bridge.total_capital_expenditure  —  15 companies (0.2%)
+      ... and 15 more
+  owner_earnings.annual_per_share.2021.cash_flow_bridge.depreciation_and_amortisation  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2021.cash_flow_bridge.net_income  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2021.diluted_shares  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2021.end  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2021.maintenance_estimate  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2021.maintenance_estimate_per_share  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2021.reported_earnings_assumption  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2021.reported_earnings_assumption_per_share  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2022.cash_flow_bridge.depreciation_and_amortisation  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2022.cash_flow_bridge.net_income  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2022.diluted_shares  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2022.end  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2022.maintenance_estimate  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2022.maintenance_estimate_per_share  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2022.reported_earnings_assumption  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2022.reported_earnings_assumption_per_share  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2024.all_capex_floor  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2024.all_capex_floor_per_share  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2024.cash_flow_bridge.operating_cash_flow  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2024.cash_flow_bridge.other_operating_cash_flow_adjustments  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2024.earnings_after_total_capex  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2024.earnings_after_total_capex_per_share  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2025.cash_flow_bridge.depreciation_and_amortisation  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2025.cash_flow_bridge.net_income  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2025.diluted_shares  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2025.end  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2025.maintenance_estimate  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2025.maintenance_estimate_per_share  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2025.reported_earnings_assumption  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2025.reported_earnings_assumption_per_share  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.caveats  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.maintenance_estimate  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.sources.depreciation_and_amortisation.end  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.sources.reported_earnings.end  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.sources.total_capex.end  —  14 companies (0.2%)
+      ... and 14 more
+  owner_earnings.annual_per_share.2018.cash_flow_bridge.free_cash_flow  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2018.cash_flow_bridge.operating_cash_flow  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2018.cash_flow_bridge.other_operating_cash_flow_adjustments  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2018.free_cash_flow  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2018.free_cash_flow_per_share  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2023.cash_flow_bridge.depreciation_and_amortisation  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2023.cash_flow_bridge.net_income  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2023.diluted_shares  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2023.end  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2023.maintenance_estimate  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2023.maintenance_estimate_per_share  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2023.reported_earnings_assumption  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2023.reported_earnings_assumption_per_share  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2024.free_cash_flow_after_stock_compensation  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2024.free_cash_flow_after_stock_compensation_per_share  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2025.free_cash_flow_after_stock_compensation  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2025.free_cash_flow_after_stock_compensation_per_share  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.sources.operating_income.end  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.sources.revenue.end  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.sources.total_capex.accn  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.sources.total_capex.filed  —  13 companies (0.2%)
+      ... and 13 more
+  owner_earnings.annual_per_share.2015.cash_flow_bridge.free_cash_flow  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2015.cash_flow_bridge.operating_cash_flow  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2015.cash_flow_bridge.other_operating_cash_flow_adjustments  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2015.free_cash_flow  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2015.free_cash_flow_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2017.cash_flow_bridge.free_cash_flow  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2017.cash_flow_bridge.operating_cash_flow  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2017.cash_flow_bridge.other_operating_cash_flow_adjustments  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2017.free_cash_flow  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2017.free_cash_flow_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.all_capex_floor  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.all_capex_floor_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.cash_flow_bridge.depreciation_and_amortisation  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.cash_flow_bridge.net_income  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.cash_flow_bridge.total_capital_expenditure  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.diluted_shares  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.earnings_after_total_capex  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.earnings_after_total_capex_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.end  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.maintenance_estimate  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.maintenance_estimate_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.reported_earnings_assumption  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2018.reported_earnings_assumption_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.all_capex_floor  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.all_capex_floor_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.cash_flow_bridge.depreciation_and_amortisation  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.cash_flow_bridge.free_cash_flow  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.cash_flow_bridge.net_income  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.cash_flow_bridge.operating_cash_flow  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.cash_flow_bridge.other_operating_cash_flow_adjustments  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.cash_flow_bridge.total_capital_expenditure  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.diluted_shares  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.earnings_after_total_capex  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.earnings_after_total_capex_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.end  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.free_cash_flow  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.free_cash_flow_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.maintenance_estimate  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.maintenance_estimate_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.reported_earnings_assumption  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2019.reported_earnings_assumption_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2020.cash_flow_bridge.stock_compensation  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2020.free_cash_flow_after_stock_compensation  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2020.free_cash_flow_after_stock_compensation_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2020.stock_compensation_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2023.free_cash_flow_after_stock_compensation  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2023.free_cash_flow_after_stock_compensation_per_share  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.free_cash_flow_after_stock_compensation  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.sources.stock_compensation.end  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.stock_compensation  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.stock_compensation_to_revenue  —  12 companies (0.2%)
+      ... and 12 more
+  owner_earnings.annual_per_share.2015.all_capex_floor  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2015.all_capex_floor_per_share  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2015.cash_flow_bridge.depreciation_and_amortisation  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2015.cash_flow_bridge.net_income  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2015.cash_flow_bridge.total_capital_expenditure  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2015.diluted_shares  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2015.earnings_after_total_capex  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2015.earnings_after_total_capex_per_share  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2015.end  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2015.maintenance_estimate  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2015.maintenance_estimate_per_share  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2015.reported_earnings_assumption  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2015.reported_earnings_assumption_per_share  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.all_capex_floor  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.all_capex_floor_per_share  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.cash_flow_bridge.depreciation_and_amortisation  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.cash_flow_bridge.net_income  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.cash_flow_bridge.total_capital_expenditure  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.diluted_shares  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.earnings_after_total_capex  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.earnings_after_total_capex_per_share  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.end  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.maintenance_estimate  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.maintenance_estimate_per_share  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.reported_earnings_assumption  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2017.reported_earnings_assumption_per_share  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2022.free_cash_flow_after_stock_compensation  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2022.free_cash_flow_after_stock_compensation_per_share  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2024.cash_flow_bridge.depreciation_and_amortisation  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2024.cash_flow_bridge.net_income  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2024.diluted_shares  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2024.end  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2024.maintenance_estimate  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2024.maintenance_estimate_per_share  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2024.reported_earnings_assumption  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2024.reported_earnings_assumption_per_share  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.all_capex_label  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.fcf_reconciliation.fiscal_year  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.fcf_reconciliation.methods.cash_flow_statement.formula  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.fcf_reconciliation.methods.cash_flow_statement.label  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.fcf_reconciliation.methods.nopat_less_investment.components  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.fcf_reconciliation.methods.nopat_less_investment.formula  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.fcf_reconciliation.methods.nopat_less_investment.label  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.fcf_reconciliation.methods.revenue_less_costs_and_investment.components  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.fcf_reconciliation.methods.revenue_less_costs_and_investment.formula  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.fcf_reconciliation.methods.revenue_less_costs_and_investment.label  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.fcf_reconciliation.status  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.fiscal_year  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.invested_capital_basis  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.lease_neutral_net_tangible_operating_assets_basis  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.maintenance_basis  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.maintenance_estimate_label  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.net_tangible_operating_assets_basis  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.cash_taxes_paid.end  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.depreciation_and_amortisation.accn  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.depreciation_and_amortisation.filed  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.depreciation_and_amortisation.form  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.depreciation_and_amortisation.tag  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.operating_income.accn  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.operating_income.filed  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.operating_income.form  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.operating_income.tag  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.reported_earnings.accn  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.reported_earnings.filed  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.reported_earnings.form  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.reported_earnings.tag  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.sources.total_capex.form  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.status  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2021.free_cash_flow_after_stock_compensation  —  11 companies (0.2%)
+      ... and 11 more
+  owner_earnings.annual_per_share.2021.free_cash_flow_after_stock_compensation_per_share  —  11 companies (0.2%)
+      ... and 11 more
+  annual_ratios.2021.price  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.annual_per_share.2025.cash_flow_bridge.stock_compensation  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.annual_per_share.2025.stock_compensation_per_share  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.all_capex_return_including_cash  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.sources.revenue.accn  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.sources.revenue.filed  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.sources.revenue.form  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.sources.revenue.tag  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.annual_per_share.2021.cash_flow_bridge.stock_compensation  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.annual_per_share.2021.stock_compensation_per_share  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.sources.stock_compensation.accn  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.sources.stock_compensation.filed  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.sources.stock_compensation.form  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.sources.stock_compensation.tag  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.stock_compensation_to_free_cash_flow  —  10 companies (0.1%)
+      ... and 10 more
+  owner_earnings.annual_per_share.2016.cash_flow_bridge.free_cash_flow  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2016.cash_flow_bridge.operating_cash_flow  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2016.cash_flow_bridge.other_operating_cash_flow_adjustments  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2016.free_cash_flow  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2016.free_cash_flow_per_share  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2022.cash_flow_bridge.stock_compensation  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2022.stock_compensation_per_share  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2024.cash_flow_bridge.stock_compensation  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2024.stock_compensation_per_share  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2019.cash_flow_bridge.stock_compensation  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2019.free_cash_flow_after_stock_compensation  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2019.free_cash_flow_after_stock_compensation_per_share  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2019.stock_compensation_per_share  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2023.cash_flow_bridge.stock_compensation  —  9 companies (0.1%)
+      ... and 9 more
+  owner_earnings.annual_per_share.2023.stock_compensation_per_share  —  9 companies (0.1%)
+      ... and 9 more
+  annual_ratios.2021.pb  —  8 companies (0.1%)
+      ... and 8 more
+  annual_ratios.2021.pe  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2017.cash_flow_bridge.stock_compensation  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2017.free_cash_flow_after_stock_compensation  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2017.free_cash_flow_after_stock_compensation_per_share  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2017.stock_compensation_per_share  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2018.cash_flow_bridge.stock_compensation  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2018.free_cash_flow_after_stock_compensation  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2018.free_cash_flow_after_stock_compensation_per_share  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2018.stock_compensation_per_share  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.capital_including_cash  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.capital_including_cash_evidence.beginning.end  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.capital_including_cash_evidence.beginning.sources  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.capital_including_cash_evidence.beginning.value  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.capital_including_cash_evidence.ending.end  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.capital_including_cash_evidence.ending.sources  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.maintenance_estimate_return_including_cash  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.sources.cash_taxes_paid.accn  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.sources.cash_taxes_paid.filed  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.sources.cash_taxes_paid.form  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.sources.cash_taxes_paid.tag  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2015.cash_flow_bridge.stock_compensation  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2015.free_cash_flow_after_stock_compensation  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2015.free_cash_flow_after_stock_compensation_per_share  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2015.stock_compensation_per_share  —  8 companies (0.1%)
+      ... and 8 more
+  owner_earnings.annual_per_share.2016.all_capex_floor  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2016.all_capex_floor_per_share  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2016.cash_flow_bridge.depreciation_and_amortisation  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2016.cash_flow_bridge.net_income  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2016.cash_flow_bridge.total_capital_expenditure  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2016.diluted_shares  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2016.earnings_after_total_capex  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2016.earnings_after_total_capex_per_share  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2016.end  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2016.maintenance_estimate  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2016.maintenance_estimate_per_share  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2016.reported_earnings_assumption  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2016.reported_earnings_assumption_per_share  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2020.cash_flow_bridge.share_repurchases  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2021.cash_flow_bridge.share_repurchases  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2022.cash_flow_bridge.share_repurchases  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2023.cash_flow_bridge.share_repurchases  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.capital_including_cash_evidence.beginning.formula  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.capital_including_cash_evidence.ending.formula  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.capital_including_cash_evidence.ending.value  —  7 companies (0.1%)
+      ... and 7 more
+  owner_earnings.annual_per_share.2015.cash_flow_bridge.share_repurchases  —  6 companies (0.1%)
+      ... and 6 more
+  owner_earnings.annual_per_share.2024.cash_flow_bridge.share_repurchases  —  6 companies (0.1%)
+      ... and 6 more
+  owner_earnings.acquisition_years_10  —  6 companies (0.1%)
+      ... and 6 more
+  owner_earnings.acquisitions_to_capex_10  —  6 companies (0.1%)
+      ... and 6 more
+  owner_earnings.nopat  —  6 companies (0.1%)
+      ... and 6 more
+  owner_earnings.annual_per_share.2016.cash_flow_bridge.share_repurchases  —  5 companies (0.1%)
+      ... and 5 more
+  owner_earnings.annual_per_share.2017.cash_flow_bridge.share_repurchases  —  5 companies (0.1%)
+      ... and 5 more
+  owner_earnings.annual_per_share.2018.cash_flow_bridge.share_repurchases  —  5 companies (0.1%)
+      ... and 5 more
+  owner_earnings.annual_per_share.2019.cash_flow_bridge.share_repurchases  —  5 companies (0.1%)
+      ... and 5 more
+  owner_earnings.annual_per_share.2025.cash_flow_bridge.share_repurchases  —  5 companies (0.1%)
+      ... and 5 more
+  owner_earnings.annual_per_share.2016.cash_flow_bridge.stock_compensation  —  5 companies (0.1%)
+      ... and 5 more
+  owner_earnings.annual_per_share.2016.free_cash_flow_after_stock_compensation  —  5 companies (0.1%)
+      ... and 5 more
+  owner_earnings.annual_per_share.2016.free_cash_flow_after_stock_compensation_per_share  —  5 companies (0.1%)
+      ... and 5 more
+  owner_earnings.annual_per_share.2016.stock_compensation_per_share  —  5 companies (0.1%)
+      ... and 5 more
+  annual_ratios.2021.ptbv  —  5 companies (0.1%)
+      ... and 5 more
+  owner_earnings.operating_cash_flow_before_working_capital  —  4 companies (0.1%)
+      ... and 4 more
+  owner_earnings.sources.working_capital_cash_effect.end  —  4 companies (0.1%)
+      ... and 4 more
+  owner_earnings.working_capital_cash_effect  —  4 companies (0.1%)
+      ... and 4 more
+  owner_earnings.acquisitions_to_free_cash_flow  —  4 companies (0.1%)
+      ... and 4 more
+  owner_earnings.annual_per_share.2025.free_cash_flow_after_acquisitions  —  4 companies (0.1%)
+      ... and 4 more
+  owner_earnings.annual_per_share.2025.free_cash_flow_after_acquisitions_per_share  —  4 companies (0.1%)
+      ... and 4 more
+  owner_earnings.free_cash_flow_after_acquisitions  —  4 companies (0.1%)
+      ... and 4 more
+  owner_earnings.sources.cash_acquisitions.end  —  4 companies (0.1%)
+      ... and 4 more
+  owner_earnings.normalized_tax_rate  —  4 companies (0.1%)
+      ... and 4 more
+  owner_earnings.annual_per_share.2015.cash_flow_bridge.working_capital_cash_effect  —  3 companies (0.0%)
+      ... and 3 more
+  owner_earnings.annual_per_share.2015.operating_cash_flow_before_working_capital_per_share  —  3 companies (0.0%)
+      ... and 3 more
+  owner_earnings.annual_per_share.2015.working_capital_cash_effect_per_share  —  3 companies (0.0%)
+      ... and 3 more
+  owner_earnings.annual_per_share.2022.free_cash_flow_after_acquisitions  —  3 companies (0.0%)
+      ... and 3 more
+  owner_earnings.annual_per_share.2022.free_cash_flow_after_acquisitions_per_share  —  3 companies (0.0%)
+      ... and 3 more
+  context_notes  —  3 companies (0.0%)
+      ... and 3 more
+  owner_earnings.annual_per_share.2025.cash_acquisitions_per_share  —  3 companies (0.0%)
+      ... and 3 more
+  owner_earnings.cash_acquisitions  —  3 companies (0.0%)
+      ... and 3 more
+  owner_earnings.nopat_return_including_cash  —  3 companies (0.0%)
+      ... and 3 more
+  ticker  —  3 companies (0.0%)
+      ... and 3 more
+  owner_earnings.invested_capital_evidence.beginning.end  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.invested_capital_evidence.beginning.formula  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.invested_capital_evidence.beginning.sources  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.invested_capital_evidence.beginning.value  —  2 companies (0.0%)
+      ... and 2 more
+  analysis_routes  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2016.cash_flow_bridge.working_capital_cash_effect  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2016.operating_cash_flow_before_working_capital_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2016.working_capital_cash_effect_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2019.cash_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2019.free_cash_flow_after_acquisitions  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2019.free_cash_flow_after_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2020.cash_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2020.free_cash_flow_after_acquisitions  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2020.free_cash_flow_after_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2022.cash_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2015.cash_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2015.free_cash_flow_after_acquisitions  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2015.free_cash_flow_after_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2016.cash_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2016.free_cash_flow_after_acquisitions  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2016.free_cash_flow_after_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2017.cash_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2017.free_cash_flow_after_acquisitions  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2017.free_cash_flow_after_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2018.cash_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2018.free_cash_flow_after_acquisitions  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2018.free_cash_flow_after_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2020.cash_flow_bridge.working_capital_cash_effect  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2020.operating_cash_flow_before_working_capital_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2020.working_capital_cash_effect_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.sources.working_capital_cash_effect.accn  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.sources.working_capital_cash_effect.filed  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.sources.working_capital_cash_effect.form  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.sources.working_capital_cash_effect.tag  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.all_capex_floor  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.all_capex_floor_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.cash_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.cash_flow_bridge.depreciation_and_amortisation  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.cash_flow_bridge.free_cash_flow  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.cash_flow_bridge.net_income  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.cash_flow_bridge.operating_cash_flow  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.cash_flow_bridge.other_operating_cash_flow_adjustments  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.cash_flow_bridge.share_repurchases  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.cash_flow_bridge.stock_compensation  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.cash_flow_bridge.total_capital_expenditure  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.diluted_shares  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.earnings_after_total_capex  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.earnings_after_total_capex_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.end  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.free_cash_flow  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.free_cash_flow_after_acquisitions  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.free_cash_flow_after_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.free_cash_flow_after_stock_compensation  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.free_cash_flow_after_stock_compensation_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.free_cash_flow_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.maintenance_estimate  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.maintenance_estimate_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.reported_earnings_assumption  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.reported_earnings_assumption_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.stock_compensation_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2025.cash_flow_bridge.working_capital_cash_effect  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2025.operating_cash_flow_before_working_capital_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2025.working_capital_cash_effect_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.average_working_capital_cash_effect_3y  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2023.free_cash_flow_after_acquisitions  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2023.free_cash_flow_after_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2024.free_cash_flow_after_acquisitions  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2024.free_cash_flow_after_acquisitions_per_share  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.sources.cash_acquisitions.accn  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.sources.cash_acquisitions.filed  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.sources.cash_acquisitions.form  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.sources.cash_acquisitions.tag  —  2 companies (0.0%)
+      ... and 2 more
+  owner_earnings.annual_per_share.2014.capitalized_intangible_investment_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2014.expanded_free_cash_flow  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2014.expanded_free_cash_flow_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2025.capitalized_intangible_investment_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2025.expanded_free_cash_flow  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2025.expanded_free_cash_flow_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.capitalized_intangible_investment  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.expanded_free_cash_flow  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.lease_neutral_net_tangible_operating_assets_evidence.beginning.end  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.lease_neutral_net_tangible_operating_assets_evidence.beginning.formula  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.lease_neutral_net_tangible_operating_assets_evidence.beginning.sources  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.lease_neutral_net_tangible_operating_assets_evidence.beginning.value  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.net_tangible_operating_assets_evidence.beginning.end  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.net_tangible_operating_assets_evidence.beginning.formula  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.net_tangible_operating_assets_evidence.beginning.sources  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.net_tangible_operating_assets_evidence.beginning.value  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.sources.capitalized_intangible_investment.end  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2014.cash_flow_bridge.working_capital_cash_effect  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2014.operating_cash_flow_before_working_capital_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2014.working_capital_cash_effect_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2017.cash_flow_bridge.working_capital_cash_effect  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2017.operating_cash_flow_before_working_capital_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2017.working_capital_cash_effect_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2018.cash_flow_bridge.working_capital_cash_effect  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2018.operating_cash_flow_before_working_capital_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2018.working_capital_cash_effect_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2019.cash_flow_bridge.working_capital_cash_effect  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2019.operating_cash_flow_before_working_capital_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2019.working_capital_cash_effect_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2021.cash_flow_bridge.working_capital_cash_effect  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2021.operating_cash_flow_before_working_capital_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2021.working_capital_cash_effect_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  annual_ratios.2021.pncav  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2017.capitalized_intangible_investment_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2017.expanded_free_cash_flow  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2017.expanded_free_cash_flow_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2018.capitalized_intangible_investment_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2018.expanded_free_cash_flow  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2018.expanded_free_cash_flow_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2019.capitalized_intangible_investment_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2019.expanded_free_cash_flow  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2019.expanded_free_cash_flow_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2020.capitalized_intangible_investment_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2020.expanded_free_cash_flow  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2020.expanded_free_cash_flow_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  annual_ratios.2025.price  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2021.cash_acquisitions_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2021.free_cash_flow_after_acquisitions  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2021.free_cash_flow_after_acquisitions_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2023.cash_acquisitions_per_share  —  1 companies (0.0%)
+      ... and 1 more
+  owner_earnings.annual_per_share.2024.cash_acquisitions_per_share  —  1 companies (0.0%)
+      ... and 1 more
