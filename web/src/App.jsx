@@ -7,7 +7,7 @@ import { fetchJson, send } from "./api.js";
 import { below, spell } from "./format.js";
 import { hasActiveFilters, loadView, saveView, takeOverScrollRestoration, unfilteredView } from "./view.js";
 import { TOTAL_CRITERIA, byN, indexValuation, pe3,
-         returnQuality, valuationPrice } from "./screen.js";
+         returnQualityPercentiles, valuationPrice } from "./screen.js";
 import { compareRows, normalizeSort, updateSort } from "./sort.js";
 import { payloadWarnings } from "./warnings.js";
 import Portfolio from "./Portfolio.jsx";
@@ -266,7 +266,8 @@ export default function App() {
 
   const rows = useMemo(() => {
     if (!data) return [];
-    return data.rows.map((r) => {
+    const returnQualities = returnQualityPercentiles(data.rows);
+    return data.rows.map((r, index) => {
       const financialPrice = valuationPrice(r);
       return {
         ...r,
@@ -285,7 +286,7 @@ export default function App() {
           ? financialPrice / r.ncavps : null,
         idx: r.index_memberships ?? [],
         pe3: pe3(r),
-        returnQuality: returnQuality(r),
+        returnQuality: returnQualities[index],
         dividendYield: dividendYield(r),
         // This is the explicitly labelled total-capex floor return, not a
         // definitive Buffett owner-earnings return.
@@ -633,6 +634,7 @@ export default function App() {
             <Th id="eps10" sort={sort} onSort={sortBy}>10Y EPS evidence<em className="sub2">positive years · FCF</em></Th>
             <Th id="returns" sort={sort} onSort={sortBy} className="num returns-col">
               Return quality<em className="sub2">score · ROE · ROIC · RONTA · D/E</em>
+              <em className="sub2">FCF/revenue · CapEx/OCF · 10Y medians</em>
             </Th>
             <Th id="mcap" sort={sort} onSort={sortBy} className="num">Mkt cap</Th>
             <Th id="price" sort={sort} onSort={sortBy} className="num">Price</Th>
@@ -690,19 +692,30 @@ export default function App() {
               </td>
               <td data-label="10Y EPS evidence"><EarningsEvidence annual={r.annual_eps} fcf={annualFcf(r)} /></td>
               <td className="num return-quality" data-label="Return quality"
-                  title={r.returnQuality.assumptionMode
+                  title={`0–100 percentile score: ROE, ROIC, RONTA, FCF/revenue, CapEx/OCF and debt/equity are compared with companies that have the same input. FCF/revenue has 22.5% weight; CapEx/OCF has 20%; debt/equity has 10%, or 20% when D/E is at least 1, taking the extra 10% from ROE. Lower CapEx/OCF and debt/equity score higher. After percentile weighting, the final score is divided by 1 + min(D/E, 1), then by 1 + median CapEx/OCF. Missing penalties are unassessed. Missing OCF or FCF makes the score 0. ${r.returnQuality.missingInputs.length ? `Missing: ${r.returnQuality.missingInputs.join(", ")}.` : "All six inputs available."} ${r.returnQuality.assumptionMode
                     ? `Zero-assumption Return Quality. ${r.returnQuality.estimateNote ?? ""} ${r.returnQuality.assumptions.length ? `Assumed absent: ${r.returnQuality.assumptions.join(", ")}.` : "No eligible absent input required substitution."}`
                     : r.returnQuality.estimated
-                    ? `Conservative lower-bound score. ${r.returnQuality.estimateNote ?? ""} Assumed absent: ${r.returnQuality.assumptions.join(", ")}.`
-                    : "Harmonic mean of the available positive operating returns (ROE, NOPAT ROIC and, when meaningful, RONTA), divided by 1 + debt/equity. A missing or irrelevant RONTA is omitted rather than treated as zero."}>
-                <b>{r.returnQuality.assumptionApplied && r.returnQuality.score != null
-                  ? "≈ " : r.returnQuality.estimated && r.returnQuality.score != null ? "≥ " : ""}{fmtScore(r.returnQuality.score)}</b>
+                    ? `Uses conservative return estimates. ${r.returnQuality.estimateNote ?? ""} Assumed absent: ${r.returnQuality.assumptions.join(", ")}.`
+                    : "A missing or irrelevant operating return is omitted rather than treated as zero."}`}>
+                <b>{r.returnQuality.assumptionApplied || r.returnQuality.estimated || r.returnQuality.missingInputs.length
+                  ? "≈ " : ""}{fmtScore(r.returnQuality.score)}</b>
                 <span className="return-quality-parts">
                   {fmtQualityRate(r.returnQuality.roe, r.returnQuality.estimatedInputs?.roe, r.returnQuality.assumedInputs?.roe)} · {fmtQualityRate(r.returnQuality.roic, r.returnQuality.estimatedInputs.roic, r.returnQuality.assumedInputs?.roic)} · {fmtQualityRate(r.returnQuality.ronta, r.returnQuality.estimatedInputs.ronta, r.returnQuality.assumedInputs?.ronta)} · {fmtQualityMultiple(r.returnQuality.debtToEquity, r.returnQuality.assumedInputs?.debtToEquity)}
                 </span>
+                <span className="return-quality-parts">
+                  FCF/revenue {fmtQualityRate(r.returnQuality.fcfRevenue)} · {r.returnQuality.fcfRevenueYears}/10 years
+                </span>
+                <span className="return-quality-parts"
+                      title="Score divided by 1 + median annual Total CapEx / operating cash flow. CapEx uses its positive magnitude as shown in the detail table, which can include accrual-based investment. Only years with positive OCF count. No usable pairs means this penalty is unassessed.">
+                  CapEx/OCF {fmtQualityRate(r.returnQuality.capexOcf)} · {r.returnQuality.capexOcfYears}/10 years
+                </span>
+                <span className="return-quality-parts return-quality-evidence">
+                  {r.returnQuality.cashFlowMissing ? "Missing OCF/FCF · " : r.returnQuality.noReturnEvidence ? "No return evidence · " : ""}{r.returnQuality.inputsPresent}/6 inputs
+                  {r.returnQuality.missingInputs.length > 0 && ` · missing ${r.returnQuality.missingInputs.join(", ")}`}
+                </span>
                 {r.returnQuality.assumptionMode
                   ? <span className="return-quality-estimate">zero-assumption mode</span>
-                  : r.returnQuality.estimated && <span className="return-quality-estimate">lower-bound estimate</span>}
+                  : r.returnQuality.estimated && <span className="return-quality-estimate">uses estimated returns</span>}
               </td>
               <td className="num" data-label="Mkt cap">{fmtCap(r.mcap, r.quote_currency ?? r.currency)}</td>
               <td className="num" data-label="Price">

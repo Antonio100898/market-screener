@@ -1,3 +1,5 @@
+import { cashFlowEvidence, fcfRevenueHistory, capexOcfHistory } from "./ownerEarnings.js";
+
 // Screen semantics shared by the table and the detail panel. The criteria
 // themselves are settled once, at export, by sync.apply_price: nothing here
 // recomputes a status from a price. priceToPass() asks the opposite question —
@@ -50,23 +52,11 @@ export function priceToBook(row) {
   return price != null && row.bvps > 0 ? price / row.bvps : null;
 }
 
-/** A discovery score for businesses whose three independently constructed
- * operating-return measures and capital structure are measurable under the
- * selected evidence convention. RONTA is not meaningful for some businesses
- * (for example, when net tangible operating assets are negative); those rows
- * use the available positive return measures without treating the omitted
- * metric as zero or otherwise penalising it.
- *
- * The harmonic mean is intentionally used instead of a sum/arithmetic mean:
- * one ratio can explode when its denominator is unusually small (for example,
- * ROE after large buybacks).  A company ranks highly only when ROE, cash-
- * excluded NOPAT ROIC and RONTA are strong together.  Dividing that return
- * score by (1 + debt/equity) then prevents leverage from masquerading as
- * operating quality. The exported assumption overlay is preferred when present,
- * matching the detail panel's default; it is kept separate from strict fields so
- * no Graham criterion or verdict is changed. A zero assumed return produces a
- * zero score (the harmonic-mean limit), while a negative return, missing leverage,
- * or a negative-equity denominator still produces no score. */
+/** Equal-weight bounded returns, reduced by known debt and CapEx penalties.
+ * Missing inputs are disclosed and omitted, never represented as reported zero.
+ * A return whose numerator was assumed absent is unavailable. With no return
+ * Missing OCF or FCF makes the score zero; other missing inputs remain disclosed.
+ * Shared facts and Graham criteria remain untouched. */
 export function returnQuality(row) {
   const assumption = row.return_quality_assumption?.status === "APPLIED"
     ? row.return_quality_assumption : null;
@@ -77,7 +67,8 @@ export function returnQuality(row) {
   const roe = assumption ? assumption.roe : row.profitability?.on_equity;
   const metric = (name) => {
     if (assumption) {
-      const value = assumption[name];
+      const value = inputAssumptions[name]?.includes("operating_income")
+        ? null : assumption[name];
       return {
         value: Number.isFinite(value) ? value : null,
         assumed: (inputAssumptions[name]?.length ?? 0) > 0,
@@ -95,23 +86,34 @@ export function returnQuality(row) {
   const rontaMetric = metric("ronta");
   const roic = roicMetric.value;
   const ronta = rontaMetric.value;
-  const debtToEquity = assumption ? assumption.debt_to_equity : row.debt_to_equity;
-  const values = [roe, roic, ronta].filter((value) => Number.isFinite(value));
-  const returnsValid = values.length >= 2 && values.every((value) =>
-    assumption ? value >= 0 : value > 0);
-  const complete = returnsValid
-    && Number.isFinite(debtToEquity) && debtToEquity >= 0;
-  const returnScore = complete
-    ? values.some((value) => value === 0)
-      ? 0
-      : values.length / values.reduce((sum, value) => sum + 1 / value, 0)
-    : null;
+  const fcfRevenue = fcfRevenueHistory(row);
+  const capexOcf = capexOcfHistory(row);
+  const cashFlow = cashFlowEvidence(row);
+  const cashFlowMissing = !cashFlow.fcf || !cashFlow.ocf;
+  const debt = assumption ? assumption.debt_to_equity : row.debt_to_equity;
+  const debtToEquity = Number.isFinite(debt) && debt >= 0 ? debt : null;
+  const values = [roe, roic, ronta, fcfRevenue.median].filter(Number.isFinite);
+  const returnScore = cashFlowMissing ? 0 : values.length
+    ? values.reduce((sum, value) => sum + 50 + 50 * (value / (20 + Math.abs(value))), 0) / values.length
+    : 0;
+  const missingInputs = Object.entries({
+    ROE: roe, ROIC: roic, RONTA: ronta, "FCF/revenue": fcfRevenue.median,
+    "D/E": debtToEquity, "CapEx/OCF": capexOcf.median,
+  }).filter(([, value]) => !Number.isFinite(value)).map(([name]) => name);
   return {
-    score: returnScore == null ? null : returnScore / (1 + debtToEquity),
+    score: returnScore / (1 + Math.min(debtToEquity ?? 0, 1)) / (1 + (capexOcf.median ?? 0) / 100),
     returnScore,
+    missingInputs,
+    inputsPresent: 6 - missingInputs.length,
+    noReturnEvidence: values.length === 0,
+    cashFlowMissing,
     roe: Number.isFinite(roe) ? roe : null,
     roic: Number.isFinite(roic) ? roic : null,
     ronta: Number.isFinite(ronta) ? ronta : null,
+    fcfRevenue: fcfRevenue.median,
+    fcfRevenueYears: fcfRevenue.yearsPresent,
+    capexOcf: capexOcf.median,
+    capexOcfYears: capexOcf.yearsPresent,
     debtToEquity: Number.isFinite(debtToEquity) && debtToEquity >= 0 ? debtToEquity : null,
     assumptionMode: assumption != null,
     assumptionApplied: (assumption?.applied?.length ?? 0) > 0,
@@ -129,6 +131,41 @@ export function returnQuality(row) {
     assumptions: assumption?.applied ?? estimate?.operating_return_assumptions ?? [],
     estimateNote: assumption?.note ?? estimate?.note ?? null,
   };
+}
+
+export function returnQualityPercentiles(rows) {
+  const qualities = rows.map(returnQuality);
+  const metrics = [["roe", false], ["roic", false], ["ronta", false], ["fcfRevenue", false],
+    ["capexOcf", true], ["debtToEquity", true]];
+  const cohorts = Object.fromEntries(metrics.map(([key]) => [key,
+    qualities.map((quality) => quality[key]).filter(Number.isFinite).sort((a, b) => a - b)]));
+  const percentile = (key, value, lowerBetter) => {
+    const cohort = cohorts[key]; let low = 0; let high = cohort.length;
+    while (low < high) { const middle = (low + high) >> 1; if (cohort[middle] <= value) low = middle + 1; else high = middle; }
+    const rank = cohort.length < 2 ? 1 : (low - 1) / (cohort.length - 1);
+    return 100 * (lowerBetter ? 1 - rank : rank);
+  };
+  return qualities.map((quality) => {
+    if (quality.cashFlowMissing) return { ...quality, score: 0, returnScore: 0 };
+    const highDebt = quality.debtToEquity >= 1;
+    const weights = { roe: highDebt ? 5.8333333333 : 15.8333333333, roic: 15.8333333333,
+      ronta: 15.8333333333, fcfRevenue: 22.5, capexOcf: 20, debtToEquity: highDebt ? 20 : 10 };
+    let weighted = 0; let presentWeight = 0;
+    for (const [key, lowerBetter] of metrics) if (Number.isFinite(quality[key])) {
+      weighted += weights[key] * percentile(key, quality[key], lowerBetter); presentWeight += weights[key];
+    }
+    const returnScore = presentWeight ? weighted / presentWeight : 0;
+    const debtDivisor = Number.isFinite(quality.debtToEquity)
+      ? 1 + Math.min(quality.debtToEquity, 1) : 1;
+    const capexDivisor = Number.isFinite(quality.capexOcf)
+      ? 1 + quality.capexOcf / 100 : 1;
+    return {
+      ...quality,
+      score: returnScore / debtDivisor / capexDivisor,
+      returnScore,
+      highDebtWeight: highDebt,
+    };
+  });
 }
 
 /** A missing operating margin is materially different from a zero margin.

@@ -113,7 +113,10 @@ _IFRS_ALIASES: dict[str, tuple[str, ...]] = {
         "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities",
     ),
     "CashAndCashEquivalentsAtCarryingValue": ("CashAndCashEquivalents",),
-    "NetCashProvidedByUsedInOperatingActivities": ("CashFlowsFromUsedInOperatingActivities",),
+    "NetCashProvidedByUsedInOperatingActivities": (
+        "CashFlowsFromUsedInOperatingActivities",
+        "CashFlowsFromUsedInOperatingActivitiesContinuingOperations",
+    ),
     "PaymentsForRepurchaseOfCommonStock": ("PaymentsToAcquireOrRedeemEntitysShares",),
     "InterestExpense": ("InterestExpense",),
     "AccountsReceivableNetCurrent": ("CurrentTradeReceivables",),
@@ -609,23 +612,41 @@ def _ifrs_as_us_gaap(ifrs: dict) -> dict:
     """
     out: dict[str, dict] = {}
     for canonical, aliases in _IFRS_ALIASES.items():
-        source = next((tag for tag in aliases if tag in ifrs), None)
-        if source is None:
+        primary = next((source for source in aliases if source in ifrs), None)
+        if primary is None:
             continue
-        source_data = ifrs[source]
-        units = {
-            unit: [
-                {
-                    **entry,
-                    "_source_namespace": "ifrs-full",
-                    "_source_tag": source,
-                    "_normalized_tag": canonical,
-                }
-                for entry in entries
-            ]
-            for unit, entries in (source_data.get("units") or {}).items()
-        }
-        out[canonical] = {**source_data, "units": units}
+        units: dict[str, list[dict]] = {}
+        seen: dict[str, set[tuple[str | None, str | None]]] = {}
+        source_data = None
+        # The continuing-operations OCF total fills gaps only. For every other
+        # concept, retain the established first-available-tag priority.
+        sources = (
+            aliases if canonical == "NetCashProvidedByUsedInOperatingActivities"
+            else (primary,)
+        )
+        for source in sources:
+            if source not in ifrs:
+                continue
+            source_data = source_data or ifrs[source]
+            for unit, entries in (ifrs[source].get("units") or {}).items():
+                selected = units.setdefault(unit, [])
+                covered = seen.setdefault(unit, set())
+                for entry in entries:
+                    period = (entry.get("start"), entry.get("end"))
+                    # Preserve every entry from the established primary tag.
+                    # Only the fallback total is omitted when that period already
+                    # has a primary OCF fact.
+                    if source != primary and period in covered:
+                        continue
+                    covered.add(period)
+                    selected.append({
+                        **entry,
+                        "_source_namespace": "ifrs-full",
+                        "_source_tag": source,
+                        "_normalized_tag": canonical,
+                    })
+        if source_data is not None:
+            out[canonical] = {**source_data, "units": units}
     return out
 
 
@@ -3563,6 +3584,10 @@ def _short_term_debt(
         # KO: commercial paper and other short-term borrowings are disjoint lines;
         # mortgage-warehouse lines are their own facility
         borrowings = _sum_facts("ShortTermDebt (borrowings)", [
+            _latest_instant_across(
+                gaap, "ShortTermDebt (bank funding)",
+                ("FederalFundsPurchasedAndSecuritiesSoldUnderAgreementsToRepurchase",),
+                not_before=not_before),
             _latest_instant_across(gaap, "ShortTermDebt (commercial paper)",
                                    # S&P Global files only the carrying-amount variant
                                    # ($715M); Johnson & Johnson the long-term-CP current
@@ -4298,6 +4323,9 @@ CASH_CAPEX_TAGS = (
     "PaymentsToAcquireMachineryAndEquipment",
     "PaymentsToAcquireOtherProductiveAssets",
     "PaymentsForCapitalImprovements",
+    "PaymentsToAcquireOilAndGasProperty",
+    "PaymentsToAcquireOilAndGasPropertyAndEquipment",
+    "PaymentsToAcquireOilAndGasEquipment",
 )
 CAPEX_TAGS = (
     *CASH_CAPEX_TAGS,

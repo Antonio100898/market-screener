@@ -216,6 +216,7 @@ tr.istracked td { background: color-mix(in srgb, var(--insuf-bg) 35%, transparen
   white-space: nowrap; }
 .return-quality-estimate { display: block; color: var(--insuf); font-size: 8px;
   font-weight: 700; letter-spacing: .2px; }
+.return-quality-evidence { max-width: 220px; white-space: normal; }
 .estimated-return { color: var(--insuf); font-weight: 700; }
 .estimate-note { border-left: 2px solid var(--insuf); padding-left: 9px; }
 .annual { width: 100%; border-collapse: collapse; font-size: 11px; }

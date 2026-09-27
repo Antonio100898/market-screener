@@ -1,6 +1,67 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ownerEarningsTrend, ownerMetricTrend } from "../src/ownerEarnings.js";
+import { ownerEarningsTrend, ownerMetricTrend, fcfRevenueHistory, capexOcfHistory } from "../src/ownerEarnings.js";
+
+test("CapEx/OCF takes the median of annual ratios in ten fixed slots", () => {
+  const annual = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [2015 + i, {
+    cash_flow_bridge: { total_capital_expenditure: [(i + 1) ** 2], operating_cash_flow: [(i + 1) * 100] },
+  }]));
+  assert.deepEqual(capexOcfHistory({owner_earnings: {fiscal_year: 2025, annual_per_share: annual}}),
+    {median: 6.5, yearsPresent: 10});
+});
+
+test("CapEx/OCF keeps absent and nonpositive OCF out, normalizes CapEx cash-use signs", () => {
+  const pair = (capex, ocf) => ({cash_flow_bridge: {total_capital_expenditure: capex, operating_cash_flow: ocf}});
+  const company = {owner_earnings: {fiscal_year: 2025, annual_per_share: {
+    2016: pair([-20], [100]), 2017: pair({value: 0}, {value: 100}), 2018: pair(120, 200),
+    2019: pair(null, 100), 2020: pair(40, 0), 2021: pair(40, -100), 2022: pair(40, null),
+    2023: pair(Infinity, 100), 2024: pair(40, Infinity), 2025: pair(40, undefined),
+  }}};
+  assert.deepEqual(capexOcfHistory(company), {median: 20, yearsPresent: 3});
+  assert.deepEqual(capexOcfHistory({}), {median: null, yearsPresent: 0});
+});
+
+test("FCF/revenue uses the median of annual margins, not a ratio of totals", () => {
+  const annual = Object.fromEntries(Array.from({ length: 10 }, (_, i) => [
+    2016 + i, { free_cash_flow: (i + 1) ** 2 },
+  ]));
+  const revenue = Object.fromEntries(Array.from({ length: 10 }, (_, i) => [2016 + i, (i + 1) * 100]));
+  annual[2015] = { free_cash_flow: 10000 };
+  revenue[2015] = 100;
+  annual[2026] = { free_cash_flow: 10000 };
+  revenue[2026] = 100;
+  assert.deepEqual(fcfRevenueHistory({
+    owner_earnings: { fiscal_year: 2025, annual_per_share: annual },
+    annual_revenue: revenue,
+  }), { median: 5.5, yearsPresent: 10 });
+});
+
+test("FCF margin preserves gaps and includes zero and negative years", () => {
+  const company = {
+    owner_earnings: {
+      fiscal_year: 2025,
+      annual_per_share: {
+        2015: { free_cash_flow: 1000 },
+        2016: { free_cash_flow: -20 },
+        2017: { free_cash_flow: 0 },
+        2018: { free_cash_flow: 90 },
+        2019: { free_cash_flow: null },
+        2020: { free_cash_flow: 40 },
+        2021: { free_cash_flow: 40 },
+        2022: { free_cash_flow: 40 },
+        2023: { free_cash_flow: Infinity },
+        2024: { free_cash_flow: 40 },
+        2025: { free_cash_flow: 40 },
+      },
+    },
+    annual_revenue: { 2015: 100, 2016: 100, 2017: 100, 2018: 300, 2019: 100,
+      2020: 0, 2021: -100, 2022: null, 2023: 100, 2024: Infinity },
+  };
+  assert.deepEqual(fcfRevenueHistory(company), { median: 0, yearsPresent: 3 });
+  assert.deepEqual(fcfRevenueHistory({}), { median: null, yearsPresent: 0 });
+  company.owner_earnings.fiscal_year = null;
+  assert.deepEqual(fcfRevenueHistory(company), { median: null, yearsPresent: 0 });
+});
 
 function series(values, latest = 2025) {
   return {

@@ -9,6 +9,53 @@ function median(values) {
     : (ordered[middle - 1] + ordered[middle]) / 2;
 }
 
+/** Annual ratios in the cash table's latest ten fiscal-year slots. */
+function annualWindow(row) {
+  const oe = row.owner_earnings;
+  const latestFiscalYear = oe?.fiscal_year;
+  if (!Number.isInteger(latestFiscalYear)) return [];
+  return Array.from({ length: 10 }, (_, index) => {
+    const year = latestFiscalYear - 9 + index;
+    return [oe.annual_per_share?.[year], year];
+  });
+}
+
+function annualRatioHistory(row, inputs) {
+  const margins = [];
+  for (const [cell, year] of annualWindow(row)) {
+    const [numerator, denominator] = inputs(cell, year);
+    if (Number.isFinite(numerator) && Number.isFinite(denominator) && denominator > 0) {
+      const margin = numerator / denominator * 100;
+      if (Number.isFinite(margin)) margins.push(margin);
+    }
+  }
+  return { median: median(margins), yearsPresent: margins.length };
+}
+
+export function fcfRevenueHistory(row) {
+  return annualRatioHistory(row, (cell, year) => [cell?.free_cash_flow, row.annual_revenue?.[year]]);
+}
+
+export function cashFlowEvidence(row) {
+  const value = (point) => Array.isArray(point) ? point[0]
+    : point && typeof point === "object" ? point.value : point;
+  const annual = annualWindow(row).map(([cell]) => cell);
+  return {
+    fcf: annual.some((cell) => Number.isFinite(cell?.free_cash_flow)),
+    ocf: annual.some((cell) => Number.isFinite(value(cell?.cash_flow_bridge?.operating_cash_flow))),
+  };
+}
+
+export function capexOcfHistory(row) {
+  const value = (point) => Array.isArray(point) ? point[0]
+    : point && typeof point === "object" ? point.value : point;
+  return annualRatioHistory(row, (cell) => {
+    const bridge = cell?.cash_flow_bridge;
+    const capex = value(bridge?.total_capital_expenditure);
+    return [Number.isFinite(capex) ? Math.abs(capex) : null, value(bridge?.operating_cash_flow)];
+  });
+}
+
 function fixedWindowCagr(rows, slots, valueKey = "perShare") {
   if (rows.length < slots) return null;
   const window = rows.slice(-slots);

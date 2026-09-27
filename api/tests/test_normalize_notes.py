@@ -188,6 +188,56 @@ def test_cover_verified_usd_ifrs_filer_uses_equivalent_concepts_with_original_pr
     assert row["sources"]["eps"]["tag"] == "ifrs-full:DilutedEarningsLossPerShare"
 
 
+def test_ifrs_continuing_operations_cash_flow_builds_fcf_with_original_provenance():
+    gaap = _foreign_ifrs()
+    annual = lambda value: dur(  # noqa: E731 - filing-shaped fixture
+        "2025-01-01", "2025-12-31", value, form="20-F", accn="ifrs25",
+        filed="2026-03-25")
+    gaap.update({
+        "AdjustmentsForDepreciationAndAmortisationExpense": tagdata("USD", [annual(80_000_000)]),
+        "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities": tagdata(
+            "USD", [annual(120_000_000)]),
+        "CashFlowsFromUsedInOperatingActivitiesContinuingOperations": tagdata(
+            "USD", [annual(300_000_000)]),
+    })
+
+    snapshot = build_snapshot(
+        "IFRS", "0000000002", {"facts": {"ifrs-full": gaap}},
+        receipt={"symbol": "IFRS", "title": "Ordinary Shares", "ratio": None,
+                 "accn": "ifrs25"},
+    )
+
+    assert snapshot.owner_earnings.free_cash_flow.value == Decimal("180000000")
+    assert snapshot.owner_earnings.free_cash_flow.provenance.components[0].tag == (
+        "ifrs-full:CashFlowsFromUsedInOperatingActivitiesContinuingOperations")
+
+
+def test_ifrs_cash_flow_alias_keeps_the_primary_total_for_an_overlapping_period():
+    from screener.normalize import _annual_series, _ifrs_as_us_gaap, _with_fiscal_calendar
+
+    annual = lambda value: dur(  # noqa: E731 - filing-shaped fixture
+        "2025-01-01", "2025-12-31", value, form="20-F", accn="ifrs25",
+        filed="2026-03-25")
+    gaap = {
+        "Assets": tagdata("USD", [inst("2025-12-31", 1_000_000_000,
+                                         form="20-F", accn="ifrs25", filed="2026-03-25")]),
+        "CashFlowsFromUsedInOperatingActivities": tagdata("USD", [
+            {**annual(400_000_000), "accn": "ifrs24", "filed": "2025-03-25"},
+            annual(400_000_000),
+        ]),
+        "CashFlowsFromUsedInOperatingActivitiesContinuingOperations": tagdata(
+            "USD", [annual(300_000_000)]),
+    }
+
+    normalized = _ifrs_as_us_gaap(gaap)
+    assert len(normalized["NetCashProvidedByUsedInOperatingActivities"]["units"]["USD"]) == 2
+    series = _annual_series(_with_fiscal_calendar(normalized),
+                            "NetCashProvidedByUsedInOperatingActivities", unit=("USD",))
+
+    assert series[2025].value == Decimal("400000000")
+    assert series[2025].provenance.tag == "ifrs-full:CashFlowsFromUsedInOperatingActivities"
+
+
 def test_non_usd_ifrs_statements_are_normalized_in_their_reported_currency():
     facts = {"facts": {"ifrs-full": _foreign_ifrs(currency="EUR")}}
     snapshot = build_snapshot(

@@ -22,6 +22,29 @@ def test_balance_sheet_uses_latest_period_end():
     assert s.goodwill.provenance.period_end == date(2025, 12, 31)
 
 
+def test_bank_short_term_funding_uses_rollup_without_double_counting():
+    from screener.normalize import _short_term_debt
+
+    def point(value, end="2026-06-30"):
+        return tagdata("USD", [inst(end, value, accn="bank-q2", filed="2026-08-01")])
+
+    gaap = {
+        "FederalFundsPurchasedAndSecuritiesSoldUnderAgreementsToRepurchase": point(310091000),
+        "FederalFundsPurchased": point(281600000),
+        "SecuritiesSoldUnderAgreementsToRepurchase": point(28491000),
+    }
+    funding = _short_term_debt(gaap, None)
+    assert funding is not None
+    assert funding.value == Decimal(310091000)
+    assert funding.provenance.accession == "bank-q2"
+    gaap["OtherShortTermBorrowings"] = point(9000)
+    assert _short_term_debt(gaap, None).value == Decimal(310100000)
+    gaap["ShortTermBorrowings"] = point(400000000)
+    assert _short_term_debt(gaap, None).value == Decimal(400000000)
+    gaap["DebtCurrent"] = point(500000000)
+    assert _short_term_debt(gaap, None).value == Decimal(500000000)
+
+
 def test_later_exact_scale_comparative_cannot_corrupt_balance_history():
     from screener.normalize import (
         _annual_balances, _latest_instant, _taxonomy_at_end,
@@ -424,6 +447,23 @@ def test_owner_earnings_and_invested_capital():
     assert float(oe.invested_capital) == 810e9
     assert round(float(oe.all_capex_return), 4) == round(70 / 810 * 100, 4)
     assert round(float(oe.maintenance_estimate_return), 4) == round(70 / 810 * 100, 4)
+
+
+@pytest.mark.parametrize("tag", (
+    "PaymentsToAcquireOilAndGasProperty",
+    "PaymentsToAcquireOilAndGasPropertyAndEquipment",
+    "PaymentsToAcquireOilAndGasEquipment",
+))
+def test_owner_earnings_treats_cash_oil_and_gas_asset_purchases_as_capex(tag):
+    gaap = dict(OE_GAAP)
+    gaap.pop("PaymentsToAcquirePropertyPlantAndEquipment")
+    gaap[tag] = tagdata("USD", [
+        dur("2025-01-01", "2025-12-31", 12e9, accn="k25", filed="2026-02-15")])
+
+    fcf = build(gaap).owner_earnings.free_cash_flow
+
+    assert fcf.value == Decimal("63000000000")
+    assert fcf.provenance.components[1].canonical_tag == tag
 
 
 def test_finkle_three_way_fcf_reconciliation_matches_or_exposes_the_gap():
