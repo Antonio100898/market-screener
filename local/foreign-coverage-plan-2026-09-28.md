@@ -80,6 +80,7 @@ Affected decisions: P-02, P-03, P-04, and P-09. Existing SEC/IFRS invariants rem
 | 3B-X3. Incorporated SEC exhibit recovery and dual provenance | accepted | evidence developer | engine 187; 233 focused, 839 full Python; CNI `ok`; exact 40-F relationship and 6-K source retained; direct 17 unchanged |
 | 3B-G. Engine-187 bounded activation and full UI gate | active | verification developer | retain 18 official sources; preserve engine-185 baseline; regress/derive/export/audit/filing audit; explain every row and field change |
 | 3B-X4. Incorporated exhibit filename fix | accepted | bug-fix developer | 131 focused, 840 full Python; real CNI acquisition and derivation pass; exact exhibit and wrapper identities retained |
+| 3B-X5. Prefer direct annual instance before incorporation fallback | accepted | bug-fix developer | 133 focused, 842 full Python; GCDT/HBNB/NXAT activate direct; CNI incorporated fallback remains `ok` |
 | 3C. LLM shadow pilot for incomplete statements | queued after 3B | extraction developer | retained real filings; candidates stored but dashboard unchanged; failures named |
 | 4. Full derive/export/regression/audit | committed (records commit) | manager | engine 184; 6,979 rows; 112 intended disclosure changes; audits zero wrong |
 

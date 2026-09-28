@@ -2112,10 +2112,14 @@ def test_a_declared_scale_the_statement_contradicts_is_not_a_wrong_figure():
 
 
 class _InlineEdgar:
-    def __init__(self, cache_dir, *, include_instance=True, unsafe=False, fail=None):
+    def __init__(
+        self, cache_dir, *, include_instance=True, unsafe=False, fail=None,
+        annual_html=None,
+    ):
         self.cache_dir = cache_dir
         self.calls = []
         self.fail = fail
+        self.annual_html = annual_html
         names = [
             "annual.htm", "FilingSummary.xml", "issuer.xsd", "issuer_pre.xml",
         ]
@@ -2143,6 +2147,8 @@ class _InlineEdgar:
         self.calls.append(url)
         if self.fail and url.endswith(self.fail):
             raise RuntimeError("fetch failed")
+        if self.annual_html is not None and url.endswith("annual.htm"):
+            return SimpleNamespace(content=self.annual_html)
         return SimpleNamespace(
             content=(self.index if url.endswith("index.json") else url.encode()),
         )
@@ -2260,6 +2266,65 @@ def test_inline_acquisition_publishes_after_all_bytes_and_is_idempotent(
     )
     assert second["0000000001"]["state"] == "reused"
     assert conn.execute("SELECT * FROM snapshot_dirty").fetchone() is None
+
+
+def test_direct_annual_instance_wins_over_unrelated_incorporation_text(
+    tmp_path, monkeypatch,
+):
+    conn = store.connect(tmp_path / "store.db")
+    edgar = _InlineEdgar(
+        tmp_path,
+        annual_html=(
+            b"<html><p>Some exhibits are incorporated by reference from Form 6-K."
+            b"</p></html>"
+        ),
+    )
+    seen = []
+    monkeypatch.setattr(
+        sync, "_verified_inline_manifest",
+        lambda manifest, *_: seen.append(manifest) or {"facts": {}},
+    )
+
+    result = sync.retain_inline_statements(
+        conn, {"1"}, progress=lambda *args: None, edgar=edgar,
+    )
+
+    assert result["0000000001"]["state"] == "activated"
+    assert seen[0]["relationship"] == "direct_annual"
+    assert seen[0]["source"]["accession"] == "0000000001-26-000001"
+
+
+def test_incoherent_direct_wrapper_falls_back_to_incorporated_statements(
+    tmp_path, monkeypatch,
+):
+    conn = store.connect(tmp_path / "store.db")
+    edgar = _IncorporatedInlineEdgar(tmp_path)
+    edgar.annual_index = json.dumps({
+        "directory": {"item": [{"name": name} for name in [
+            "annual.htm", "annual_htm.xml", "FilingSummary.xml",
+            "issuer.xsd", "issuer_pre.xml",
+        ]]},
+    }).encode()
+    seen = []
+
+    def verify(manifest, *_):
+        seen.append(manifest["relationship"])
+        if manifest["relationship"] == "direct_annual":
+            raise ValueError(
+                "retained Inline-XBRL statement has no coherent annual balance"
+            )
+        return {"facts": {}}
+
+    monkeypatch.setattr(sync, "_verified_inline_manifest", verify)
+
+    result = sync.retain_inline_statements(
+        conn, {"1"}, progress=lambda *args: None, edgar=edgar,
+    )
+
+    assert result["0000000001"]["state"] == "activated"
+    assert seen == ["direct_annual", "incorporated_annual_exhibit"]
+    manifest = inline_xbrl.read_current_manifest(tmp_path, "1")
+    assert manifest["relationship"] == "incorporated_annual_exhibit"
 
 
 def test_inline_acquisition_publishes_one_verified_incorporated_sec_exhibit(

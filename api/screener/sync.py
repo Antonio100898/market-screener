@@ -1966,12 +1966,56 @@ def _retain_inline_annual(edgar: EdgarClient, cik: str) -> tuple[str, str]:
         "entity_name": str(submissions.get("name") or ""),
         "annual": annual,
     }
+    direct_error: ValueError | None = None
+    manifest = None
     try:
-        relationship = inline_xbrl.incorporated_annual_source(annual_primary_raw, cik)
+        documents = _inline_documents(index, annual_document)
     except inline_xbrl.UnsupportedInlineXbrlRelationship as exc:
-        if str(exc) != "missing_incorporation_by_reference":
+        if str(exc) != "incorporated_filing_relationship":
             raise
-        relationship = None
+        direct_error = exc
+    else:
+        records = {
+            "index": _retained_record("index.json", base + "index.json", index_raw),
+        }
+        document_payloads = {annual_document: annual_primary_raw}
+        for role, document in documents.items():
+            raw = document_payloads.get(document)
+            if raw is None:
+                raw = _retained_or_fetched(
+                    edgar, annual_directory, base, document,
+                    previous_files.get(role),
+                )
+                document_payloads[document] = raw
+            records[role] = _retained_record(document, base + document, raw)
+        manifest = {
+            **common,
+            "relationship": "direct_annual",
+            "source": {
+                "accession": accession,
+                "form": annual["form"],
+                "filed": annual["filed"],
+                "document": annual_document,
+            },
+            "files": records,
+        }
+        try:
+            _verified_inline_manifest(manifest, edgar.cache_dir, cik)
+        except ValueError as exc:
+            if str(exc) != "retained Inline-XBRL statement has no coherent annual balance":
+                raise
+            direct_error = exc
+
+    relationship = None
+    if direct_error is not None:
+        try:
+            relationship = inline_xbrl.incorporated_annual_source(
+                annual_primary_raw, cik,
+            )
+        except inline_xbrl.UnsupportedInlineXbrlRelationship as exc:
+            if str(exc) != "missing_incorporation_by_reference":
+                raise
+            raise direct_error from exc
     if relationship is not None:
         source = _filing_metadata(submissions, relationship["accession"])
         filing_document = _safe_archive_document(source["document"])
@@ -2026,35 +2070,11 @@ def _retain_inline_annual(edgar: EdgarClient, cik: str) -> tuple[str, str]:
             "relationship_evidence": relationship,
             "files": records,
         }
-    else:
-        documents = _inline_documents(index, annual_document)
-        records = {
-            "index": _retained_record("index.json", base + "index.json", index_raw),
-        }
-        document_payloads = {annual_document: annual_primary_raw}
-        for role, document in documents.items():
-            raw = document_payloads.get(document)
-            if raw is None:
-                raw = _retained_or_fetched(
-                    edgar, annual_directory, base, document,
-                    previous_files.get(role),
-                )
-                document_payloads[document] = raw
-            records[role] = _retained_record(document, base + document, raw)
-        manifest = {
-            **common,
-            "relationship": "direct_annual",
-            "source": {
-                "accession": accession,
-                "form": annual["form"],
-                "filed": annual["filed"],
-                "document": annual_document,
-            },
-            "files": records,
-        }
+    assert manifest is not None
     # Parsing all verified retained inputs is the publication gate. A partial or
     # unsupported filing remains only an inactive accession directory.
-    _verified_inline_manifest(manifest, edgar.cache_dir, cik)
+    if relationship is not None:
+        _verified_inline_manifest(manifest, edgar.cache_dir, cik)
     encoded = inline_xbrl.manifest_bytes(manifest)
     manifest_path = inline_xbrl.current_manifest_path(edgar.cache_dir, cik)
     changed = not manifest_path.exists() or manifest_path.read_bytes() != encoded

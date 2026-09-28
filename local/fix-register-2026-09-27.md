@@ -24,3 +24,7 @@
   Kind: source-relationship defect. Owner: incorporated SEC acquisition. Status: fixed. Verification:
   failing-before regression, 131 focused tests, and real CNI activation/derivation with separate
   6-K wrapper and exact exhibit identities.
+- Engine-187 activation: incorporation prose was inspected before the annual filing's own structured
+  instance. Three valid direct 20-Fs were rejected by unrelated incorporation language. Kind:
+  source-routing defect. Owner: SEC annual acquisition. Status: fixed. Verification: failing-before
+  regression, 133 focused tests, three retained direct activations, and preserved CNI fallback.
