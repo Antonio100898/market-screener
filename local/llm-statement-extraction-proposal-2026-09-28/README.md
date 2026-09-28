@@ -4,7 +4,8 @@ The proposed fallback can supply source-cited candidates without changing offici
 mode. It reuses the canonical adapter and derivation path. It does not trust model output as a
 published fact.
 
-Prompt behavior is **UNVERIFIED**. No LLM was called.
+The owner approved `prompt.md` on 2026-09-28. Prompt behavior remains **UNVERIFIED** because no LLM
+was called. Provider and model selection remain pending.
 
 ## Product decisions preserved
 

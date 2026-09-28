@@ -16,3 +16,7 @@
    and checks. Publish a candidate only after deterministic verification; otherwise fail closed.
    Start in shadow mode on the incomplete foreign-company set. The exact model prompt still needs
    owner approval before implementation.
+8. Approve the exact statement-extraction prompt in
+   `local/llm-statement-extraction-proposal-2026-09-28/prompt.md`. The first implementation remains
+   supplement-only and shadow-only: it can propose deterministically missing fields but cannot
+   override deterministic data or change the dashboard.
