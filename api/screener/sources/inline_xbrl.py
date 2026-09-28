@@ -59,6 +59,26 @@ class InlineXbrlPaths:
 
 
 @dataclass(frozen=True)
+class RetainedInlineXbrlArtifact:
+    """One verified local input ready for immutable object retention."""
+
+    role: str
+    path: Path
+    media_type: str
+    sha256: str
+    byte_size: int
+    payload: bytes
+
+
+@dataclass(frozen=True)
+class _VerifiedManifest:
+    metadata: InlineXbrlMetadata
+    parser_paths: InlineXbrlPaths
+    parser_hashes: dict[str, str]
+    artifacts: tuple[RetainedInlineXbrlArtifact, ...]
+
+
+@dataclass(frozen=True)
 class _Dimension:
     axis: str
     kind: str
@@ -259,19 +279,70 @@ def accession_directory(cache_dir: str | Path, accession: str) -> Path:
 
 def read_current_manifest(cache_dir: str | Path, cik: str) -> dict | None:
     path = current_manifest_path(cache_dir, cik)
-    if not path.exists():
+    retained = _read_manifest(path)
+    if retained is None:
         return None
+    return retained[0]
+
+
+def _read_manifest(path: Path) -> tuple[dict, bytes] | None:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
+        raw = path.read_bytes()
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise ValueError("invalid retained Inline-XBRL manifest") from exc
+    try:
+        value = json.loads(
+            raw, object_pairs_hook=_unique_json_object,
+        )
+    except (UnicodeDecodeError, ValueError) as exc:
         raise ValueError("invalid retained Inline-XBRL manifest") from exc
     if not isinstance(value, dict):
         raise ValueError("invalid retained Inline-XBRL manifest")
-    return value
+    return value, raw
 
 
 def manifest_bytes(manifest: Mapping) -> bytes:
     return (json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+
+def current_retained_artifacts(
+    cache_dir: str | Path,
+    cik: str,
+    companyfacts: dict,
+    *,
+    retained_root: str | Path | None = None,
+) -> tuple[RetainedInlineXbrlArtifact, ...]:
+    """Enumerate every verified byte behind the active Inline-XBRL supplement."""
+    manifest_path = current_manifest_path(cache_dir, cik)
+    retained_manifest = _read_manifest(manifest_path)
+    if retained_manifest is None:
+        return ()
+    manifest, raw_manifest = retained_manifest
+    verified = _verified_manifest_contract(
+        manifest, cik, cache_dir, retained_root=retained_root,
+    )
+    current = _current_foreign_annual(companyfacts)
+    expected = (
+        verified.metadata.annual_filed,
+        verified.metadata.annual_accession,
+    )
+    if current is None:
+        raise ValueError("current foreign annual filing is unknown")
+    if current != expected:
+        raise ValueError("retained Inline-XBRL manifest is stale")
+    return (
+        RetainedInlineXbrlArtifact(
+            role="sec_inline_current_manifest",
+            path=manifest_path,
+            media_type="application/json",
+            sha256=hashlib.sha256(raw_manifest).hexdigest(),
+            byte_size=len(raw_manifest),
+            payload=raw_manifest,
+        ),
+        *verified.artifacts,
+    )
 
 
 def load_retained_supplement(
@@ -441,6 +512,19 @@ def _manifest_contract(
     *,
     retained_root: str | Path | None,
 ) -> tuple[InlineXbrlMetadata, InlineXbrlPaths, dict[str, str]]:
+    verified = _verified_manifest_contract(
+        manifest, cik, cache_dir, retained_root=retained_root,
+    )
+    return verified.metadata, verified.parser_paths, verified.parser_hashes
+
+
+def _verified_manifest_contract(
+    manifest: dict,
+    cik: str,
+    cache_dir: str | Path,
+    *,
+    retained_root: str | Path | None,
+) -> _VerifiedManifest:
     normalized_cik = _cik(cik)
     if manifest.get("schema") != MANIFEST_SCHEMA:
         raise ValueError("unsupported retained Inline-XBRL manifest schema")
@@ -486,6 +570,7 @@ def _manifest_contract(
             raise ValueError("retained Inline-XBRL relationship evidence is incomplete")
     paths: dict[str, Path] = {}
     hashes: dict[str, str] = {}
+    artifacts = []
     for role, record in records.items():
         if not isinstance(record, dict):
             raise ValueError(f"invalid retained Inline-XBRL file record: {role}")
@@ -517,6 +602,14 @@ def _manifest_contract(
             raise ValueError(f"retained Inline-XBRL file verification failed: {role}")
         paths[role] = path
         hashes[role] = expected_hash
+        artifacts.append(RetainedInlineXbrlArtifact(
+            role=_retained_artifact_role(relationship, role),
+            path=path,
+            media_type=_retained_media_type(role),
+            sha256=expected_hash,
+            byte_size=expected_size,
+            payload=payload,
+        ))
 
     if relationship == "incorporated_annual_exhibit":
         found = incorporated_annual_source(
@@ -540,7 +633,37 @@ def _manifest_contract(
         annual_filed=str(annual.get("filed") or ""),
     )
     parser_paths = InlineXbrlPaths(**{role: paths[role] for role in FILE_ROLES})
-    return metadata, parser_paths, {role: hashes[role] for role in FILE_ROLES}
+    return _VerifiedManifest(
+        metadata=metadata,
+        parser_paths=parser_paths,
+        parser_hashes={role: hashes[role] for role in FILE_ROLES},
+        artifacts=tuple(sorted(artifacts, key=lambda item: item.role)),
+    )
+
+
+def _retained_artifact_role(relationship: str, role: str) -> str:
+    if relationship == "direct_annual":
+        return f"sec_inline_direct_annual_{role}"
+    if role.startswith("annual_"):
+        return f"sec_inline_annual_wrapper_{role.removeprefix('annual_')}"
+    return f"sec_inline_incorporated_source_{role.removeprefix('source_')}"
+
+
+def _retained_media_type(role: str) -> str:
+    if role.endswith("index"):
+        return "application/json"
+    if role.endswith("primary_document"):
+        return "text/html"
+    return "application/xml"
+
+
+def _unique_json_object(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate retained Inline-XBRL manifest key: {key}")
+        result[key] = value
+    return result
 
 
 def _accession_digits(accession: str) -> str:

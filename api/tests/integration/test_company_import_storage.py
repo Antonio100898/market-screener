@@ -31,7 +31,7 @@ from screener.postgres import (
     priced_security,
 )
 from screener.shared_companies import SharedCompanyRepository
-from screener.sources import cover, dera
+from screener.sources import cover, dera, inline_xbrl
 from screener.storage_config import StorageSettings
 
 
@@ -372,6 +372,15 @@ def _expected_bytes(connection, cache, ticker, role, digest):
         ]
     elif role == "official_sec_ticker_mapping":
         candidates = [(cache / "company_tickers.json").read_bytes()]
+    elif role.startswith("sec_inline_"):
+        facts = json.loads((cache / f"companyfacts_{cik}.json").read_bytes())
+        candidates = [
+            artifact.payload
+            for artifact in inline_xbrl.current_retained_artifacts(
+                cache, cik, facts,
+            )
+            if artifact.role == role
+        ]
     elif role == "canonical_edinet_facts":
         candidates = [(cache / f"companyfacts_{cik}.json").read_bytes()]
     elif role == "raw_filing":

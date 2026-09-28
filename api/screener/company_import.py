@@ -19,7 +19,7 @@ from .evidence import EvidenceBundle, EvidenceLoader
 from .object_store import ImmutableObjectStore, create_s3_client
 from .postgres import create_postgres_engine
 from .shared_companies import SharedCompanyRepository, SnapshotArtifact, StoredCompany
-from .sources import cover, dera
+from .sources import cover, dera, inline_xbrl
 from .sources.edinet_mapper import ADAPTER_KIND as EDINET_ADAPTER
 from .storage_config import StorageSettings
 
@@ -206,7 +206,27 @@ class CompanyImporter:
             )
             retained.append(sidecar_artifact)
 
-        ticker, receipt = self.loader.identity(cik, str(row["ticker"]))
+        inline_artifacts = inline_xbrl.current_retained_artifacts(
+            self.cache_dir, cik, facts,
+        )
+        for source in inline_artifacts:
+            artifact, verified = self._retain(
+                source.payload, source.media_type, source.role,
+            )
+            if (artifact.artifact.content_sha256 != source.sha256
+                    or artifact.artifact.byte_size != source.byte_size
+                    or verified != source.payload):
+                raise RetainedInputError(
+                    f"{row['ticker']}: retained Inline-XBRL readback mismatch"
+                )
+            retained.append(artifact)
+
+        if inline_artifacts:
+            bundle = self.loader.load(cik, str(row["ticker"]), facts)
+            ticker, receipt = bundle.ticker, bundle.receipt
+        else:
+            ticker, receipt = self.loader.identity(cik, str(row["ticker"]))
+            bundle = EvidenceBundle(cik, ticker, facts, dimensioned, receipt)
         title = str((receipt or {}).get("title") or "")
         accession = str((receipt or {}).get("accn") or "")
         raw_cover = self._raw_cover_artifact(receipt)
@@ -230,7 +250,7 @@ class CompanyImporter:
                 source_accession=None,
                 security_basis="SEC_TICKER_MAPPING_ONLY",
                 receipt_ratio=None,
-                bundle=EvidenceBundle(cik, ticker, facts, dimensioned, receipt),
+                bundle=bundle,
                 artifacts=tuple(retained),
             )
         receipt, cover_artifact = self._json_bytes(
@@ -256,7 +276,7 @@ class CompanyImporter:
                 "PRIMARY_DEPOSITARY_RECEIPT" if depositary else "PRIMARY_COMMON_SHARE"
             ),
             receipt_ratio=ratio,
-            bundle=EvidenceBundle(cik, ticker, facts, dimensioned, receipt),
+            bundle=bundle,
             artifacts=tuple(retained),
         )
 

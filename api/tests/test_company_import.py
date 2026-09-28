@@ -20,7 +20,7 @@ from screener.company_import import (
 )
 from screener.object_store import VerifiedObject, content_address
 from screener.shared_companies import StoredCompany
-from screener.sources import cover
+from screener.sources import cover, inline_xbrl
 
 
 class MemoryObjectStore:
@@ -189,6 +189,72 @@ def _raw_cover_primary(cache, accession, document, text):
     return raw
 
 
+def _inline_manifest(cache, cik, *, same_schema_and_presentation=False):
+    accession = f"{cik}-26-000001"
+    facts_path = cache / f"companyfacts_{cik}.json"
+    facts = json.loads(facts_path.read_bytes())
+    facts["facts"] = {"dei": {"EntityPublicFloat": {"units": {"USD": [{
+        "val": 1,
+        "end": "2025-12-31",
+        "accn": accession,
+        "form": "20-F",
+        "filed": "2026-03-01",
+    }]}}}}
+    facts_path.write_text(json.dumps(facts))
+
+    directory = inline_xbrl.accession_directory(cache, accession)
+    directory.mkdir(parents=True)
+    documents = {
+        "index": "index.json",
+        "instance": "annual_htm.xml",
+        "filing_summary": "FilingSummary.xml",
+        "presentation": "issuer_pre.xml",
+        "schema": "issuer.xsd",
+        "primary_document": "annual.htm",
+    }
+    records = {}
+    for role, document in documents.items():
+        raw = (b"schema-or-presentation" if same_schema_and_presentation
+               and role in {"schema", "presentation"} else role.encode())
+        path = directory / document
+        path.write_bytes(raw)
+        digest = content_address(raw)[0]
+        records[role] = {
+            "document": document,
+            "url": (
+                "https://www.sec.gov/Archives/edgar/data/"
+                f"{int(cik)}/{accession.replace('-', '')}/{document}"
+            ),
+            "sha256": digest,
+            "size": len(raw),
+        }
+    manifest = {
+        "schema": inline_xbrl.MANIFEST_SCHEMA,
+        "parser_contract_revision": inline_xbrl.PARSER_CONTRACT_REVISION,
+        "relationship": "direct_annual",
+        "cik": cik,
+        "entity_name": "Example PLC",
+        "annual": {
+            "accession": accession,
+            "form": "20-F",
+            "filed": "2026-03-01",
+            "report_date": "2025-12-31",
+            "document": "annual.htm",
+        },
+        "source": {
+            "accession": accession,
+            "form": "20-F",
+            "filed": "2026-03-01",
+            "document": "annual.htm",
+        },
+        "files": records,
+    }
+    path = inline_xbrl.current_manifest_path(cache, cik)
+    path.parent.mkdir(parents=True)
+    path.write_bytes(inline_xbrl.manifest_bytes(manifest))
+    return manifest
+
+
 def _edinet(connection, cache, documents=("S100OLD", "S100NEW")):
     connection.execute(
         "INSERT INTO company (cik, ticker, name, exchange) VALUES (?, ?, ?, ?)",
@@ -246,6 +312,7 @@ def test_sec_import_uses_verified_facts_dimensioned_facts_and_cover(retained):
         assert bundle.ticker == "ABT"
         assert bundle.dimensioned == {"facts": {"us-gaap": {}}}
         assert bundle.receipt["accn"] == "ABT-accession"
+        assert bundle.supplement_state is None
         return "ok", {"ticker": "ABT", "source": bundle.receipt["accn"]}
 
     importer, objects, _, companies = _importer(retained, derive)
@@ -259,6 +326,94 @@ def test_sec_import_uses_verified_facts_dimensioned_facts_and_cover(retained):
     ]
     assert len(objects.reads) == 3
     assert companies.calls[0]["security_basis"] == "PRIMARY_COMMON_SHARE"
+
+
+def test_sec_import_retains_and_applies_current_inline_manifest(
+    retained, monkeypatch,
+):
+    connection, cache = retained
+    _sec(connection, cache)
+    manifest = _inline_manifest(
+        cache, "0000001800", same_schema_and_presentation=True,
+    )
+    supplement = {
+        "cik": "0000001800",
+        "facts": {"ifrs-full": {"Assets": {"units": {"USD": [{
+            "val": "10",
+            "end": "2025-12-31",
+            "accn": manifest["annual"]["accession"],
+            "form": "20-F",
+            "filed": "2026-03-01",
+            "_source_context_id": "instant",
+        }]}}}},
+        "_inline_xbrl": {"source_accession": manifest["annual"]["accession"]},
+    }
+    monkeypatch.setattr(inline_xbrl, "parse_inline_xbrl", lambda *_args: supplement)
+
+    def derive(bundle):
+        assert bundle.supplement_state == "applied"
+        assert bundle.facts["facts"]["ifrs-full"]["Assets"]["units"]["USD"][0][
+            "val"
+        ] == "10"
+        return "ok", {"ticker": bundle.ticker, "assets": "10"}
+
+    importer, objects, artifacts, companies = _importer(retained, derive)
+    first = importer.import_ticker("ABT")
+    second = importer.import_ticker("ABT")
+
+    assert [item.role for item in first.artifacts] == [
+        "official_api_facts",
+        "sec_inline_current_manifest",
+        "sec_inline_direct_annual_filing_summary",
+        "sec_inline_direct_annual_index",
+        "sec_inline_direct_annual_instance",
+        "sec_inline_direct_annual_presentation",
+        "sec_inline_direct_annual_primary_document",
+        "sec_inline_direct_annual_schema",
+        "structured_cover_identity",
+    ]
+    linked = {item.role: item.artifact.content_sha256 for item in first.artifacts}
+    assert linked["sec_inline_direct_annual_presentation"] == linked[
+        "sec_inline_direct_annual_schema"
+    ]
+    assert first.stored.snapshot_id == second.stored.snapshot_id
+    assert len(first.artifacts) == 9
+    assert len(artifacts.rows) == 8
+    assert len(companies.rows) == 1
+    assert len(objects.reads) == 18
+
+
+def test_sec_security_failure_happens_after_inline_bytes_are_retained(
+    retained, monkeypatch,
+):
+    connection, cache = retained
+    _sec(
+        connection,
+        cache,
+        ticker="ADR",
+        cik="0000001800",
+        title="American Depositary Shares",
+    )
+    _inline_manifest(cache, "0000001800")
+    monkeypatch.setattr(
+        inline_xbrl,
+        "parse_inline_xbrl",
+        lambda *_args: {
+            "cik": "0000001800",
+            "facts": {},
+            "_inline_xbrl": {"source_accession": "0000001800-26-000001"},
+        },
+    )
+    importer, objects, artifacts, companies = _importer(
+        retained, lambda _bundle: pytest.fail("security failure must precede derive")
+    )
+
+    with pytest.raises(RetainedInputError, match="depositary receipt ratio is missing"):
+        importer.import_ticker("ADR")
+
+    assert len(objects.reads) == 9
+    assert len(artifacts.rows) == 9
+    assert companies.calls == []
 
 
 def test_sec_import_links_exact_raw_cover_and_reuses_it_idempotently(retained):
