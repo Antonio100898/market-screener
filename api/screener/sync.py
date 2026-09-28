@@ -1974,8 +1974,7 @@ def _retain_inline_annual(edgar: EdgarClient, cik: str) -> tuple[str, str]:
         relationship = None
     if relationship is not None:
         source = _filing_metadata(submissions, relationship["accession"])
-        if source["document"] != relationship["document"]:
-            raise ValueError("incorporated SEC document does not match submissions")
+        filing_document = _safe_archive_document(source["document"])
         if source["form"].split("/", 1)[0] != "6-K":
             raise ValueError("incorporated SEC source form does not match Form 6-K")
         if source["filed"] > annual["filed"]:
@@ -1992,7 +1991,13 @@ def _retain_inline_annual(edgar: EdgarClient, cik: str) -> tuple[str, str]:
             source_index = json.loads(source_index_raw)
         except ValueError as exc:
             raise ValueError("invalid incorporated SEC filing index") from exc
-        source_documents = _inline_documents(source_index, source["document"])
+        _inline_documents(source_index, filing_document)
+        source_documents = _inline_documents(source_index, relationship["document"])
+        source = {
+            **source,
+            "document": source_documents["primary_document"],
+            "filing_document": filing_document,
+        }
         records = {
             "annual_index": _retained_record(
                 "index.json", base + "index.json", index_raw,

@@ -19,3 +19,8 @@
 - Engine-183 regression: plural `rights?` classification rejected CTRM, CVE, and SOBO common shares
   with attached purchase rights. Kind: cover-class regression. Owner: cover predicate. Status:
   fixed in engine 184. Verification: exact three-title pins, adverse rights/warrant controls, full regression.
+- Engine-187 activation: incorporated statement link was incorrectly required to equal the source
+  filing's `primaryDocument`, rejecting official SEC exhibits such as CNI's linked audited statement.
+  Kind: source-relationship defect. Owner: incorporated SEC acquisition. Status: fixed. Verification:
+  failing-before regression, 131 focused tests, and real CNI activation/derivation with separate
+  6-K wrapper and exact exhibit identities.

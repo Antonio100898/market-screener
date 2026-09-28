@@ -464,6 +464,8 @@ def _manifest_contract(
     if relationship == "incorporated_annual_exhibit":
         if source_accession == annual_accession:
             raise ValueError("incorporated SEC source must be a separate filing")
+        if source.get("filing_document") is not None:
+            safe_document_name(str(source["filing_document"]))
         if str(source.get("form") or "").split("/", 1)[0] != "6-K":
             raise ValueError("incorporated SEC source form does not match Form 6-K")
         if str(source.get("filed") or "") > str(annual.get("filed") or ""):

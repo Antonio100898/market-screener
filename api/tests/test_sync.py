@@ -2156,7 +2156,7 @@ class _IncorporatedInlineEdgar:
         self, cache_dir, *, linked_cik="1", linked_accession=None,
         linked_document="statements.htm", source_document="statements.htm",
         source_form="6-K", source_filed="2026-03-01", second_link=False,
-        fail=None,
+        list_linked_document=True, fail=None,
     ):
         self.cache_dir = cache_dir
         self.fail = fail
@@ -2177,11 +2177,14 @@ class _IncorporatedInlineEdgar:
         self.annual_index = json.dumps({
             "directory": {"item": [{"name": "annual.htm"}]},
         }).encode()
+        source_names = {
+            source_document, "statements_htm.xml", "FilingSummary.xml",
+            "issuer.xsd", "issuer_pre.xml",
+        }
+        if list_linked_document:
+            source_names.add(linked_document)
         self.source_index = json.dumps({
-            "directory": {"item": [{"name": name} for name in (
-                source_document, "statements_htm.xml", "FilingSummary.xml",
-                "issuer.xsd", "issuer_pre.xml",
-            )]},
+            "directory": {"item": [{"name": name} for name in sorted(source_names)]},
         }).encode()
         self.source_document = source_document
         self.source_form = source_form
@@ -2297,10 +2300,35 @@ def test_inline_acquisition_publishes_one_verified_incorporated_sec_exhibit(
     assert persisted["relationship_evidence"]["document"] == "statements.htm"
 
 
+def test_incorporated_statement_document_may_differ_from_source_filing_primary(
+    tmp_path, monkeypatch,
+):
+    conn = store.connect(tmp_path / "store.db")
+    edgar = _IncorporatedInlineEdgar(
+        tmp_path,
+        linked_document="statements.htm",
+        source_document="filing-wrapper.htm",
+    )
+    seen = []
+    monkeypatch.setattr(
+        sync, "_verified_inline_manifest",
+        lambda manifest, *_: seen.append(manifest) or {"facts": {}},
+    )
+
+    result = sync.retain_inline_statements(
+        conn, {"1"}, progress=lambda *args: None, edgar=edgar,
+    )
+
+    assert result["0000000001"]["state"] == "activated"
+    assert seen[0]["source"]["document"] == "statements.htm"
+    assert seen[0]["source"]["filing_document"] == "filing-wrapper.htm"
+
+
 @pytest.mark.parametrize(("kwargs", "message"), [
     ({"linked_cik": "2"}, "ambiguous_incorporated_statement_links:0"),
     ({"linked_accession": "0000000001-26-000099"}, "absent or ambiguous"),
-    ({"linked_document": "other.htm"}, "does not match submissions"),
+    ({"linked_document": "other.htm", "list_linked_document": False},
+     "absent from its index"),
     ({"source_form": "8-K"}, "does not match Form 6-K"),
     ({"source_filed": "2026-03-02"}, "later than annual wrapper"),
     ({"second_link": True}, "ambiguous_incorporated_statement_links:2"),

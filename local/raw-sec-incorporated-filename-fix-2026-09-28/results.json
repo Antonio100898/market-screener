@@ -1,0 +1,32 @@
+{
+  "acquisition": {
+    "accession": "0001104659-26-010352",
+    "state": "activated"
+  },
+  "derivation": {
+    "annual_accession": "0001104659-26-010352",
+    "annual_form": "40-F",
+    "balance": {
+      "assets": 58555000000.0,
+      "common_equity": 21568000000.0,
+      "liabilities": 36987000000.0,
+      "reconciled": true
+    },
+    "source_accession": "0000016868-26-000011",
+    "source_document": "cni-20251231.htm",
+    "source_form": "6-K",
+    "status": "ok",
+    "supplement_state": "applied"
+  },
+  "main_cache_mutated": false,
+  "manifest": {
+    "annual_accession": "0001104659-26-010352",
+    "annual_form": "40-F",
+    "filing_document": "cni-20251231_d2.htm",
+    "relationship": "incorporated_annual_exhibit",
+    "source_accession": "0000016868-26-000011",
+    "source_document": "cni-20251231.htm",
+    "source_form": "6-K"
+  },
+  "retained_request_count": 8
+}
