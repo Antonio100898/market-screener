@@ -1,0 +1,136 @@
+{
+  "6752.T": {
+    "artifact_count": 2,
+    "postgres_revision_equal": true,
+    "snapshot_id": 16236,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "7974.T": {
+    "artifact_count": 2,
+    "postgres_revision_equal": true,
+    "snapshot_id": 16237,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "AERO": {
+    "artifact_count": 9,
+    "postgres_revision_equal": true,
+    "snapshot_id": 16389,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "AGMB": {
+    "artifact_count": 9,
+    "postgres_revision_equal": true,
+    "snapshot_id": 16419,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "AHNRF": {
+    "detail": "current company AHNRF not found",
+    "status": 404
+  },
+  "ALPS": {
+    "artifact_count": 10,
+    "postgres_revision_equal": true,
+    "snapshot_id": 16524,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "AUGO": {
+    "artifact_count": 9,
+    "postgres_revision_equal": true,
+    "snapshot_id": 16794,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "BRBI": {
+    "detail": "current company BRBI not found",
+    "status": 404
+  },
+  "CIB": {
+    "detail": "current company CIB not found",
+    "status": 404
+  },
+  "CNI": {
+    "artifact_count": 12,
+    "dual_provenance": {
+      "annual_accession": "0001104659-26-010352",
+      "annual_form": "40-F",
+      "source_accession": "0000016868-26-000011",
+      "source_form": "6-K"
+    },
+    "postgres_revision_equal": true,
+    "snapshot_id": 17606,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "DAVI": {
+    "artifact_count": 9,
+    "postgres_revision_equal": true,
+    "snapshot_id": 17887,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "GCDT": {
+    "artifact_count": 9,
+    "postgres_revision_equal": true,
+    "snapshot_id": 18694,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "GMTL": {
+    "artifact_count": 9,
+    "postgres_revision_equal": true,
+    "snapshot_id": 18828,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "HBNB": {
+    "artifact_count": 9,
+    "postgres_revision_equal": true,
+    "snapshot_id": 18987,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "NXAT": {
+    "detail": "current company NXAT not found",
+    "status": 404
+  },
+  "PAYP": {
+    "artifact_count": 9,
+    "postgres_revision_equal": true,
+    "snapshot_id": 20835,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "PICS": {
+    "artifact_count": 9,
+    "postgres_revision_equal": true,
+    "snapshot_id": 20947,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "TMCR": {
+    "artifact_count": 9,
+    "postgres_revision_equal": true,
+    "snapshot_id": 22163,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "VMET": {
+    "artifact_count": 9,
+    "postgres_revision_equal": true,
+    "snapshot_id": 22548,
+    "sqlite_payload_equal": true,
+    "status": 200
+  },
+  "YMAT": {
+    "artifact_count": 9,
+    "postgres_revision_equal": true,
+    "snapshot_id": 22879,
+    "sqlite_payload_equal": true,
+    "status": 200
+  }
+}

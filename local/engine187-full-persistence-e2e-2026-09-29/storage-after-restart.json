@@ -1,0 +1,179 @@
+{
+  "cni_dual_provenance": {
+    "annual_accession": "0001104659-26-010352",
+    "annual_form": "40-F",
+    "source_accession": "0000016868-26-000011",
+    "source_form": "6-K"
+  },
+  "counts": {
+    "company_snapshot": 20570,
+    "company_snapshot_artifact": 59694,
+    "current_company_snapshot": 6722,
+    "evidence_artifact": 18845,
+    "issuer": 6722,
+    "priced_security": 6722
+  },
+  "current_engine_distribution": {
+    "181": 1,
+    "187": 6721
+  },
+  "edinet": {
+    "6752.T": {
+      "canonical_and_zip_objects_read_back": true,
+      "entity": "E01772",
+      "exchange": "TSE",
+      "payload_equal": true,
+      "quote_currency": "JPY",
+      "security_basis": "PRIMARY_ORDINARY_SHARE"
+    },
+    "7974.T": {
+      "canonical_and_zip_objects_read_back": true,
+      "entity": "E02367",
+      "exchange": "TSE",
+      "payload_equal": true,
+      "quote_currency": "JPY",
+      "security_basis": "PRIMARY_ORDINARY_SHARE"
+    }
+  },
+  "engine": 187,
+  "engine_mismatches": [],
+  "jsonb_negative_zero_normalizations": 186,
+  "non_ui_current": [
+    "PERSIST.NEW"
+  ],
+  "payload_hash_matches": 6721,
+  "payload_hash_mismatches": [],
+  "roleless_current": [],
+  "sec": {
+    "AERO": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0001561861",
+      "inline_roles": 7,
+      "selected": true
+    },
+    "AGMB": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0002020932",
+      "inline_roles": 7,
+      "selected": true
+    },
+    "AHNRF": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": false,
+      "cik": "0001304409",
+      "inline_roles": 7,
+      "selected": false
+    },
+    "ALPS": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0002025774",
+      "inline_roles": 7,
+      "selected": true
+    },
+    "AUGO": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0001468642",
+      "inline_roles": 7,
+      "selected": true
+    },
+    "BRBI": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": false,
+      "cik": "0002058601",
+      "inline_roles": 7,
+      "selected": false
+    },
+    "CIB": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": false,
+      "cik": "0002058897",
+      "inline_roles": 7,
+      "selected": false
+    },
+    "CNI": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0000016868",
+      "inline_roles": 9,
+      "selected": true
+    },
+    "DAVI": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0002039072",
+      "inline_roles": 7,
+      "selected": true
+    },
+    "GCDT": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0001926293",
+      "inline_roles": 7,
+      "selected": true
+    },
+    "GMTL": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0002039972",
+      "inline_roles": 7,
+      "selected": true
+    },
+    "HBNB": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0002054507",
+      "inline_roles": 7,
+      "selected": true
+    },
+    "NXAT": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": false,
+      "cik": "0002000756",
+      "inline_roles": 7,
+      "selected": false
+    },
+    "PAYP": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0002080845",
+      "inline_roles": 7,
+      "selected": true
+    },
+    "PICS": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0001841644",
+      "inline_roles": 7,
+      "selected": true
+    },
+    "TMCR": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0002087398",
+      "inline_roles": 7,
+      "selected": true
+    },
+    "VMET": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0002080073",
+      "inline_roles": 7,
+      "selected": true
+    },
+    "YMAT": {
+      "all_inline_objects_read_back": true,
+      "all_inline_roles_linked": true,
+      "cik": "0001875016",
+      "inline_roles": 7,
+      "selected": true
+    }
+  },
+  "selected_snapshot_ids_sha256": "68b7eacd3f9a07f398c69a3ffdb720cb7a510278fd50367d90423deba4beadc1",
+  "semantic_payload_mismatches": [],
+  "sqlite_dashboard": 6995,
+  "ui_current_selected": 6721
+}

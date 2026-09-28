@@ -64,7 +64,7 @@ Affected decisions: P-02, P-03, P-04, P-09, and P-17.
 | 7. Engine-187 SEC/EDINET artifact persistence audit | accepted | migration investigator | 18 SEC manifests/110 role links; 14 importer omissions; 6,707 exact current matches; Panasonic/Nintendo exact; no migration needed |
 | 8. Retain/apply engine-187 SEC evidence in importer | accepted | migration developer | 18 manifests/110 roles; 14 exact payloads; four unchanged failures; 163 objects/artifacts and 14 snapshots reused |
 | 9A. Real SEC direct/incorporated plus EDINET pair storage gate | accepted | verification developer | seven companies; 35 objects/7 snapshots/36 links; exact payloads; interruption, retry, PostgreSQL/S3 restart pass |
-| 9B. Full engine-187 reconciliation and API restart | queued | verification developer | 6,721 exact current selections, 274 named exclusions, 14 SEC additions and both EDINET rows via API after restart |
+| 9B. Full engine-187 reconciliation and API restart | accepted | verification developer | 6,721 exact engine-187 UI selections; 274 = 147/117/10; retry reused all; SEC/EDINET S3 readback and API restart pass |
 
 The owner authorized local commits. Push and merge remain unauthorized.
 
