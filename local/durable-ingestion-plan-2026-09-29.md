@@ -30,8 +30,8 @@ freshness target and what users see during a source outage before automatic publ
 | Milestone | State | Acceptance check |
 |---|---|---|
 | 0. Existing-path and gap investigation | accepted | Exact reuse map and smallest safe slice recorded in `local/dev31-review-map.md` |
-| 1. PostgreSQL durable-job schema and repository | active | Real PostgreSQL duplicate occurrence, claim, renewal, retry, checkpoint, stale-owner, and migration checks |
-| 2. Scheduler and worker lifecycle | queued | Due work starts without UI, clean drain works, forced stop resumes, current work outranks backfill |
+| 1. PostgreSQL durable-job schema and repository | accepted | 14 unit, 13 real PostgreSQL/migration, and 865 full Python tests; Alembic at `20260929_0005` |
+| 2. Scheduler and worker lifecycle | active | Due work starts without UI, clean drain works, forced stop resumes, current work outranks backfill |
 | 3. SEC incremental discovery and reconciliation | queued | New, amended, changed, removed, pending, duplicate, overlap, and rebuilt-index cases persist honest outcomes |
 | 4. EDINET incremental discovery and reconciliation | queued | New, amended, edited, withdrawn, parent-linked, duplicate, overlap, and expired-download cases persist honest outcomes |
 | 5. Automatic end-to-end publication gate | blocked on owner decision and increment 5 publication model | Browsers closed; due work produces one validated current release; outage and restart behavior match policy |

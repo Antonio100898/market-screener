@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Identity,
+    Index,
     Integer,
     MetaData,
     Numeric,
@@ -232,6 +233,157 @@ current_company_snapshot = Table(
         name="fk_current_company_snapshot_snapshot",
     ),
     PrimaryKeyConstraint("security_id", name="pk_current_company_snapshot"),
+)
+
+job_schedule_occurrence = Table(
+    "job_schedule_occurrence",
+    metadata,
+    Column("occurrence_id", BigInteger, Identity(), nullable=False),
+    Column("schedule_key", Text, nullable=False),
+    Column("scheduled_for", DateTime(timezone=True), nullable=False),
+    Column(
+        "created_at",
+        DateTime(timezone=True),
+        server_default=text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    ),
+    CheckConstraint(
+        "length(schedule_key) > 0",
+        name="ck_job_schedule_occurrence_schedule_key",
+    ),
+    PrimaryKeyConstraint("occurrence_id", name="pk_job_schedule_occurrence"),
+    UniqueConstraint(
+        "schedule_key",
+        "scheduled_for",
+        name="uq_job_schedule_occurrence_identity",
+    ),
+)
+
+durable_job = Table(
+    "durable_job",
+    metadata,
+    Column("job_id", BigInteger, Identity(), nullable=False),
+    Column(
+        "occurrence_id",
+        BigInteger,
+        ForeignKey(
+            "job_schedule_occurrence.occurrence_id",
+            name="fk_durable_job_occurrence",
+        ),
+        nullable=True,
+    ),
+    Column("kind", Text, nullable=False),
+    Column("parameters", JSONB, nullable=False),
+    Column("status", Text, nullable=False),
+    Column("priority", Integer, nullable=False),
+    Column("due_at", DateTime(timezone=True), nullable=False),
+    Column("attempts", Integer, nullable=False),
+    Column("max_attempts", Integer, nullable=False),
+    Column("next_retry_at", DateTime(timezone=True), nullable=True),
+    Column("deadline_at", DateTime(timezone=True), nullable=True),
+    Column("owner", Text, nullable=True),
+    Column("lease_expires_at", DateTime(timezone=True), nullable=True),
+    Column("ownership_generation", BigInteger, nullable=False),
+    Column("heartbeat_at", DateTime(timezone=True), nullable=True),
+    Column("checkpoint", JSONB, nullable=True),
+    Column("error_summary", String(2000), nullable=True),
+    Column(
+        "created_at",
+        DateTime(timezone=True),
+        server_default=text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    ),
+    Column(
+        "updated_at",
+        DateTime(timezone=True),
+        server_default=text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    ),
+    Column("finished_at", DateTime(timezone=True), nullable=True),
+    CheckConstraint("length(kind) > 0", name="ck_durable_job_kind"),
+    CheckConstraint(
+        "status IN ('pending', 'running', 'retry_wait', 'succeeded', 'failed')",
+        name="ck_durable_job_status",
+    ),
+    CheckConstraint(
+        "attempts >= 0 AND attempts <= max_attempts",
+        name="ck_durable_job_attempts",
+    ),
+    CheckConstraint("max_attempts > 0", name="ck_durable_job_max_attempts"),
+    CheckConstraint(
+        "ownership_generation >= 0",
+        name="ck_durable_job_ownership_generation",
+    ),
+    CheckConstraint(
+        "deadline_at IS NULL OR deadline_at > due_at",
+        name="ck_durable_job_deadline",
+    ),
+    CheckConstraint(
+        "(status = 'running' AND owner IS NOT NULL "
+        "AND length(owner) > 0 AND lease_expires_at IS NOT NULL "
+        "AND heartbeat_at IS NOT NULL AND finished_at IS NULL) "
+        "OR (status <> 'running' AND owner IS NULL AND lease_expires_at IS NULL)",
+        name="ck_durable_job_active_ownership",
+    ),
+    CheckConstraint(
+        "(status = 'retry_wait' AND next_retry_at IS NOT NULL) "
+        "OR (status <> 'retry_wait' AND next_retry_at IS NULL)",
+        name="ck_durable_job_retry_time",
+    ),
+    CheckConstraint(
+        "(status IN ('succeeded', 'failed') AND finished_at IS NOT NULL) "
+        "OR (status NOT IN ('succeeded', 'failed') AND finished_at IS NULL)",
+        name="ck_durable_job_finished_time",
+    ),
+    CheckConstraint(
+        "error_summary IS NULL OR length(error_summary) <= 2000",
+        name="ck_durable_job_error_summary",
+    ),
+    PrimaryKeyConstraint("job_id", name="pk_durable_job"),
+    UniqueConstraint("occurrence_id", name="uq_durable_job_occurrence"),
+)
+
+Index(
+    "ix_durable_job_claim",
+    durable_job.c.status,
+    durable_job.c.due_at,
+    durable_job.c.next_retry_at,
+    durable_job.c.priority.desc(),
+    durable_job.c.job_id,
+)
+
+durable_job_item = Table(
+    "durable_job_item",
+    metadata,
+    Column(
+        "job_id",
+        BigInteger,
+        ForeignKey("durable_job.job_id", name="fk_durable_job_item_job"),
+        nullable=False,
+    ),
+    Column("item_key", Text, nullable=False),
+    Column("status", Text, nullable=False),
+    Column("attempts", Integer, nullable=False),
+    Column("outcome", JSONB, nullable=True),
+    Column("error_summary", String(2000), nullable=True),
+    Column(
+        "updated_at",
+        DateTime(timezone=True),
+        server_default=text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    ),
+    Column("finished_at", DateTime(timezone=True), nullable=False),
+    CheckConstraint("length(item_key) > 0", name="ck_durable_job_item_key"),
+    CheckConstraint(
+        "status IN ('succeeded', 'failed')",
+        name="ck_durable_job_item_status",
+    ),
+    CheckConstraint("attempts > 0", name="ck_durable_job_item_attempts"),
+    CheckConstraint(
+        "error_summary IS NULL OR length(error_summary) <= 2000",
+        name="ck_durable_job_item_error_summary",
+    ),
+    PrimaryKeyConstraint("job_id", "item_key", name="pk_durable_job_item"),
 )
 
 
