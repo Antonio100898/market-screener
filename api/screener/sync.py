@@ -1729,6 +1729,75 @@ def _retain_source_bytes(path: Path, raw: bytes) -> None:
             temporary_path.unlink(missing_ok=True)
 
 
+_TICKER_CONTINUITY_FORMS = frozenset({
+    "6-K", "6-K/A", "8-K", "8-K/A", "8-A12B", "8-A12B/A",
+    "F-3", "F-3/A", "S-3", "S-3/A",
+})
+
+
+def _later_ticker_continuity(
+    edgar: EdgarClient,
+    cik: str,
+    ticker: str,
+    exchange: str | None,
+    annual_filed: str,
+    prior_securities: list[dict],
+) -> tuple[dict, str, str, Path] | None:
+    """Newest retained later SEC filing that explicitly proves one ticker move."""
+    prior_securities = [
+        security for security in prior_securities
+        if security.get("title")
+        and cover.is_common_equity_security(security["title"])
+        and not cover.is_untraded_underlying(security["title"])
+    ]
+    if not prior_securities:
+        return None
+    try:
+        submissions = edgar.submissions(cik)
+    except Exception:
+        return None
+    recent = (submissions.get("filings") or {}).get("recent") or {}
+    rows = zip(
+        recent.get("filingDate") or [],
+        recent.get("form") or [],
+        recent.get("accessionNumber") or [],
+        recent.get("primaryDocument") or [],
+    )
+    for filed, form, accn, document_name in rows:
+        if filed <= annual_filed or form not in _TICKER_CONTINUITY_FORMS:
+            continue
+        try:
+            path = cover.primary_document_cache_path(
+                edgar.cache_dir, accn, document_name
+            )
+        except ValueError:
+            continue
+        if path.exists():
+            try:
+                raw = path.read_bytes()
+            except OSError:
+                continue
+        else:
+            try:
+                url = (
+                    "https://www.sec.gov/Archives/edgar/data/"
+                    f"{int(cik)}/{accn.replace('-', '')}/{document_name}"
+                )
+                _retain_source_bytes(path, edgar._request(url).content)
+                raw = path.read_bytes()
+            except Exception:
+                continue
+        security = evidence.continuity_security(
+            prior_securities,
+            raw.decode("utf-8", errors="replace"),
+            ticker,
+            exchange,
+        )
+        if security is not None:
+            return security, accn, filed, path
+    return None
+
+
 def cover_pages(conn, progress=_print_progress, *, foreign_only: bool = False,
                 ciks: set[str] | None = None, reparse: bool = False) -> None:
     """Read the cover of each company's newest annual filing.
@@ -1766,7 +1835,7 @@ def cover_pages(conn, progress=_print_progress, *, foreign_only: bool = False,
     # through dashboard_rows(). Read the cached facts just far enough to select
     # current coherent US-GAAP/IFRS 20-F/40-F filers.
     foreign_rows = conn.execute(
-        """SELECT c.cik, c.ticker, c.name
+        """SELECT c.cik, c.ticker, c.name, c.exchange
            FROM snapshot s JOIN company c USING (cik)
              LEFT JOIN pending_filing p USING (cik)
            WHERE (s.status IN ('foreign', 'pending_facts') OR p.cik IS NOT NULL)
@@ -1774,6 +1843,7 @@ def cover_pages(conn, progress=_print_progress, *, foreign_only: bool = False,
              AND NOT (c.ticker GLOB '*-P' OR c.ticker GLOB '*-P[A-Z]')
            ORDER BY c.cik"""
     ).fetchall()
+    annual_filings: dict[str, tuple[str, str]] = {}
     for row in foreign_rows:
         if ciks is not None and row["cik"] not in ciks:
             continue
@@ -1786,6 +1856,7 @@ def cover_pages(conn, progress=_print_progress, *, foreign_only: bool = False,
             continue
         if current:
             accn, filed = current
+            annual_filings[row["cik"]] = (accn, filed)
             store.upsert_company(conn, row["cik"], row["ticker"], row["name"],
                                  last_filing=filed)
             todo.append((row["cik"], row["ticker"], accn, True))
@@ -1941,11 +2012,34 @@ def cover_pages(conn, progress=_print_progress, *, foreign_only: bool = False,
             if last_filing:
                 store.upsert_company(conn, cik, None, None, last_filing=last_filing)
             if found:
-                store.set_cover(conn, cik, found, accn)
+                annual = annual_filings.get(cik)
+                store.set_cover(conn, cik, found, accn, annual[1] if annual else None)
                 ratios += sum(1 for s in found if s["ratio"])
             if done % 100 == 0:
                 conn.commit()
                 progress(f"reading cover pages — {ratios} depositary ratios", done, len(todo))
+    conn.commit()
+
+    # A later SEC filing may explicitly move the same registered class to a new
+    # ticker. The evidence resolver fails closed unless class, ticker, and
+    # exchange all agree; the annual and later filing bytes remain separate.
+    current_covers = store.covers_by_cik(conn)
+    for row in foreign_rows:
+        annual = annual_filings.get(row["cik"])
+        if annual is None:
+            continue
+        prior = current_covers.get(row["cik"], [])
+        if any(cover.symbol_matches(
+            security.get("symbol") or "", security.get("title") or "", row["ticker"]
+        ) for security in prior):
+            continue
+        proved = _later_ticker_continuity(
+            edgar, row["cik"], row["ticker"], row["exchange"], annual[1], prior
+        )
+        if proved is None:
+            continue
+        security, accn, filed, _ = proved
+        store.set_cover_continuity(conn, row["cik"], security, accn, filed)
     conn.commit()
     progress("done", len(todo), len(todo))
 

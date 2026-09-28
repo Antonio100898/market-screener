@@ -43,6 +43,133 @@ def test_loader_always_adds_dimensioned_and_cover_evidence(tmp_path):
     assert bundle.receipt["accn"] == "accn-1"
 
 
+def _prior_security(title="Class A Ordinary Shares, par value $0.001 per share"):
+    return {
+        "symbol": "OLD",
+        "title": title,
+        "ratio": None,
+        "accn": "annual-1",
+    }
+
+
+def test_later_sec_filing_proves_same_class_ticker_continuity():
+    filing = (
+        "Securities offered: Class A Ordinary Shares, par value $0.001 per share. "
+        "Our Class A Ordinary Shares are listed on the Nasdaq Capital Market "
+        "under the symbol “NEW”."
+    )
+
+    resolved = evidence.continuity_security(
+        [_prior_security()], filing, "NEW", "Nasdaq"
+    )
+
+    assert resolved == {
+        **_prior_security(),
+        "previous_symbol": "OLD",
+        "symbol": "NEW",
+        "exchange": "Nasdaq",
+        "basis_accn": "annual-1",
+    }
+
+
+def test_short_listing_phrase_requires_the_exact_full_annual_title_in_same_filing():
+    filing = (
+        "Our Class A Ordinary Shares are listed on the Nasdaq Capital Market "
+        "under the symbol NEW."
+    )
+
+    assert evidence.continuity_security(
+        [_prior_security()], filing, "NEW", "Nasdaq"
+    ) is None
+
+
+def test_later_sec_filing_rejects_ambiguous_or_changed_classes():
+    ambiguous = (
+        "Ordinary Shares, par value $0.001 per share. "
+        "Ordinary Shares, no par value. Our Ordinary Shares are listed on "
+        "the Nasdaq Capital Market under the symbol NEW."
+    )
+    priors = [
+        _prior_security("Ordinary Shares, par value $0.001 per share"),
+        {**_prior_security("Ordinary Shares, no par value"), "symbol": "OLD2"},
+    ]
+    changed = (
+        "Class B Ordinary Shares, par value $0.001 per share. "
+        "Our Class B Ordinary Shares are listed on the Nasdaq Capital Market "
+        "under the symbol NEW."
+    )
+
+    assert evidence.continuity_security(priors, ambiguous, "NEW", "Nasdaq") is None
+    assert evidence.continuity_security(
+        [_prior_security()], changed, "NEW", "Nasdaq"
+    ) is None
+
+
+def test_later_sec_filing_rejects_changed_exchange_and_otc_alias():
+    filing = (
+        "Class A Ordinary Shares, par value $0.001 per share. "
+        "Our Class A Ordinary Shares are listed on the Nasdaq Capital Market "
+        "under the symbol NEW."
+    )
+
+    assert evidence.continuity_security(
+        [_prior_security()], filing, "NEW", "NYSE"
+    ) is None
+    assert evidence.continuity_security(
+        [_prior_security()], filing, "NEW", "OTC"
+    ) is None
+
+
+def test_unbound_later_filing_prose_cannot_replace_the_annual_depositary_ratio():
+    prior = _prior_security("American Depositary Shares")
+    prior["ratio"] = "2"
+    base = (
+        "American Depositary Shares. Our American Depositary Shares are listed "
+        "on the New York Stock Exchange under the symbol ADR."
+    )
+
+    kept = evidence.continuity_security([prior], base, "ADR", "NYSE")
+    unrelated = evidence.continuity_security(
+        [prior], base + " Each ADS represents five ordinary shares.", "ADR", "NYSE"
+    )
+
+    assert kept["ratio"] == "2"
+    assert unrelated["ratio"] == "2"
+
+
+def test_cover_storage_retains_annual_and_later_observations(tmp_path):
+    conn = store.connect(tmp_path / "store.db")
+    prior = _prior_security()
+    store.set_cover(conn, "0000000001", [prior], "annual-1", "2025-03-01")
+    later = {
+        **prior,
+        "previous_symbol": "OLD",
+        "symbol": "NEW",
+        "exchange": "Nasdaq",
+        "basis_accn": "annual-1",
+    }
+    store.set_cover_continuity(
+        conn, "0000000001", later, "later-1", "2025-07-01"
+    )
+
+    observations = conn.execute(
+        """SELECT accn, symbol, basis_accn FROM security_cover_observation
+           WHERE cik = ? ORDER BY accn""",
+        ("0000000001",),
+    ).fetchall()
+
+    assert [tuple(row) for row in observations] == [
+        ("annual-1", "OLD", "annual-1"),
+        ("later-1", "NEW", "annual-1"),
+    ]
+    assert store.cover_for(conn, "0000000001", "OLD") is None
+    assert store.cover_for(conn, "0000000001", "NEW")["accn"] == "later-1"
+    _, selected = evidence.EvidenceLoader(conn, EdgarStub(tmp_path)).identity(
+        "0000000001", "NEW"
+    )
+    assert selected["basis_accn"] == "annual-1"
+
+
 def test_loader_uses_stored_symbol_when_current_sec_mapping_is_absent(tmp_path):
     cik, ticker = "0000000001", "OLD"
     facts = {"facts": {"us-gaap": {}}}

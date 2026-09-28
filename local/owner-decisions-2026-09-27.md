@@ -11,3 +11,8 @@
    old annual-cover evidence and the later change evidence, keep one stable security identity, and
    activate the new ticker only when issuer, class, and exchange are explicit. Do not infer ticker
    changes from punctuation or unsupported OTC aliases.
+7. Add an LLM fallback after deterministic extraction fails. The model may emit evidence-citing
+   candidates only. Store the filing, cited location, model identity, prompt revision, response,
+   and checks. Publish a candidate only after deterministic verification; otherwise fail closed.
+   Start in shadow mode on the incomplete foreign-company set. The exact model prompt still needs
+   owner approval before implementation.

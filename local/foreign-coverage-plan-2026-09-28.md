@@ -21,6 +21,13 @@ generic fixes. No ratio, ticker identity, or statement basis may be guessed.
    adapters remain explicit; no ticker exceptions in normalization or pricing.
 6. Record which rows can be fixed from retained evidence, which need an official source fetch, and
    which need an owner decision or remain unsupported.
+7. A ticker change is accepted only when a later official SEC filing pairs the new ticker and
+   exchange with the same security class as the retained annual cover. Both immutable filings and
+   the effective filing date remain linked to one stable security identity. Ambiguity stays
+   excluded.
+8. When deterministic statement extraction is incomplete, an LLM may create a structured candidate
+   with exact source citations. Shadow mode stores the candidate and verification result but cannot
+   change the published company. Publication remains fail-closed behind deterministic checks.
 
 ## Correct-from-zero shape
 
@@ -31,6 +38,11 @@ generic fixes. No ratio, ticker identity, or statement basis may be guessed.
 - `normalize._reject_foreign` admits the row only when the current annual, security identity, and
   depositary ratio satisfy the invariant.
 - `sync.cover_pages` retains and refreshes the evidence needed by those owners.
+- The evidence layer owns later-filing ticker continuity. It reads retained SEC filing bytes and
+  emits a dated security-identity observation; normalization consumes the selected observation.
+- A separate extraction fallback owns LLM calls and immutable run records. It emits candidates,
+  never canonical facts. Existing normalization remains the only owner of statement coherence and
+  financial calculations.
 
 Today 237 listed rows still fail: 192 have no exact usable cover title, 27 have a depositary title
 without a positive ratio, and 18 lack a coherent standard statement. The current status collapses
@@ -43,6 +55,8 @@ Affected decisions: P-02, P-03, P-04, and P-09. Existing SEC/IFRS invariants rem
 - Secondary market-data sites as authority for share ratios or statement currency.
 - Showing a row before its evidence contract passes.
 - Full source refetch, manual ticker exceptions, pricing guesses, or UI changes during investigation.
+- Automatic publication of model-only output, model browsing, or model inference without an exact
+  retained-filing citation.
 - The 112 `pending_facts` imports; they wait for complete structured statements and are tracked
   separately from unsupported foreign evidence.
 
@@ -55,7 +69,9 @@ Affected decisions: P-02, P-03, P-04, and P-09. Existing SEC/IFRS invariants rem
 | 2A. Retain exact cover bytes and support bounded reparse | committed (`44aed77`) | evidence developer | 116 focused; real S3 readback; 100-CIK reparse retained 226 reports and recovered 30 rows |
 | 2B. Direct scalar depositary ratio fixes | committed (`44aed77`) | extraction developer | 19 official recoveries, 9 exclusions; 150 focused; real S3 primary readback; engine 183 |
 | 2C. Attached-rights regression fix | committed (`44aed77`) | bug-fix developer | exact three restored; adverse classes rejected; 49 focused and 780 full Python tests; engine 184 |
-| 3. Security identity and statement adapters | partly decided | product owner | later SEC same-class ticker evidence approved; LLM extraction policy pending |
+| 3A. Later-SEC same-class ticker continuity | accepted, pending full payload gate | identity developer | 219 focused; 797 full Python; BRNX/ZTG real `ok` snapshots; offline restart-safe; ambiguous classes and OTC aliases excluded |
+| 3B. LLM shadow extraction contract and exact prompt | queued after 3A | extraction developer | owner-approved prompt; strict schema; deterministic citation checks; 5–10 baseline/candidate runs on frozen cases |
+| 3C. LLM shadow pilot for incomplete statements | queued after 3B | extraction developer | retained real filings; candidates stored but dashboard unchanged; failures named |
 | 4. Full derive/export/regression/audit | committed (records commit) | manager | engine 184; 6,979 rows; 112 intended disclosure changes; audits zero wrong |
 
 The owner authorized local commits. Push and merge remain unauthorized.

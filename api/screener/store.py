@@ -17,7 +17,7 @@ from .sources import cover
 
 # Bump when normalisation changes meaning; snapshots below this are recomputed
 # from stored raw facts, with no refetching.
-ENGINE_VERSION = 184  # restore common classes with attached purchase rights
+ENGINE_VERSION = 185  # accept exact later-SEC same-class ticker continuity
 
 DEFAULT_DB = Path.home() / ".cache" / "graham-screener" / "screener.db"
 _WRITE_ATTEMPTS = 5   # a recompute must not fail because the site was being read
@@ -154,8 +154,25 @@ CREATE TABLE IF NOT EXISTS security_cover (
     accn   TEXT NOT NULL,   -- the filing the sentence was read from
     title  TEXT NOT NULL,   -- verbatim, so a reader can check the parse
     ratio  TEXT,            -- underlying shares per receipt; NULL when not a receipt
+    exchange TEXT,
+    filed TEXT,
+    basis_accn TEXT,        -- annual class evidence when accn is a later continuity filing
     read_at TEXT NOT NULL,
     PRIMARY KEY (cik, symbol)
+);
+
+-- Immutable source observations. security_cover is only the selected current view.
+CREATE TABLE IF NOT EXISTS security_cover_observation (
+    cik        TEXT NOT NULL,
+    accn       TEXT NOT NULL,
+    symbol     TEXT NOT NULL,
+    title      TEXT NOT NULL,
+    exchange   TEXT,
+    ratio      TEXT,
+    filed      TEXT,
+    basis_accn TEXT,
+    observed_at TEXT NOT NULL,
+    PRIMARY KEY (cik, accn, symbol, title)
 );
 
 -- One rate series is shared by every filer reporting in the same currency.
@@ -202,7 +219,8 @@ CREATE TABLE IF NOT EXISTS sync_state (
 REQUIRED_TABLES = frozenset({"company", "snapshot", "sync_state", "tracked", "portfolio",
                              "portfolio_trade", "portfolio_asset", "portfolio_cash",
                              "price_history", "fx_history", "filing_event",
-                             "security_cover", "snapshot_dirty", "pending_filing"})
+                             "security_cover", "security_cover_observation",
+                             "snapshot_dirty", "pending_filing"})
 
 
 def connect(path: str | Path = DEFAULT_DB) -> sqlite3.Connection:
@@ -231,6 +249,17 @@ def migrate(conn) -> None:
                 "events_from", "incorporation", "listed"):
         if col not in have:
             conn.execute(f"ALTER TABLE company ADD COLUMN {col} TEXT")
+    cover_columns = {r["name"] for r in conn.execute("PRAGMA table_info(security_cover)")}
+    for col in ("exchange", "filed", "basis_accn"):
+        if col not in cover_columns:
+            conn.execute(f"ALTER TABLE security_cover ADD COLUMN {col} TEXT")
+    conn.execute(
+        """INSERT OR IGNORE INTO security_cover_observation
+               (cik, accn, symbol, title, exchange, ratio, filed, basis_accn, observed_at)
+           SELECT cik, accn, symbol, title, exchange, ratio, filed,
+                  COALESCE(basis_accn, accn), read_at
+           FROM security_cover"""
+    )
     conn.execute("UPDATE company SET last_filing = NULL WHERE last_filing = ''")
     # a CIK is not a ticker: earlier loads wrote one when SEC's map had no symbol
     conn.execute("UPDATE company SET ticker = NULL "
@@ -427,41 +456,150 @@ def dashboard_rows(conn) -> list[dict]:
     return out
 
 
-def set_cover(conn, cik: str, securities: list[dict], accn: str) -> None:
+def _record_cover_observations(
+    conn, cik: str, securities: list[dict], accn: str, filed: str | None
+) -> None:
+    conn.executemany(
+        """INSERT OR IGNORE INTO security_cover_observation
+               (cik, accn, symbol, title, exchange, ratio, filed, basis_accn, observed_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        [(cik, accn, s["symbol"], s["title"], s.get("exchange"),
+          str(s["ratio"]) if s.get("ratio") is not None else None, filed,
+          s.get("basis_accn") or accn, _now())
+         for s in securities],
+    )
+
+
+def _with_retained_cover_continuity(
+    conn, cik: str, annual_accn: str, securities: list[dict]
+) -> list[dict]:
+    """Reselect proven later symbols whose immutable basis is this annual cover."""
+    positions: dict[str, list[int]] = {}
+    for position, security in enumerate(securities):
+        title = cover.normalized_title(security.get("title") or "")
+        if title:
+            positions.setdefault(title, []).append(position)
+
+    selected = list(securities)
+    restored: set[str] = set()
+    rows = conn.execute(
+        """SELECT accn, symbol, title, exchange, filed, basis_accn
+           FROM security_cover_observation
+           WHERE cik = ? AND basis_accn = ? AND accn <> basis_accn
+           ORDER BY filed DESC, observed_at DESC, accn DESC""",
+        (cik, annual_accn),
+    )
+    for row in rows:
+        title = cover.normalized_title(row["title"])
+        if (title in restored or len(positions.get(title, ())) != 1
+                or not row["exchange"]):
+            continue
+        position = positions[title][0]
+        annual = selected[position]
+        selected[position] = {
+            **annual,
+            "symbol": row["symbol"],
+            "accn": row["accn"],
+            "exchange": row["exchange"],
+            "filed": row["filed"],
+            "basis_accn": annual_accn,
+        }
+        restored.add(title)
+    return selected
+
+
+def set_cover(
+    conn, cik: str, securities: list[dict], accn: str, filed: str | None = None
+) -> None:
     """Every registered class a filing's cover names, with the symbol attached."""
     securities = cover.unique_securities(securities)
     before = [tuple(r) for r in conn.execute(
-        "SELECT symbol, accn, title, ratio FROM security_cover WHERE cik = ? ORDER BY symbol",
+        """SELECT symbol, accn, title, ratio, exchange, filed, basis_accn
+           FROM security_cover WHERE cik = ? ORDER BY symbol""",
         (cik,),
     )]
-    after = sorted((s["symbol"], accn, s["title"],
-                    str(s["ratio"]) if s.get("ratio") is not None else None)
-                   for s in securities)
+    _record_cover_observations(conn, cik, securities, accn, filed)
+    securities = _with_retained_cover_continuity(conn, cik, accn, securities)
+    after = sorted((
+        s["symbol"], s.get("accn") or accn, s["title"],
+        str(s["ratio"]) if s.get("ratio") is not None else None,
+        s.get("exchange"), s.get("filed") or filed, s.get("basis_accn") or accn,
+    ) for s in securities)
     conn.execute("DELETE FROM security_cover WHERE cik = ?", (cik,))
     conn.executemany(
-        """INSERT OR REPLACE INTO security_cover (cik, symbol, accn, title, ratio, read_at)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        [(cik, s["symbol"], accn, s["title"],
-          str(s["ratio"]) if s.get("ratio") is not None else None, _now())
+        """INSERT OR REPLACE INTO security_cover
+               (cik, symbol, accn, title, ratio, exchange, filed, basis_accn, read_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        [(cik, s["symbol"], s.get("accn") or accn, s["title"],
+          str(s["ratio"]) if s.get("ratio") is not None else None,
+          s.get("exchange"), s.get("filed") or filed,
+          s.get("basis_accn") or accn, _now())
          for s in securities],
     )
     if before != after:
         mark_snapshot_dirty(conn, cik, "security cover changed")
 
 
+def set_cover_continuity(
+    conn, cik: str, security: dict, accn: str, filed: str
+) -> None:
+    """Activate one later SEC-proven symbol while retaining both observations."""
+    _record_cover_observations(conn, cik, [security], accn, filed)
+    before = cover_for(conn, cik, security["symbol"])
+    previous_symbol = security.get("previous_symbol")
+    if previous_symbol and previous_symbol != security["symbol"]:
+        conn.execute(
+            "DELETE FROM security_cover WHERE cik = ? AND symbol = ?",
+            (cik, previous_symbol),
+        )
+    conn.execute(
+        """INSERT OR REPLACE INTO security_cover
+               (cik, symbol, accn, title, ratio, exchange, filed, basis_accn, read_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (cik, security["symbol"], accn, security["title"],
+         str(security["ratio"]) if security.get("ratio") is not None else None,
+         security.get("exchange"), filed,
+         security.get("basis_accn") or security.get("accn"), _now()),
+    )
+    after = cover_for(conn, cik, security["symbol"])
+    if before != after:
+        mark_snapshot_dirty(conn, cik, "security ticker continuity changed")
+
+
 def cover_for(conn, cik: str, ticker: str) -> dict | None:
     """The cover row for the security this ticker actually prices."""
+    optional = {r["name"] for r in conn.execute("PRAGMA table_info(security_cover)")}
+    fields = ", ".join(
+        name if name in optional else f"NULL AS {name}"
+        for name in ("exchange", "filed", "basis_accn")
+    )
     row = conn.execute(
-        "SELECT symbol, accn, title, ratio FROM security_cover WHERE cik = ? AND symbol = ?",
+        f"""SELECT symbol, accn, title, ratio, {fields}
+            FROM security_cover WHERE cik = ? AND symbol = ?""",
         (cik, ticker),
     ).fetchone()
-    return dict(row) if row else None
+    if row is None:
+        return None
+    result = dict(row)
+    return {key: value for key, value in result.items()
+            if key not in {"exchange", "filed", "basis_accn"} or value is not None}
 
 
 def covers_by_cik(conn) -> dict[str, list[dict]]:
     out: dict[str, list[dict]] = {}
-    for r in conn.execute("SELECT cik, symbol, accn, title, ratio FROM security_cover"):
-        out.setdefault(r["cik"], []).append(dict(r))
+    optional = {r["name"] for r in conn.execute("PRAGMA table_info(security_cover)")}
+    fields = ", ".join(
+        name if name in optional else f"NULL AS {name}"
+        for name in ("exchange", "filed", "basis_accn")
+    )
+    for r in conn.execute(
+        f"""SELECT cik, symbol, accn, title, ratio, {fields}
+            FROM security_cover"""
+    ):
+        row = dict(r)
+        row = {key: value for key, value in row.items()
+               if key not in {"exchange", "filed", "basis_accn"} or value is not None}
+        out.setdefault(r["cik"], []).append(row)
     return out
 
 

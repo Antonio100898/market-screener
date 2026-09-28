@@ -1106,7 +1106,9 @@ def build_snapshot(
                      "dividend_per_share": dividend_per_share,
                      "recurring_dividend_per_share": recurring_dividend_per_share,
                      "ttm_eps_inputs": ttm_inputs, "ttm_eps_vintage": vintage}
-            _restate_onto_receipt(parts, ratio, receipt.get("accn", ""))
+            _restate_onto_receipt(
+                parts, ratio, receipt.get("basis_accn") or receipt.get("accn", "")
+            )
             shares, annual_eps = parts["shares"], parts["annual_eps"]
             annual_share_counts = parts["annual_share_counts"]
             ttm_eps, dividend_per_share = parts["ttm_eps"], parts["dividend_per_share"]
@@ -1423,7 +1425,11 @@ def _reject_foreign(
         # already been read, it is also valid and puts history onto today's
         # security ratio. The pending warning names which case the reader sees.
         acceptable_cover_accessions.add(newest[1])
-    if (receipt or {}).get("accn") not in acceptable_cover_accessions:
+    receipt_accn = (receipt or {}).get("accn")
+    basis_accn = (receipt or {}).get("basis_accn")
+    cover_accession = basis_accn if basis_accn is not None else receipt_accn
+    if (not cover_accession or cover_accession not in acceptable_cover_accessions
+            or (basis_accn is not None and not receipt_accn)):
         raise UnsupportedFilerError(
             "foreign filer's exact security title is not from its current annual cover"
         )

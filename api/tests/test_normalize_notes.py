@@ -103,12 +103,71 @@ def test_foreign_depositary_share_without_a_ratio_is_rejected():
         )
 
 
+def test_later_ticker_keeps_annual_cover_as_depositary_ratio_authority():
+    snapshot = build_snapshot(
+        "NEW", "0000000001", facts_doc(_foreign_gaap()),
+        receipt={
+            "symbol": "NEW",
+            "title": "American Depositary Shares",
+            "ratio": "2",
+            "accn": "later-f3",
+            "basis_accn": "k25",
+        },
+    )
+
+    assert "cover of k25" in snapshot.shares_outstanding.provenance.concept
+    assert "later-f3" not in snapshot.shares_outstanding.provenance.concept
+
+
 def test_foreign_security_identity_must_come_from_the_current_annual_cover():
     with pytest.raises(UnsupportedFilerError, match="current annual cover"):
         build_snapshot(
             "TEST", "0000000001", facts_doc(_foreign_gaap()),
             receipt={"symbol": "TEST", "title": "Ordinary Shares", "ratio": None,
                      "accn": "k24"},
+        )
+
+
+def test_later_sec_same_class_ticker_reaches_a_supported_foreign_snapshot():
+    snapshot = build_snapshot(
+        "NEW", "0000000001", facts_doc(_foreign_gaap()),
+        receipt={
+            "symbol": "NEW",
+            "title": "Ordinary Shares",
+            "ratio": None,
+            "accn": "later-f3",
+            "basis_accn": "k25",
+        },
+    )
+
+    assert snapshot.ticker == "NEW"
+    assert snapshot.balance_sheet_date == date(2026, 3, 31)
+
+
+def test_later_sec_ticker_rejects_a_mismatched_annual_basis():
+    with pytest.raises(UnsupportedFilerError, match="current annual cover"):
+        build_snapshot(
+            "NEW", "0000000001", facts_doc(_foreign_gaap()),
+            receipt={
+                "symbol": "NEW",
+                "title": "Ordinary Shares",
+                "ratio": None,
+                "accn": "later-f3",
+                "basis_accn": "k24",
+            },
+        )
+
+
+def test_later_sec_ticker_without_an_annual_basis_fails_closed():
+    with pytest.raises(UnsupportedFilerError, match="current annual cover"):
+        build_snapshot(
+            "NEW", "0000000001", facts_doc(_foreign_gaap()),
+            receipt={
+                "symbol": "NEW",
+                "title": "Ordinary Shares",
+                "ratio": None,
+                "accn": "later-f3",
+            },
         )
 
 

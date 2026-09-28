@@ -38,6 +38,25 @@ def test_primary_document_cache_path_stays_under_the_accession(tmp_path):
         )
 
 
+def test_later_filing_lists_one_exact_class_symbol_and_exchange():
+    page = (
+        "Our Class A Ordinary Shares are listed on Nasdaq Capital Market tier "
+        "of The Nasdaq Stock Market LLC under the symbol “ZTG”."
+    )
+
+    assert cover.listed_securities(page) == [{
+        "title": "Class A Ordinary Shares",
+        "symbol": "ZTG",
+        "exchange": "Nasdaq",
+    }]
+
+
+def test_later_filing_does_not_treat_an_otc_alias_as_a_listed_exchange():
+    page = "Our Ordinary Shares are traded on OTC Markets under the symbol ABLZF."
+
+    assert cover.listed_securities(page) == []
+
+
 @pytest.mark.parametrize(
     ("text", "expected"),
     [

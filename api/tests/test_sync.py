@@ -1248,6 +1248,192 @@ class _CoverEdgar:
         raise RuntimeError("submissions should not be needed")
 
 
+class _ContinuityEdgar(_CoverEdgar):
+    accession = "0001213900-26-103505"
+    document = "issuer-f3.htm"
+
+    def submissions(self, cik):
+        self.submission_requests.append(cik)
+        return {"filings": {"recent": {
+            "filingDate": ["2026-09-25"],
+            "form": ["F-3"],
+            "accessionNumber": [self.accession],
+            "primaryDocument": [self.document],
+        }}}
+
+
+def test_later_ticker_filing_is_retained_before_identity_parse(tmp_path, monkeypatch):
+    cik = "0001901215"
+    raw = (
+        b"Ordinary Shares, no par value per share. Our Ordinary Shares are "
+        b"listed on the Nasdaq Capital Market under the symbol BRNX."
+    )
+    edgar = _ContinuityEdgar(tmp_path / "cache", raw)
+    path = cover.primary_document_cache_path(
+        edgar.cache_dir, edgar.accession, edgar.document
+    )
+    resolve = sync.evidence.continuity_security
+
+    def resolve_after_retention(*args):
+        assert path.read_bytes() == raw
+        return resolve(*args)
+
+    monkeypatch.setattr(sync.evidence, "continuity_security", resolve_after_retention)
+    proved = sync._later_ticker_continuity(
+        edgar,
+        cik,
+        "BRNX",
+        "Nasdaq",
+        "2026-04-01",
+        [{
+            "symbol": "BNRG",
+            "title": "Ordinary Shares, no par value per share",
+            "ratio": None,
+            "accn": "annual-1",
+        }],
+    )
+
+    assert proved[:3] == (
+        {
+            "symbol": "BRNX",
+            "previous_symbol": "BNRG",
+            "title": "Ordinary Shares, no par value per share",
+            "ratio": None,
+            "accn": "annual-1",
+            "exchange": "Nasdaq",
+            "basis_accn": "annual-1",
+        },
+        edgar.accession,
+        "2026-09-25",
+    )
+    assert proved[3] == path
+
+
+def test_missing_later_filing_bytes_fail_closed(tmp_path):
+    edgar = _ContinuityEdgar(tmp_path / "cache", b"", fail=True)
+
+    assert sync._later_ticker_continuity(
+        edgar,
+        "0001901215",
+        "BRNX",
+        "Nasdaq",
+        "2026-04-01",
+        [{
+            "symbol": "BNRG",
+            "title": "Ordinary Shares, no par value per share",
+            "ratio": None,
+            "accn": "annual-1",
+        }],
+    ) is None
+    assert not cover.primary_document_cache_path(
+        edgar.cache_dir, edgar.accession, edgar.document
+    ).exists()
+
+
+@pytest.mark.parametrize("prior", [
+    [],
+    [{
+        "symbol": "NOTE",
+        "title": "5.000% Senior Notes due 2030",
+        "ratio": None,
+        "accn": "annual-1",
+    }],
+])
+def test_later_filing_is_not_fetched_without_supported_annual_security(tmp_path, prior):
+    edgar = _ContinuityEdgar(tmp_path / "cache", b"unused")
+
+    assert sync._later_ticker_continuity(
+        edgar,
+        "0001901215",
+        "BRNX",
+        "Nasdaq",
+        "2026-04-01",
+        prior,
+    ) is None
+    assert edgar.submission_requests == []
+    assert edgar.requests == []
+
+
+def test_annual_reread_reselects_retained_continuity_without_sec_access(
+    tmp_path, monkeypatch
+):
+    cik = "0001901215"
+    annual_a = "0001213900-26-034046"
+    annual_a2 = "0001213900-27-034046"
+    later_l = "0001213900-26-103505"
+    conn = store.connect(tmp_path / "continuity.db")
+    store.upsert_company(conn, cik, "NEW", "Issuer")
+    store.set_metadata(conn, cik, None, None, "Nasdaq", None)
+    conn.execute("UPDATE company SET listed = 'y' WHERE cik = ?", (cik,))
+    annual_security = {
+        "symbol": "OLD",
+        "title": "Common Shares, no par value",
+        "ratio": None,
+    }
+    store.set_cover(conn, cik, [annual_security], annual_a, "2026-04-01")
+    store.set_cover_continuity(conn, cik, {
+        **annual_security,
+        "previous_symbol": "OLD",
+        "symbol": "NEW",
+        "exchange": "Nasdaq",
+        "basis_accn": annual_a,
+    }, later_l, "2026-09-25")
+    store.put_snapshot(conn, cik, "foreign", None)
+    conn.commit()
+
+    raw_a = (
+        b"Title of 12(b) Security Common Shares, no par value "
+        b"Trading Symbol OLD Security Exchange Name Nasdaq"
+    )
+    edgar = _CoverEdgar(tmp_path / "cache", b"", fail=True)
+    facts = edgar.cache_dir / f"companyfacts_{cik}.json"
+    facts.parent.mkdir(parents=True)
+    facts.write_text("{}")
+    path_a = cover.report_cache_path(edgar.cache_dir, annual_a, 1)
+    path_a.parent.mkdir(parents=True)
+    path_a.write_bytes(raw_a)
+    monkeypatch.setattr(sync, "EdgarClient", lambda: edgar)
+    current = [annual_a, "2026-04-01"]
+    monkeypatch.setattr(sync, "_current_supported_annual", lambda _facts: tuple(current))
+    observations_before = [tuple(row) for row in conn.execute(
+        """SELECT accn, symbol, title, exchange, ratio, filed, basis_accn, observed_at
+           FROM security_cover_observation WHERE cik = ? ORDER BY accn, symbol""",
+        (cik,),
+    )]
+
+    sync.cover_pages(
+        conn, progress=lambda *_args: None, foreign_only=True,
+        ciks={cik}, reparse=True,
+    )
+
+    assert edgar.requests == []
+    assert edgar.submission_requests == []
+    assert store.cover_for(conn, cik, "OLD") is None
+    assert store.cover_for(conn, cik, "NEW")["accn"] == later_l
+    assert [tuple(row) for row in conn.execute(
+        """SELECT accn, symbol, title, exchange, ratio, filed, basis_accn, observed_at
+           FROM security_cover_observation WHERE cik = ? ORDER BY accn, symbol""",
+        (cik,),
+    )] == observations_before
+    assert store.needs_recompute(conn) == []
+
+    raw_a2 = raw_a.replace(b"OLD", b"OLD2")
+    path_a2 = cover.report_cache_path(edgar.cache_dir, annual_a2, 1)
+    path_a2.parent.mkdir(parents=True)
+    path_a2.write_bytes(raw_a2)
+    current[:] = [annual_a2, "2027-04-01"]
+    sync.cover_pages(
+        conn, progress=lambda *_args: None, foreign_only=True,
+        ciks={cik}, reparse=True,
+    )
+
+    assert edgar.requests == []
+    assert edgar.submission_requests == [cik]
+    assert store.cover_for(conn, cik, "NEW") is None
+    assert store.cover_for(conn, cik, "OLD2")["accn"] == annual_a2
+    assert store.needs_recompute(conn) == [cik]
+
+
 def test_cover_reparse_requires_an_explicit_cik_set(tmp_path):
     conn, _, _ = _cover_sync_company(tmp_path)
 

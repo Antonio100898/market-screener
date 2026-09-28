@@ -22,6 +22,50 @@ class EvidenceBundle:
     receipt: dict | None
 
 
+def continuity_security(
+    prior_securities: list[dict], document: str, ticker: str, exchange: str | None
+) -> dict | None:
+    """Resolve one later symbol to one exact earlier filed class.
+
+    A listing sentence may shorten the class name only when the same filing also
+    contains the full annual title and exactly one supported prior class matches.
+    """
+    expected_exchange = (exchange or "").casefold()
+    if expected_exchange not in {"nasdaq", "nyse", "cboe"}:
+        return None
+
+    filed_text = cover.normalized_title(cover.text_of(document))
+    matches: dict[tuple[str, str], dict] = {}
+    for listed in cover.listed_securities(document):
+        if listed["symbol"] != ticker or listed["exchange"].casefold() != expected_exchange:
+            continue
+        listed_title = cover.normalized_title(listed["title"])
+        for prior in prior_securities:
+            prior_title = cover.normalized_title(prior.get("title") or "")
+            same_reference = (
+                prior_title == listed_title
+                or prior_title.startswith(f"{listed_title},")
+                or prior_title.startswith(f"{listed_title} ")
+            )
+            if (not prior_title or prior_title not in filed_text or not same_reference
+                    or not cover.is_common_equity_security(prior.get("title") or "")
+                    or cover.is_untraded_underlying(prior.get("title") or "")):
+                continue
+            matches[(prior.get("symbol") or "", prior_title)] = prior
+
+    if len(matches) != 1:
+        return None
+    prior = next(iter(matches.values()))
+    return {
+        **prior,
+        "previous_symbol": prior.get("symbol"),
+        "symbol": ticker,
+        "exchange": exchange,
+        "ratio": prior.get("ratio"),
+        "basis_accn": prior.get("basis_accn") or prior.get("accn"),
+    }
+
+
 class EvidenceLoader:
     """One evidence policy shared by every snapshot-producing workflow."""
 

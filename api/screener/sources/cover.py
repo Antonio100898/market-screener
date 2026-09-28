@@ -190,11 +190,50 @@ _TITLE_LABEL = re.compile(
 )
 _SYMBOL_LABEL = re.compile(r"^Trading Symbol(?:\(s\)|s)?$", re.I)
 _PLACEHOLDER_SYMBOLS = {"", "true", "false", "none", "n/a", "not applicable"}
+_LISTED_CLASS = (
+    r"(?:class\s+[A-Z0-9-]+\s+)?(?:american\s+deposit(?:ary|ory)\s+shares?|"
+    r"common\s+shares?|common\s+stock|ordinary\s+shares?|"
+    r"limited\s+partnership\s+units?|trust\s+units?)"
+)
+_LISTED_SECURITY = re.compile(
+    rf"(?:our|the\s+(?:company|registrant)[’']s|(?:company|registrant)[’']s|the)?\s*"
+    rf"(?P<title>{_LISTED_CLASS})\s+"
+    r"(?:are|is|will)\b.{0,100}?\b(?:listed|trad(?:e|ed|ing))\b.{0,220}?"
+    r"(?P<exchange>Nasdaq(?:\s+(?:Stock\s+Market\s+LLC|Global\s+Market|"
+    r"Capital\s+Market(?:\s+tier\s+of\s+The\s+Nasdaq\s+Stock\s+Market\s+LLC)?))?"
+    r"|(?:The\s+)?New\s+York\s+Stock\s+Exchange|NYSE|Cboe)"
+    r".{0,220}?\b(?:ticker\s+symbol|trading\s+symbol|symbol)\b"
+    r"(?:\s+(?:is|will\s+be|of))?\s*[“‘\"']*(?P<symbol>[A-Z][A-Z0-9.\-]{0,11})",
+    re.I,
+)
 
 
 def text_of(document: str) -> str:
     """The rendered report as one line of readable text."""
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", document)))
+
+
+def normalized_title(title: str) -> str:
+    """The only equivalence allowed for filed class titles."""
+    return " ".join((title or "").split()).casefold()
+
+
+def listed_securities(document: str) -> list[dict]:
+    """Explicit class, exchange, and ticker statements in a later SEC filing."""
+    out = []
+    for match in _LISTED_SECURITY.finditer(text_of(document)):
+        exchange = match.group("exchange")
+        canonical_exchange = (
+            "Nasdaq" if exchange.casefold().startswith("nasdaq") else
+            "NYSE" if "new york" in exchange.casefold() or exchange.casefold() == "nyse" else
+            "CBOE"
+        )
+        out.append({
+            "title": " ".join(match.group("title").split()),
+            "symbol": match.group("symbol").rstrip("."),
+            "exchange": canonical_exchange,
+        })
+    return out
 
 
 def _table_securities(document: str) -> list[dict]:
