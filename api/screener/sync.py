@@ -107,10 +107,26 @@ def _source(fact) -> dict | None:
     if fact is None:
         return None
 
+    def annual_identity(p):
+        if not p.components:
+            return ((p.annual_accession, p.annual_form, p.annual_filed)
+                    if p.annual_accession else None)
+        identities = [annual_identity(component) for component in p.components]
+        first = identities[0] if identities else None
+        return first if first is not None and all(value == first for value in identities) else None
+
     def one(p) -> dict:
         src = {"tag": p.tag, "form": p.form, "accn": p.accession,
                "end": p.period_end.isoformat() if p.period_end else None,
                "filed": p.filed.isoformat() if p.filed else None}
+        annual = annual_identity(p)
+        if annual is not None:
+            annual_accession, annual_form, annual_filed = annual
+            src.update({
+                "annual_accn": annual_accession,
+                "annual_form": annual_form,
+                "annual_filed": annual_filed.isoformat() if annual_filed else None,
+            })
         if p.unit:
             src["unit"] = p.unit
         if p.document:
@@ -1043,6 +1059,13 @@ def _owner_earnings_row(snap) -> dict | None:
                     if provenance.period_end else None),
             "filed": provenance.filed.isoformat() if provenance.filed else None,
         }
+        if provenance.annual_accession:
+            source.update({
+                "annual_accn": provenance.annual_accession,
+                "annual_form": provenance.annual_form,
+                "annual_filed": (provenance.annual_filed.isoformat()
+                                 if provenance.annual_filed else None),
+            })
         if provenance.unit:
             source["unit"] = provenance.unit
         if provenance.document:
@@ -1778,7 +1801,7 @@ def _safe_archive_document(document: str) -> str:
     return inline_xbrl.safe_document_name(document)
 
 
-def _direct_annual_documents(index: dict, primary_document: str) -> dict[str, str]:
+def _inline_documents(index: dict, primary_document: str) -> dict[str, str]:
     items = ((index.get("directory") or {}).get("item") or [])
     names = {
         _safe_archive_document(str(item.get("name") or ""))
@@ -1786,7 +1809,7 @@ def _direct_annual_documents(index: dict, primary_document: str) -> dict[str, st
     }
     primary_document = _safe_archive_document(primary_document)
     if primary_document not in names:
-        raise ValueError("current annual primary document is absent from SEC index")
+        raise ValueError("SEC filing primary document is absent from its index")
     try:
         instance = _one_index_document(names, "_htm.xml", "extracted instance")
     except ValueError as exc:
@@ -1795,7 +1818,7 @@ def _direct_annual_documents(index: dict, primary_document: str) -> dict[str, st
         ) from exc
     summary = "FilingSummary.xml"
     if summary not in names:
-        raise ValueError("current annual FilingSummary.xml is absent from SEC index")
+        raise ValueError("SEC filing FilingSummary.xml is absent from its index")
     schema = _one_index_document(names, ".xsd", "issuer schema")
     presentations = sorted(name for name in names if name.casefold().endswith("_pre.xml"))
     if len(presentations) > 1:
@@ -1842,7 +1865,57 @@ def _verified_previous_bytes(path: Path, record: dict | None) -> bytes | None:
     return None
 
 
-def _retain_direct_inline_annual(edgar: EdgarClient, cik: str) -> tuple[str, str]:
+def _filing_metadata(submissions: dict, accession: str) -> dict:
+    recent = (submissions.get("filings") or {}).get("recent") or {}
+    accessions = recent.get("accessionNumber") or []
+    positions = [position for position, value in enumerate(accessions) if value == accession]
+    if len(positions) != 1:
+        raise ValueError("incorporated SEC accession is absent or ambiguous in submissions")
+    position = positions[0]
+
+    def at(field: str, default=""):
+        values = recent.get(field) or []
+        return values[position] if position < len(values) else default
+
+    result = {
+        "accession": accession,
+        "form": at("form"),
+        "filed": at("filingDate"),
+        "report_date": at("reportDate"),
+        "document": at("primaryDocument"),
+    }
+    if not all(result[field] for field in ("accession", "form", "filed", "document")):
+        raise ValueError("incorporated SEC filing metadata is incomplete")
+    return result
+
+
+def _retained_or_fetched(
+    edgar: EdgarClient,
+    directory: Path,
+    base: str,
+    document: str,
+    previous_record: dict | None,
+) -> bytes:
+    path = directory / document
+    raw = _verified_previous_bytes(path, previous_record)
+    if raw is None:
+        raw = edgar._request(base + document).content
+        _retain_source_bytes(path, raw)
+    return raw
+
+
+def _verified_inline_manifest(manifest: dict, cache_dir: Path, cik: str) -> dict:
+    supplement = inline_xbrl.verify_manifest(manifest, cache_dir, cik)
+    annual = manifest["annual"]
+    filing, basis = normalize._current_supported_foreign_annual(
+        supplement.get("facts") or {}
+    )
+    if filing != (annual["filed"], annual["accession"]) or basis is None:
+        raise ValueError("retained Inline-XBRL statement has no coherent annual balance")
+    return supplement
+
+
+def _retain_inline_annual(edgar: EdgarClient, cik: str) -> tuple[str, str]:
     cik = str(int(cik)).zfill(10) if cik.isdigit() else cik
     if not (len(cik) == 10 and cik.isdigit()):
         raise ValueError("SEC issuer identifier must be a numeric CIK")
@@ -1856,7 +1929,7 @@ def _retain_direct_inline_annual(edgar: EdgarClient, cik: str) -> tuple[str, str
         previous = None
     if (previous and (previous.get("annual") or {}).get("accession") == accession):
         try:
-            inline_xbrl.verify_current_manifest(edgar.cache_dir, cik)
+            _verified_inline_manifest(previous, edgar.cache_dir, cik)
         except ValueError:
             pass
         else:
@@ -1867,50 +1940,116 @@ def _retain_direct_inline_annual(edgar: EdgarClient, cik: str) -> tuple[str, str
         if previous and (previous.get("annual") or {}).get("accession") == accession
         else {}
     )
-    directory = inline_xbrl.accession_directory(edgar.cache_dir, accession)
-    index_path = directory / "index.json"
-    index_record = previous_files.get("index")
-    index_raw = _verified_previous_bytes(index_path, index_record)
-    if index_raw is None:
-        index_raw = edgar._request(base + "index.json").content
-        _retain_source_bytes(index_path, index_raw)
+    annual_directory = inline_xbrl.accession_directory(edgar.cache_dir, accession)
+    annual_index_role = (
+        "annual_index" if previous and previous.get("relationship")
+        == "incorporated_annual_exhibit" else "index"
+    )
+    index_raw = _retained_or_fetched(
+        edgar, annual_directory, base, "index.json",
+        previous_files.get(annual_index_role),
+    )
     try:
         index = json.loads(index_raw)
     except ValueError as exc:
         raise ValueError("invalid SEC filing index") from exc
-    documents = _direct_annual_documents(index, annual["document"])
-
-    records = {"index": _retained_record("index.json", base + "index.json", index_raw)}
-    document_payloads: dict[str, bytes] = {}
-    for role, document in documents.items():
-        path = directory / document
-        raw = document_payloads.get(document)
-        if raw is None:
-            raw = _verified_previous_bytes(path, previous_files.get(role))
-            if raw is None:
-                raw = edgar._request(base + document).content
-                _retain_source_bytes(path, raw)
-            document_payloads[document] = raw
-        records[role] = _retained_record(document, base + document, raw)
-
-    manifest = {
+    annual_document = _safe_archive_document(annual["document"])
+    annual_primary_raw = _retained_or_fetched(
+        edgar, annual_directory, base, annual_document,
+        previous_files.get("annual_primary_document")
+        or previous_files.get("primary_document"),
+    )
+    common = {
         "schema": inline_xbrl.MANIFEST_SCHEMA,
         "parser_contract_revision": inline_xbrl.PARSER_CONTRACT_REVISION,
-        "relationship": "direct_annual",
         "cik": cik,
         "entity_name": str(submissions.get("name") or ""),
         "annual": annual,
-        "source": {
-            "accession": accession,
-            "form": annual["form"],
-            "filed": annual["filed"],
-            "document": annual["document"],
-        },
-        "files": records,
     }
+    try:
+        relationship = inline_xbrl.incorporated_annual_source(annual_primary_raw, cik)
+    except inline_xbrl.UnsupportedInlineXbrlRelationship as exc:
+        if str(exc) != "missing_incorporation_by_reference":
+            raise
+        relationship = None
+    if relationship is not None:
+        source = _filing_metadata(submissions, relationship["accession"])
+        if source["document"] != relationship["document"]:
+            raise ValueError("incorporated SEC document does not match submissions")
+        if source["form"].split("/", 1)[0] != "6-K":
+            raise ValueError("incorporated SEC source form does not match Form 6-K")
+        if source["filed"] > annual["filed"]:
+            raise ValueError("incorporated SEC source filing is later than annual wrapper")
+        source_base = _archive_base(cik, source["accession"])
+        source_directory = inline_xbrl.accession_directory(
+            edgar.cache_dir, source["accession"]
+        )
+        source_index_raw = _retained_or_fetched(
+            edgar, source_directory, source_base, "index.json",
+            previous_files.get("source_index"),
+        )
+        try:
+            source_index = json.loads(source_index_raw)
+        except ValueError as exc:
+            raise ValueError("invalid incorporated SEC filing index") from exc
+        source_documents = _inline_documents(source_index, source["document"])
+        records = {
+            "annual_index": _retained_record(
+                "index.json", base + "index.json", index_raw,
+            ),
+            "annual_primary_document": _retained_record(
+                annual_document, base + annual_document, annual_primary_raw,
+            ),
+            "source_index": _retained_record(
+                "index.json", source_base + "index.json", source_index_raw,
+            ),
+        }
+        source_payloads: dict[str, bytes] = {}
+        for role, document in source_documents.items():
+            raw = source_payloads.get(document)
+            if raw is None:
+                raw = _retained_or_fetched(
+                    edgar, source_directory, source_base, document,
+                    previous_files.get(role),
+                )
+                source_payloads[document] = raw
+            records[role] = _retained_record(document, source_base + document, raw)
+        manifest = {
+            **common,
+            "relationship": "incorporated_annual_exhibit",
+            "source": source,
+            "relationship_evidence": relationship,
+            "files": records,
+        }
+    else:
+        documents = _inline_documents(index, annual_document)
+        records = {
+            "index": _retained_record("index.json", base + "index.json", index_raw),
+        }
+        document_payloads = {annual_document: annual_primary_raw}
+        for role, document in documents.items():
+            raw = document_payloads.get(document)
+            if raw is None:
+                raw = _retained_or_fetched(
+                    edgar, annual_directory, base, document,
+                    previous_files.get(role),
+                )
+                document_payloads[document] = raw
+            records[role] = _retained_record(document, base + document, raw)
+        manifest = {
+            **common,
+            "relationship": "direct_annual",
+            "source": {
+                "accession": accession,
+                "form": annual["form"],
+                "filed": annual["filed"],
+                "document": annual_document,
+            },
+            "files": records,
+        }
     # Parsing all verified retained inputs is the publication gate. A partial or
     # unsupported filing remains only an inactive accession directory.
-    inline_xbrl.verify_manifest(manifest, edgar.cache_dir, cik)
+    _verified_inline_manifest(manifest, edgar.cache_dir, cik)
     encoded = inline_xbrl.manifest_bytes(manifest)
     manifest_path = inline_xbrl.current_manifest_path(edgar.cache_dir, cik)
     changed = not manifest_path.exists() or manifest_path.read_bytes() != encoded
@@ -1934,7 +2073,7 @@ def retain_inline_statements(
     for done, requested in enumerate(sorted(ciks), 1):
         cik = str(int(requested)).zfill(10) if requested.isdigit() else requested
         try:
-            state, accession = _retain_direct_inline_annual(edgar, cik)
+            state, accession = _retain_inline_annual(edgar, cik)
         except inline_xbrl.UnsupportedInlineXbrlRelationship as exc:
             results[cik] = {"state": "unsupported_relationship", "relationship": str(exc)}
         except Exception as exc:

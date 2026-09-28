@@ -1,0 +1,16 @@
+{
+  "annual_accession": "0001104659-26-010352",
+  "annual_form": "40-F",
+  "balance": {
+    "assets": 58555000000.0,
+    "common_equity": 21568000000.0,
+    "liabilities": 36987000000.0,
+    "reconciled": true
+  },
+  "retained_sec_bytes_in_evidence_directory": 0,
+  "source_accession": "0000016868-26-000011",
+  "source_document": "cni-20251231.htm",
+  "source_form": "6-K",
+  "status": "ok",
+  "supplement_state": "applied"
+}

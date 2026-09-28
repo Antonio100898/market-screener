@@ -247,6 +247,60 @@ def test_cover_verified_usd_ifrs_filer_uses_equivalent_concepts_with_original_pr
     assert row["sources"]["eps"]["tag"] == "ifrs-full:DilutedEarningsLossPerShare"
 
 
+def test_incorporated_statement_keeps_annual_selection_and_exact_source_provenance():
+    from screener.sync import _derive
+
+    annual_accn = "0000000001-26-000010"
+    source_accn = "0000000001-26-000009"
+    gaap = _foreign_ifrs(accn=annual_accn, filed="2026-03-01")
+    for tagdata_ in gaap.values():
+        for entries in tagdata_["units"].values():
+            for entry in entries:
+                entry.update({
+                    "_source_accession": source_accn,
+                    "_source_form": "6-K",
+                    "_source_filed": "2026-02-28",
+                    "_source_document": "statements.htm",
+                    "_annual_accession": annual_accn,
+                    "_annual_form": "40-F",
+                    "_annual_filed": "2026-03-01",
+                })
+    facts = {"facts": {"ifrs-full": gaap}}
+    receipt = {
+        "symbol": "IFRS", "title": "Class A common shares",
+        "ratio": None, "accn": annual_accn,
+    }
+
+    snapshot = build_snapshot("IFRS", "0000000001", facts, receipt=receipt)
+    provenance = snapshot.total_assets.provenance
+    assert (provenance.accession, provenance.form, provenance.filed) == (
+        source_accn, "6-K", date(2026, 2, 28),
+    )
+    assert (
+        provenance.annual_accession, provenance.annual_form, provenance.annual_filed,
+    ) == (annual_accn, "40-F", date(2026, 3, 1))
+
+    status, row = _derive("0000000001", "IFRS", facts, receipt=receipt)
+    assert status == "ok"
+    assert row["sources"]["total_assets"] == {
+        "tag": "ifrs-full:Assets",
+        "form": "6-K",
+        "accn": source_accn,
+        "end": "2025-12-31",
+        "filed": "2026-02-28",
+        "annual_accn": annual_accn,
+        "annual_form": "40-F",
+        "annual_filed": "2026-03-01",
+        "document": "statements.htm",
+        "canonical_tag": "Assets",
+    }
+    derived = row["sources"]["total_liabilities"]
+    assert derived["annual_accn"] == annual_accn
+    assert derived["accn"] == source_accn
+    assert all(component["annual_accn"] == annual_accn
+               for component in derived["components"])
+
+
 def test_ifrs_continuing_operations_cash_flow_builds_fcf_with_original_provenance():
     gaap = _foreign_ifrs()
     annual = lambda value: dur(  # noqa: E731 - filing-shaped fixture

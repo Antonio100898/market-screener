@@ -9,6 +9,8 @@ import pytest
 from screener.sources.inline_xbrl import (
     InlineXbrlMetadata,
     InlineXbrlPaths,
+    UnsupportedInlineXbrlRelationship,
+    incorporated_annual_source,
     merge_missing_facts,
     parse_inline_xbrl,
 )
@@ -148,6 +150,50 @@ def test_us_gaap_parser_keeps_standard_namespace(tmp_path):
     assert _entry(payload, "us-gaap", "Assets", "USD")["_source_namespace_uri"] == (
         "http://fasb.org/us-gaap/2025"
     )
+
+
+def test_incorporated_facts_select_as_annual_but_keep_exact_source(tmp_path):
+    metadata, paths, hashes = _fixture(tmp_path)
+    metadata = replace(
+        metadata,
+        source_accession="0000000123-26-000000",
+        source_form="6-K",
+        source_filed="2026-02-28",
+        source_document="annual.htm",
+        annual_accession="0000000123-26-000001",
+        annual_form="40-F",
+        annual_filed="2026-03-01",
+    )
+
+    payload = parse_inline_xbrl(metadata, paths, hashes)
+    assets = _entry(payload, "ifrs-full", "Assets", "USD")
+
+    assert (assets["accn"], assets["form"], assets["filed"]) == (
+        metadata.annual_accession, metadata.annual_form, metadata.annual_filed,
+    )
+    assert (
+        assets["_source_accession"], assets["_source_form"],
+        assets["_source_filed"], assets["_source_document"],
+    ) == (
+        metadata.source_accession, metadata.source_form,
+        metadata.source_filed, metadata.source_document,
+    )
+
+
+def test_incorporated_link_must_be_local_to_its_form_6k_clause():
+    payload = (
+        '<p>Incorporated by reference from the registrant\'s Form 6-K.</p>'
+        + ("<p>Unrelated disclosure.</p>" * 200)
+        + '<a href="https://www.sec.gov/Archives/edgar/data/123/'
+          '000000012326000009/statements.htm">'
+          'Audited annual consolidated financial statements</a>'
+    ).encode()
+
+    with pytest.raises(
+        UnsupportedInlineXbrlRelationship,
+        match="ambiguous_incorporated_statement_links:0",
+    ):
+        incorporated_annual_source(payload, "123")
 
 
 def test_compatible_duplicates_choose_most_precise_then_lowest_id(tmp_path):
@@ -302,3 +348,35 @@ def test_exact_supplement_duplicates_are_deduplicated(tmp_path):
     merged = merge_missing_facts(companyfacts, supplement)
 
     assert len(merged["facts"]["ifrs-full"]["Assets"]["units"]["USD"]) == 1
+
+
+def test_incorporated_supplement_rebinds_the_exact_existing_source_fact(tmp_path):
+    metadata, paths, hashes = _fixture(tmp_path)
+    metadata = replace(
+        metadata,
+        source_accession="0000000123-26-000000",
+        source_form="6-K",
+        source_filed="2026-02-28",
+        annual_accession="0000000123-26-000001",
+        annual_form="40-F",
+        annual_filed="2026-03-01",
+    )
+    supplement = parse_inline_xbrl(metadata, paths, hashes)
+    companyfacts = _companyfacts({
+        "val": 1000,
+        "end": "2025-12-31",
+        "accn": metadata.source_accession,
+        "form": metadata.source_form,
+        "filed": metadata.source_filed,
+    })
+
+    merged = merge_missing_facts(companyfacts, supplement)
+    entries = merged["facts"]["ifrs-full"]["Assets"]["units"]["USD"]
+
+    assert len(entries) == 1
+    assert entries[0]["accn"] == metadata.annual_accession
+    assert entries[0]["form"] == metadata.annual_form
+    assert entries[0]["_source_accession"] == metadata.source_accession
+    assert companyfacts["facts"]["ifrs-full"]["Assets"]["units"]["USD"][0][
+        "accn"
+    ] == metadata.source_accession

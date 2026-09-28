@@ -45,6 +45,11 @@ class Provenance:
     # Rule-selection identity can differ from the exact reported element/row
     # shown in ``tag`` when an IFRS adapter maps into a canonical concept.
     canonical_tag: str | None = None
+    # An incorporated exhibit is the exact source, while the annual wrapper is
+    # the filing that makes the fact current for annual-selection rules.
+    annual_accession: str | None = None
+    annual_form: str | None = None
+    annual_filed: date | None = None
 
 
 @dataclass(frozen=True)

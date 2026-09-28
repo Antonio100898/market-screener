@@ -9,13 +9,56 @@ from types import SimpleNamespace
 import pytest
 
 from screener import store, sync
-from screener.models import PriceHistory, Quote
+from screener.models import Fact, PriceHistory, Provenance, Quote
 from screener.sources import cover, inline_xbrl
 from screener.sources.prices import YahooPriceProvider
 from screener.sync import (apply_price, material_events, _restate_historical_ratios,
                            _statement_source_namespace, _validated_price_history)
 
 from tests.helpers import build
+
+
+def _provenance_leaf(tag: str, annual: bool) -> Provenance:
+    return Provenance(
+        concept=tag,
+        tag=f"us-gaap:{tag}",
+        fiscal_year=2025,
+        form="6-K",
+        accession="0000000123-26-000009",
+        filed=date(2026, 2, 28),
+        period_end=date(2025, 12, 31),
+        annual_accession="0000000123-26-000010" if annual else None,
+        annual_form="40-F" if annual else None,
+        annual_filed=date(2026, 3, 1) if annual else None,
+    )
+
+
+def test_uniform_derived_provenance_serializes_the_shared_annual_relationship():
+    left = _provenance_leaf("Assets", True)
+    right = _provenance_leaf("Equity", True)
+    fact = Fact(Decimal("1"), replace(
+        left, tag="us-gaap:Assets - us-gaap:Equity", components=(left, right),
+    ))
+
+    source = sync._source(fact)
+
+    assert source["annual_accn"] == "0000000123-26-000010"
+    assert all(component["annual_accn"] == "0000000123-26-000010"
+               for component in source["components"])
+
+
+def test_mixed_derived_provenance_does_not_claim_one_annual_relationship():
+    bound = _provenance_leaf("Assets", True)
+    unbound = _provenance_leaf("Equity", False)
+    fact = Fact(Decimal("1"), replace(
+        bound, tag="us-gaap:Assets - us-gaap:Equity", components=(bound, unbound),
+    ))
+
+    source = sync._source(fact)
+
+    assert "annual_accn" not in source
+    assert source["components"][0]["annual_accn"] == "0000000123-26-000010"
+    assert "annual_accn" not in source["components"][1]
 
 
 def row(ttm=5.0, tbvps=10.0, others="PASS"):
@@ -2105,6 +2148,70 @@ class _InlineEdgar:
         )
 
 
+class _IncorporatedInlineEdgar:
+    annual_accession = "0000000001-26-000010"
+    source_accession = "0000000001-26-000009"
+
+    def __init__(
+        self, cache_dir, *, linked_cik="1", linked_accession=None,
+        linked_document="statements.htm", source_document="statements.htm",
+        source_form="6-K", source_filed="2026-03-01", second_link=False,
+        fail=None,
+    ):
+        self.cache_dir = cache_dir
+        self.fail = fail
+        self.linked_accession = linked_accession or self.source_accession
+        linked_digits = self.linked_accession.replace("-", "")
+        other = (
+            '<a href="https://www.sec.gov/Archives/edgar/data/1/'
+            '000000000126000008/other.htm">Audited annual financial statements</a>'
+            if second_link else ""
+        )
+        self.annual_html = (
+            '<html><a href="https://www.sec.gov/Archives/edgar/data/'
+            f'{linked_cik}/{linked_digits}/{linked_document}">'
+            'Audited annual consolidated financial statements</a>'
+            f'{other}<p>Incorporated by reference from the registrant\'s Form 6-K.</p>'
+            '</html>'
+        ).encode()
+        self.annual_index = json.dumps({
+            "directory": {"item": [{"name": "annual.htm"}]},
+        }).encode()
+        self.source_index = json.dumps({
+            "directory": {"item": [{"name": name} for name in (
+                source_document, "statements_htm.xml", "FilingSummary.xml",
+                "issuer.xsd", "issuer_pre.xml",
+            )]},
+        }).encode()
+        self.source_document = source_document
+        self.source_form = source_form
+        self.source_filed = source_filed
+
+    def submissions(self, cik):
+        return {
+            "name": "Example PLC",
+            "filings": {"recent": {
+                "accessionNumber": [self.annual_accession, self.source_accession],
+                "form": ["40-F", self.source_form],
+                "filingDate": ["2026-03-01", self.source_filed],
+                "reportDate": ["2025-12-31", "2025-12-31"],
+                "primaryDocument": ["annual.htm", self.source_document],
+            }},
+        }
+
+    def _request(self, url):
+        if self.fail and url.endswith(self.fail):
+            raise RuntimeError("fetch failed")
+        if url.endswith("index.json"):
+            raw = (self.source_index if self.source_accession.replace("-", "") in url
+                   else self.annual_index)
+        elif url.endswith("annual.htm"):
+            raw = self.annual_html
+        else:
+            raw = url.encode()
+        return SimpleNamespace(content=raw)
+
+
 def test_inline_acquisition_requires_explicit_bounded_ciks(tmp_path):
     conn = store.connect(tmp_path / "store.db")
 
@@ -2130,7 +2237,7 @@ def test_inline_acquisition_publishes_after_all_bytes_and_is_idempotent(
         verified.append(cik)
         return {}
 
-    monkeypatch.setattr(inline_xbrl, "verify_manifest", verify)
+    monkeypatch.setattr(sync, "_verified_inline_manifest", verify)
     first = sync.retain_inline_statements(
         conn, {"1"}, progress=lambda *args: None, edgar=edgar,
     )
@@ -2152,6 +2259,77 @@ def test_inline_acquisition_publishes_after_all_bytes_and_is_idempotent(
     assert conn.execute("SELECT * FROM snapshot_dirty").fetchone() is None
 
 
+def test_inline_acquisition_publishes_one_verified_incorporated_sec_exhibit(
+    tmp_path, monkeypatch,
+):
+    conn = store.connect(tmp_path / "store.db")
+    edgar = _IncorporatedInlineEdgar(tmp_path)
+    seen = []
+
+    def verify(manifest, cache_dir, cik):
+        seen.append(manifest)
+        assert manifest["relationship"] == "incorporated_annual_exhibit"
+        assert manifest["annual"]["accession"] == edgar.annual_accession
+        assert manifest["source"]["accession"] == edgar.source_accession
+        assert set(manifest["files"]) == {
+            "annual_index", "annual_primary_document", "source_index",
+            "instance", "filing_summary", "presentation", "schema",
+            "primary_document",
+        }
+        for role, record in manifest["files"].items():
+            accession = (edgar.annual_accession if role.startswith("annual_")
+                         else edgar.source_accession)
+            directory = inline_xbrl.accession_directory(cache_dir, accession)
+            assert (directory / record["document"]).exists()
+        return {"facts": {}}
+
+    monkeypatch.setattr(sync, "_verified_inline_manifest", verify)
+
+    result = sync.retain_inline_statements(
+        conn, {"1"}, progress=lambda *args: None, edgar=edgar,
+    )
+
+    assert result["0000000001"] == {
+        "state": "activated", "accession": edgar.annual_accession,
+    }
+    assert len(seen) == 1
+    persisted = inline_xbrl.read_current_manifest(tmp_path, "1")
+    assert persisted["relationship_evidence"]["document"] == "statements.htm"
+
+
+@pytest.mark.parametrize(("kwargs", "message"), [
+    ({"linked_cik": "2"}, "ambiguous_incorporated_statement_links:0"),
+    ({"linked_accession": "0000000001-26-000099"}, "absent or ambiguous"),
+    ({"linked_document": "other.htm"}, "does not match submissions"),
+    ({"source_form": "8-K"}, "does not match Form 6-K"),
+    ({"source_filed": "2026-03-02"}, "later than annual wrapper"),
+    ({"second_link": True}, "ambiguous_incorporated_statement_links:2"),
+])
+def test_incorporated_acquisition_rejects_identity_and_relationship_mismatch(
+    tmp_path, kwargs, message,
+):
+    conn = store.connect(tmp_path / "store.db")
+    result = sync.retain_inline_statements(
+        conn, {"1"}, progress=lambda *args: None,
+        edgar=_IncorporatedInlineEdgar(tmp_path, **kwargs),
+    )
+
+    row = result["0000000001"]
+    assert message in (row.get("error") or row.get("relationship") or "")
+    assert not inline_xbrl.current_manifest_path(tmp_path, "1").exists()
+
+
+def test_partial_incorporated_fetch_never_publishes_a_manifest(tmp_path):
+    conn = store.connect(tmp_path / "store.db")
+    result = sync.retain_inline_statements(
+        conn, {"1"}, progress=lambda *args: None,
+        edgar=_IncorporatedInlineEdgar(tmp_path, fail="issuer.xsd"),
+    )
+
+    assert result["0000000001"]["state"] == "error"
+    assert not inline_xbrl.current_manifest_path(tmp_path, "1").exists()
+
+
 def test_partial_inline_fetch_never_publishes_a_manifest(tmp_path, monkeypatch):
     conn = store.connect(tmp_path / "store.db")
     edgar = _InlineEdgar(tmp_path, fail="issuer.xsd")
@@ -2169,7 +2347,7 @@ def test_partial_inline_fetch_never_publishes_a_manifest(tmp_path, monkeypatch):
     assert conn.execute("SELECT * FROM snapshot_dirty").fetchone() is None
 
 
-def test_direct_inline_job_names_incorporated_relationship_as_unsupported(
+def test_inline_job_rejects_missing_incorporation_evidence(
     tmp_path, monkeypatch,
 ):
     conn = store.connect(tmp_path / "store.db")

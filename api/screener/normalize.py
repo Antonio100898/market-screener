@@ -1759,21 +1759,30 @@ def _canonical_tag(tag_text: str) -> str:
 def _fact(concept: str, tag: str, e: dict, fiscal_year: int | None = None, ns: str = "us-gaap") -> Fact:
     if isinstance(override := e.get("_fact_override"), Fact):
         return override
+    source_accession = e.get("_source_accession", e.get("accn", ""))
+    source_form = e.get("_source_form", e.get("form", ""))
+    source_filed = e.get("_source_filed", e.get("filed", ""))
+    annual_accession = e.get("_annual_accession")
+    incorporated = annual_accession and annual_accession != source_accession
     return Fact(
         value=_dec(e["val"]),
         provenance=Provenance(
             concept=e.get("_source_concept", concept),
             tag=_provenance_tag(tag, e, ns),
             fiscal_year=fiscal_year,
-            form=e.get("form", ""),
-            accession=e.get("accn", ""),
-            filed=date.fromisoformat(e["filed"]),
+            form=source_form,
+            accession=source_accession,
+            filed=date.fromisoformat(source_filed),
             period_end=date.fromisoformat(e["end"]),
             period_start=date.fromisoformat(e["start"]) if "start" in e else None,
             segments=e.get("segments", ""),
             unit=e.get("_source_unit"),
             document=e.get("_source_document"),
             canonical_tag=e.get("_normalized_tag", tag),
+            annual_accession=annual_accession if incorporated else None,
+            annual_form=e.get("_annual_form") if incorporated else None,
+            annual_filed=(date.fromisoformat(e["_annual_filed"])
+                          if incorporated else None),
         ),
     )
 

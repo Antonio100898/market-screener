@@ -77,6 +77,7 @@ Affected decisions: P-02, P-03, P-04, and P-09. Existing SEC/IFRS invariants rem
 | 3B-D. Raw SEC inline-XBRL/exhibit recovery audit | accepted | extraction investigator | 17 standard inline-XBRL plus CNI incorporated exhibit; 18/18 reconcile; zero current LLM candidates |
 | 3B-X1. Generic SEC Inline-XBRL supplement parser | accepted | extraction developer | 14 focused; 811 full Python; 17 real filings, 18,775 facts, 124 audited anchors reproduced |
 | 3B-X2. Retained statement acquisition and evidence merge | accepted | evidence developer | engine 186; 139 focused, 824 full Python; 17 manifests applied; 13 `ok`, four cover-only failures |
+| 3B-X3. Incorporated SEC exhibit recovery and dual provenance | accepted | evidence developer | engine 187; 233 focused, 839 full Python; CNI `ok`; exact 40-F relationship and 6-K source retained; direct 17 unchanged |
 | 3C. LLM shadow pilot for incomplete statements | queued after 3B | extraction developer | retained real filings; candidates stored but dashboard unchanged; failures named |
 | 4. Full derive/export/regression/audit | committed (records commit) | manager | engine 184; 6,979 rows; 112 intended disclosure changes; audits zero wrong |
 

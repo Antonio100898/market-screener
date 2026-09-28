@@ -7,6 +7,34 @@ from decimal import Decimal
 from screener import audit, coverage
 
 
+def test_filing_audit_opens_exact_incorporated_source_not_annual_wrapper(monkeypatch):
+    requested = []
+
+    class Edgar:
+        def _get_text(self, url):
+            requested.append(url)
+            return "statement"
+
+    monkeypatch.setattr(audit.statements, "find", lambda summary, kind: "R1.htm")
+    monkeypatch.setattr(audit.statements, "lines", lambda document: [("Assets", [10])])
+    monkeypatch.setattr(audit.statements, "columns", lambda document: [date(2025, 12, 31)])
+    monkeypatch.setattr(audit.statements, "elements", lambda document: {})
+    row = {
+        "cik": "0000000123",
+        "sources": {"total_assets": {
+            "accn": "0000000123-26-000009",
+            "annual_accn": "0000000123-26-000010",
+            "end": "2025-12-31",
+        }},
+    }
+
+    audit._read_statement(row, Edgar(), "balance_sheet")
+
+    assert requested
+    assert all("000000012326000009" in url for url in requested)
+    assert all("000000012326000010" not in url for url in requested)
+
+
 def test_audit_cli_can_validate_a_candidate_without_replacing_the_ui_payload(
         tmp_path, monkeypatch):
     dashboard = tmp_path / "candidate.json"
