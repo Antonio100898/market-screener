@@ -1,0 +1,1512 @@
+{
+  "all_selected_anchors_reproduced": true,
+  "all_source_hashes_preserved": true,
+  "companies": [
+    {
+      "cik": "0001561861",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64823",
+          "field": "Assets",
+          "start": null,
+          "unit": "USD",
+          "value": "7193091000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64800",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "1979596000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64898",
+          "field": "Equity",
+          "start": null,
+          "unit": "USD",
+          "value": "-592216000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64901",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "7193091000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64868",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "7785307000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64847",
+          "field": "LiabilitiesCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "3095938000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-65207",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "913081000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64993",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "351861000"
+        }
+      ],
+      "source_accession": "0001193125-26-197494",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "3ff95b8a90d77891c06f3afef1e8a21fbb95a3cf9cf2df79f8564ab253052764"
+        },
+        "instance": {
+          "document": "d101275d20f_htm.xml",
+          "sha256": "3e6614e5acfdb677750d9189e9aac2cdd1417c212aa751681b22e84caee43b19"
+        },
+        "presentation": {
+          "document": "ck0001561861-20251231.xsd",
+          "sha256": "30f70090d1860858457af1d381235756fc3109bdb8a87f1c50274e2810217479"
+        },
+        "primary_document": {
+          "document": "d101275d20f.htm",
+          "sha256": "b842756f7ce62b0ae1bd2cf14d6fc3373c61297c0a74934f020493332415326e"
+        },
+        "schema": {
+          "document": "ck0001561861-20251231.xsd",
+          "sha256": "30f70090d1860858457af1d381235756fc3109bdb8a87f1c50274e2810217479"
+        }
+      },
+      "standard_fact_count": 1876,
+      "ticker": "AERO"
+    },
+    {
+      "cik": "0002020932",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_Kq8oQtOdJEKSajtT653fuw_19_4",
+          "field": "Assets",
+          "start": null,
+          "unit": "EUR",
+          "value": "153706000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_4ptGTCYp40itaHFAG8LXVQ_18_4",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "EUR",
+          "value": "121237000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_s-IPXjQDcUiOFbHHMQcLQQ_27_19",
+          "field": "Equity",
+          "start": null,
+          "unit": "EUR",
+          "value": "130902000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_GkF7V0nvcEWjTnQeUtJ5qw_45_4",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "EUR",
+          "value": "153706000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_GebzYRQhpUatPGuLsYjqSw_43_4",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "EUR",
+          "value": "22804000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_vNqrlaVrtUSQOwWqK7WBjw_42_4",
+          "field": "LiabilitiesCurrent",
+          "start": null,
+          "unit": "EUR",
+          "value": "18589000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_7j30cb0My0qiLAucf8QMbg_27_2",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-01-01",
+          "unit": "EUR",
+          "value": "-51741000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_8WhjWbkNEk-q-_mRg4cziA_3_2",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "EUR",
+          "value": "-62547000"
+        }
+      ],
+      "source_accession": "0001104659-26-047872",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "d44c56e104a0f96013ea356c71f3da9aeaf4a1d258d6a0c55ad2e082233538e6"
+        },
+        "instance": {
+          "document": "agmb-20251231x20f_htm.xml",
+          "sha256": "fd99a0169601beddab5f334d4a556f75258f172dde3f0c17dd91f7161dc8fb30"
+        },
+        "presentation": {
+          "document": "agmb-20251231_pre.xml",
+          "sha256": "abe0c7211e89e044c9131d9a4fbbc994b7a56ff4a900e2b98e637aecae7ed314"
+        },
+        "primary_document": {
+          "document": "agmb-20251231x20f.htm",
+          "sha256": "60fe7a656a74cd290164610d88792e0fe9fdde426ed2f78f56f6fd599ace63b3"
+        },
+        "schema": {
+          "document": "agmb-20251231.xsd",
+          "sha256": "98db45d84288399a77b69bf62e4990c7395b648d082a11e208d9fdae21aeaacb"
+        }
+      },
+      "standard_fact_count": 865,
+      "ticker": "AGMB"
+    },
+    {
+      "cik": "0001304409",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000117",
+          "field": "Assets",
+          "start": null,
+          "unit": "USD",
+          "value": "9675535"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000093",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "5585821"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000177",
+          "field": "Equity",
+          "start": null,
+          "unit": "USD",
+          "value": "8303566"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000181",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "9675535"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000157",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "1371969"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000141",
+          "field": "LiabilitiesCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "1371969"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000431",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "-1706804"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000225",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "-135214"
+        }
+      ],
+      "source_accession": "0001683168-26-002801",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "5ea0f1f6502dbe2dc96ad0d98f0116c4b946dae6109a4d846a958e77c29a233c"
+        },
+        "instance": {
+          "document": "athenagold_i20f-123125_htm.xml",
+          "sha256": "7bfb3b852ebe383e948d22690a47dbff5cd94b833163d1b75163d7de43cbdff8"
+        },
+        "presentation": {
+          "document": "ahnr-20251231_pre.xml",
+          "sha256": "e30724edb98c97e59fcd7407c8749a89aa0c58e1c668ba878cf7f67c32f9472e"
+        },
+        "primary_document": {
+          "document": "athenagold_i20f-123125.htm",
+          "sha256": "5b21db614e8dc5211217ea5e804641d0eb405b87c143ae12b52da8716abd77a6"
+        },
+        "schema": {
+          "document": "ahnr-20251231.xsd",
+          "sha256": "bc3fb4da28ccffca065cd9e6445bfb47fccfa3b45b792deaf1e5e8f0aafaee59"
+        }
+      },
+      "standard_fact_count": 552,
+      "ticker": "AHNRF"
+    },
+    {
+      "cik": "0002025774",
+      "selected_anchors_checked": [
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000124",
+          "field": "Assets",
+          "start": null,
+          "unit": "USD",
+          "value": "6969390"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000121",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "1974923"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000151",
+          "field": "Equity",
+          "start": null,
+          "unit": "USD",
+          "value": "-3230001"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000199",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "6969390"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000196",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "10199391"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000193",
+          "field": "LiabilitiesCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "5476117"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000728",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-04-01",
+          "unit": "USD",
+          "value": "-2575649"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000282",
+          "field": "NetIncomeLoss",
+          "start": "2025-04-01",
+          "unit": "USD",
+          "value": "-2008428"
+        }
+      ],
+      "source_accession": "0001493152-26-036364",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "9774fee61f10d377f43bf7aa8248bcac94e8f36cbeb367a4e1d8c0c93fa01f31"
+        },
+        "instance": {
+          "document": "form20-f_htm.xml",
+          "sha256": "25db8eb9392152f7f8ff94967591704281c6c55e9fd423f2a9289f870e2d16a5"
+        },
+        "presentation": {
+          "document": "alps-20260331_pre.xml",
+          "sha256": "79d459cde53df5bf33f8ecadf1f5b579b8d76d807e496e8c2a557d2707f9bc20"
+        },
+        "primary_document": {
+          "document": "form20-f.htm",
+          "sha256": "5d29de90aa410a3b8adf1ed8010b54453b8b008aa6afefb85de6d0113f9941a7"
+        },
+        "schema": {
+          "document": "alps-20260331.xsd",
+          "sha256": "c9f2d9a64131ec71301bf61651a7360f0b0c7e135d7296be6ee302723dea4e60"
+        }
+      },
+      "standard_fact_count": 946,
+      "ticker": "ALPS"
+    },
+    {
+      "cik": "0001468642",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000362",
+          "field": "Assets",
+          "start": null,
+          "unit": "USD",
+          "value": "1608996000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000338",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "512486000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000440",
+          "field": "Equity",
+          "start": null,
+          "unit": "USD",
+          "value": "265737000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000443",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "1608996000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000395",
+          "field": "LiabilitiesCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "526254000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000175",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "-79340000"
+        }
+      ],
+      "source_accession": "0001171843-26-002783",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "e86651c2d477db1063f8ca26c28eae3985f51c3c84e65f1487930e016dbf3e88"
+        },
+        "instance": {
+          "document": "f20fa_033126_htm.xml",
+          "sha256": "c47f19478362c7a5e16b333414e5d972defd957d161c70a5bef132df19a6b9a9"
+        },
+        "presentation": {
+          "document": "cik0001468642-20251231_pre.xml",
+          "sha256": "fac29520672e2f2b3a7a147b733473d239833190af64e6f63240a9dbd3e735e0"
+        },
+        "primary_document": {
+          "document": "f20fa_033126.htm",
+          "sha256": "0c462ffc492f6201307862f36ce626df06a9acd8d24af95e3c86d4afe4dcad2a"
+        },
+        "schema": {
+          "document": "cik0001468642-20251231.xsd",
+          "sha256": "e349749978e5101e9294a26607b1da8abd968068d7ddf81b395dc11162ddd55b"
+        }
+      },
+      "standard_fact_count": 710,
+      "ticker": "AUGO"
+    },
+    {
+      "cik": "0002058601",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-34632",
+          "field": "Assets",
+          "start": null,
+          "unit": "BRL",
+          "value": "17482583000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-34669",
+          "field": "Equity",
+          "start": null,
+          "unit": "BRL",
+          "value": "783298000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-34671",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "BRL",
+          "value": "17482583000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-34659",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "BRL",
+          "value": "16699285000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-34933",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-01-01",
+          "unit": "BRL",
+          "value": "-424665000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-34721",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "BRL",
+          "value": "175073000"
+        }
+      ],
+      "source_accession": "0001213900-26-050426",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "950cc37cb4c47ab88ed881e38b88be919f6e8f3ff2e0e96d1ca6b7b77ff736e5"
+        },
+        "instance": {
+          "document": "ea0285533-20f_brbibr_htm.xml",
+          "sha256": "f597c5ea828b51f45926dd650ec185120bb844690a8b7696cc0ea1cf70219693"
+        },
+        "presentation": {
+          "document": "brbi-20251231_pre.xml",
+          "sha256": "20597bc581903aae450b41501e309330f943a85cd299137ad75a388783a87833"
+        },
+        "primary_document": {
+          "document": "ea0285533-20f_brbibr.htm",
+          "sha256": "5c33b7ebc53ceeacc9492ee9a845924c5d3f84efd45846ae06da5322ffa5541d"
+        },
+        "schema": {
+          "document": "brbi-20251231.xsd",
+          "sha256": "55906fc69043380ba877459d5367eb5bb58e5ecf7dcd347949273dbb71426425"
+        }
+      },
+      "standard_fact_count": 784,
+      "ticker": "BRBI"
+    },
+    {
+      "cik": "0002058897",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "f-102",
+          "field": "Assets",
+          "start": null,
+          "unit": "COP",
+          "value": "379752380000000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "f-146",
+          "field": "Equity",
+          "start": null,
+          "unit": "COP",
+          "value": "40995634000000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "f-148",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "COP",
+          "value": "379752380000000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "f-128",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "COP",
+          "value": "338756746000000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "f-683",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-01-01",
+          "unit": "COP",
+          "value": "12258945000000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "f-249",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "COP",
+          "value": "3820634000000"
+        }
+      ],
+      "source_accession": "0002058897-26-000125",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "0b41d58b30d2282f237bf03f8a39ffc2509c7e82902755bafc3d30f587aeadb6"
+        },
+        "instance": {
+          "document": "cib-20251231_htm.xml",
+          "sha256": "9ed4fa706e5792f1472c0f27ca7621013c7f79e52216ae434d2af1d731da2df0"
+        },
+        "presentation": {
+          "document": "cib-20251231_pre.xml",
+          "sha256": "1bd17df80f868f32a02164e75e422627b11df38ddd8ca9ffda70267b327966b5"
+        },
+        "primary_document": {
+          "document": "cib-20251231.htm",
+          "sha256": "f05d92a8c53a451afc40d649fed70f0384d35cc8792f00f2752c9fcd43d7a271"
+        },
+        "schema": {
+          "document": "cib-20251231.xsd",
+          "sha256": "6d4225514b4b02c4901796b38e2414a037f711fe420580135c40c3363e7b6312"
+        }
+      },
+      "standard_fact_count": 5193,
+      "ticker": "CIB"
+    },
+    {
+      "cik": "0002039072",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000134",
+          "field": "Assets",
+          "start": null,
+          "unit": "EUR",
+          "value": "65140598"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000131",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "EUR",
+          "value": "140598"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000149",
+          "field": "Equity",
+          "start": null,
+          "unit": "EUR",
+          "value": "64144416"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000170",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "EUR",
+          "value": "65140598"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000167",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "EUR",
+          "value": "996182"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000232",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-01-01",
+          "unit": "EUR",
+          "value": "-323"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000085",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "EUR",
+          "value": "-823977"
+        }
+      ],
+      "source_accession": "0001683168-26-003530",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "217c09f7b95ca606139ab30ea1af216c677b60e5abe7368d5373ebb52b6f60a2"
+        },
+        "instance": {
+          "document": "davion_i20fa1_htm.xml",
+          "sha256": "738c15c8fe1cd13e5ff3f663b59264162b1d8e840b9343d4c3ab52c86b37e98c"
+        },
+        "presentation": {
+          "document": "davi-20251231_pre.xml",
+          "sha256": "b3011f52a60d251fbb362ca6325957c7ca9bc81b6b15b12fd58d7c7e2944ca70"
+        },
+        "primary_document": {
+          "document": "davion_i20fa1.htm",
+          "sha256": "26ca942654ccbf2a780e9c08bf162d6607c224baf2c3ba48d60775d6d7e1139f"
+        },
+        "schema": {
+          "document": "davi-20251231.xsd",
+          "sha256": "d995c00685e30cb25bceae4fb8925bb17703091af8bce526d85d83bf18e6e582"
+        }
+      },
+      "standard_fact_count": 163,
+      "ticker": "DAVI"
+    },
+    {
+      "cik": "0001926293",
+      "selected_anchors_checked": [
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000110",
+          "field": "Assets",
+          "start": null,
+          "unit": "HKD",
+          "value": "65075200"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000089",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "HKD",
+          "value": "42914212"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000164",
+          "field": "Equity",
+          "start": null,
+          "unit": "HKD",
+          "value": "54543914"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000167",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "HKD",
+          "value": "65075200"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000146",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "HKD",
+          "value": "10531286"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000137",
+          "field": "LiabilitiesCurrent",
+          "start": null,
+          "unit": "HKD",
+          "value": "10162665"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000426",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-04-01",
+          "unit": "HKD",
+          "value": "-15523724"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "Fact000206",
+          "field": "NetIncomeLoss",
+          "start": "2025-04-01",
+          "unit": "HKD",
+          "value": "-13113273"
+        }
+      ],
+      "source_accession": "0001493152-26-038530",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "da6df23104b386f737e555cd3a9e2b123fd1ff56784e746ebe5aa6f3e17f302c"
+        },
+        "instance": {
+          "document": "form20-f_htm.xml",
+          "sha256": "33970d63e6696f2d590136bde34ac70543cd71acf9dc4db53fa02104c8730017"
+        },
+        "presentation": {
+          "document": "gcdt-20260331_pre.xml",
+          "sha256": "f6fea6d2c62612a5bbc0a8172a0d6fc11815dee2a44cd8ff06fd80646806181f"
+        },
+        "primary_document": {
+          "document": "form20-f.htm",
+          "sha256": "4eb0a26e230cedad453c5578c8894f793c1e1af38e687b62b8b7d128301743f2"
+        },
+        "schema": {
+          "document": "gcdt-20260331.xsd",
+          "sha256": "d09c2d40b5dd3f1a1ee97a9cc23a18256c4ad4fa2a58f10b47a44258e35661b4"
+        }
+      },
+      "standard_fact_count": 561,
+      "ticker": "GCDT"
+    },
+    {
+      "cik": "0002039972",
+      "selected_anchors_checked": [
+        {
+          "end": "2026-06-30",
+          "fact_id": "Tc_YlqNjShJmUKLR0oTUC5dEg_16_4",
+          "field": "Assets",
+          "start": null,
+          "unit": "USD",
+          "value": "97279000"
+        },
+        {
+          "end": "2026-06-30",
+          "fact_id": "Tc_ebdCHcYRMEKG0G5FyICIUA_14_4",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "55854000"
+        },
+        {
+          "end": "2026-06-30",
+          "fact_id": "Tc_P5__mwy4E0ynaZCLLgjKaQ_34_4",
+          "field": "Equity",
+          "start": null,
+          "unit": "USD",
+          "value": "93633000"
+        },
+        {
+          "end": "2026-06-30",
+          "fact_id": "Tc_Dif9ubTVdkS1meae-ghhhw_23_4",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "3646000"
+        },
+        {
+          "end": "2026-06-30",
+          "fact_id": "Tc_OLgfa9flLEuO-7xortxUjw_21_4",
+          "field": "LiabilitiesCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "3646000"
+        },
+        {
+          "end": "2026-06-30",
+          "fact_id": "Tc_iCIocyOEoEKptEvANpq0Ag_15_2",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-07-01",
+          "unit": "USD",
+          "value": "-5977000"
+        },
+        {
+          "end": "2026-06-30",
+          "fact_id": "Tc_arjSzSd_h0i8upSbLEU-LA_5_2",
+          "field": "NetIncomeLoss",
+          "start": "2025-07-01",
+          "unit": "USD",
+          "value": "-10043000"
+        }
+      ],
+      "source_accession": "0001104659-26-108373",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "6904798c43676848c907bb6c11cfd64f0f7d5d26062456066abd5e5c6c2916b1"
+        },
+        "instance": {
+          "document": "gmtl-20260630x20f_htm.xml",
+          "sha256": "e70cd342462870a81ef2c5c956e1fd94b1f6069f1e3636ac3ac4830cb87b9664"
+        },
+        "presentation": {
+          "document": "gmtl-20260630_pre.xml",
+          "sha256": "c71b3283213e58e78e8a196c06e042c8a3fabb2266e0d542aa7db7923b71fb19"
+        },
+        "primary_document": {
+          "document": "gmtl-20260630x20f.htm",
+          "sha256": "3593e6671ed56ac5ad6d0a7e5fc7fb77638ddf67f120718d89515ce4f754479f"
+        },
+        "schema": {
+          "document": "gmtl-20260630.xsd",
+          "sha256": "9fbf12d7e675b1c2c7c80ced7cb644586376def25396980cb5951e6fedaabec3"
+        }
+      },
+      "standard_fact_count": 461,
+      "ticker": "GMTL"
+    },
+    {
+      "cik": "0002054507",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-23630",
+          "field": "Assets",
+          "start": null,
+          "unit": "USD",
+          "value": "152301852"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-23628",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "128373926"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-23640",
+          "field": "Equity",
+          "start": null,
+          "unit": "USD",
+          "value": "17111736"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-23657",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "152301852"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-23655",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "135190116"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-23653",
+          "field": "LiabilitiesCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "126800431"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-23780",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "-42242451"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-23696",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "-26713293"
+        }
+      ],
+      "source_accession": "0001213900-26-049771",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "4b622d80497ac6fbb6736c840ed1856cd5b56f867584e551f5d29189840a7eb7"
+        },
+        "instance": {
+          "document": "ea0286666-20f_hotel101_htm.xml",
+          "sha256": "8f3b4244509db2998c9e5184fd0ddfe640ec46823123fe0ac7dc4ab77d40be60"
+        },
+        "presentation": {
+          "document": "hbnb-20251231_pre.xml",
+          "sha256": "0ddce8062e4b81a2c2f0a42ad14f6a8f88a498bb55e44593c0c9fa505dff9e2c"
+        },
+        "primary_document": {
+          "document": "ea0286666-20f_hotel101.htm",
+          "sha256": "da03c9474388fbfceefc3b3d2e015590182d76c77cbae8e62cfb6577d1d9bd6d"
+        },
+        "schema": {
+          "document": "hbnb-20251231.xsd",
+          "sha256": "f8df8ae2daed45031efb47f33d9410ff7387580a14c30850c1945f4351d1b65d"
+        }
+      },
+      "standard_fact_count": 492,
+      "ticker": "HBNB"
+    },
+    {
+      "cik": "0002000756",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000170",
+          "field": "Assets",
+          "start": null,
+          "unit": "KRW",
+          "value": "125733036000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000119",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "KRW",
+          "value": "26195799000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000317",
+          "field": "Equity",
+          "start": null,
+          "unit": "KRW",
+          "value": "-21607996000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000320",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "KRW",
+          "value": "125733036000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000290",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "KRW",
+          "value": "147341032000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000248",
+          "field": "LiabilitiesCurrent",
+          "start": null,
+          "unit": "KRW",
+          "value": "108451267000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000754",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-01-01",
+          "unit": "KRW",
+          "value": "-9773204000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact002007",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "KRW",
+          "value": "-205742925000"
+        }
+      ],
+      "source_accession": "0001829126-26-005357",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "b8f33021042d5b16d01c86c44c4a907209d6bafc7c7809403816975a70988d32"
+        },
+        "instance": {
+          "document": "kwavemedia_20f_htm.xml",
+          "sha256": "d0b9b673f5d5dbecb69a593ccf2aaaf46890731f6252b53e106529180b5bb5c0"
+        },
+        "presentation": {
+          "document": "kwm-20251231_pre.xml",
+          "sha256": "d5bbf0b20571724d93bf3e7c11db708c93e6752288a6ecce2182bb2070f54ae2"
+        },
+        "primary_document": {
+          "document": "kwavemedia_20f.htm",
+          "sha256": "872bb5de611764437a1b7332d40c0038849817a1089cc3e5668789d06b0ecfbf"
+        },
+        "schema": {
+          "document": "kwm-20251231.xsd",
+          "sha256": "296a3ae6c07efffb31e0c01b01a139fc523d39faa0925ba5f3cdd7967b733f3f"
+        }
+      },
+      "standard_fact_count": 1368,
+      "ticker": "NXAT"
+    },
+    {
+      "cik": "0002080845",
+      "selected_anchors_checked": [
+        {
+          "end": "2026-03-31",
+          "fact_id": "F_a715ed9b-4e4c-4808-a4d3-8935d2ef0ea6",
+          "field": "Assets",
+          "start": null,
+          "unit": "JPY",
+          "value": "5176012000000"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "F_3c008f0a-cde9-40f3-84f7-4315d2077935",
+          "field": "Equity",
+          "start": null,
+          "unit": "JPY",
+          "value": "430761000000"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "F_129bedf9-cd42-4d63-bc30-560b613d2c7b",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "JPY",
+          "value": "5176012000000"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "F_78e8c9e1-bb8d-4857-b014-fc904416a4b4",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "JPY",
+          "value": "4745251000000"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "F_0f776d6e-b849-496f-b2d0-1c7092c3a417",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-04-01",
+          "unit": "JPY",
+          "value": "375297000000"
+        },
+        {
+          "end": "2026-03-31",
+          "fact_id": "F_4be36ff5-8b3d-4e9f-94b7-2c02f20151f3",
+          "field": "NetIncomeLoss",
+          "start": "2025-04-01",
+          "unit": "JPY",
+          "value": "115034000000"
+        }
+      ],
+      "source_accession": "0001193125-26-289382",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "7a160405b925c7990cd5c48bfbba114df55a5e7851a0aa2799059a66984c5125"
+        },
+        "instance": {
+          "document": "payp-20260331_htm.xml",
+          "sha256": "7d700a1b77a6e12e8986341c791970af1ddb085e15c451d979779d90c9b35ecc"
+        },
+        "presentation": {
+          "document": "payp-20260331.xsd",
+          "sha256": "b92faf082921715e2c5381a3b4717771b51f86ef57d3a957116ea972e65a73c9"
+        },
+        "primary_document": {
+          "document": "payp-20260331.htm",
+          "sha256": "cfb4334a0390b866e7ed7054e09cd5c51250a7b5cd19e28a52f1cfcf7c8d6936"
+        },
+        "schema": {
+          "document": "payp-20260331.xsd",
+          "sha256": "b92faf082921715e2c5381a3b4717771b51f86ef57d3a957116ea972e65a73c9"
+        }
+      },
+      "standard_fact_count": 1963,
+      "ticker": "PAYP"
+    },
+    {
+      "cik": "0001841644",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64256",
+          "field": "Assets",
+          "start": null,
+          "unit": "BRL",
+          "value": "41986108000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64281",
+          "field": "Equity",
+          "start": null,
+          "unit": "BRL",
+          "value": "3889914000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64292",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "BRL",
+          "value": "41986108000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64279",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "BRL",
+          "value": "38096194000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64567",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-01-01",
+          "unit": "BRL",
+          "value": "-3739343000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "ixv-64351",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "BRL",
+          "value": "-1091487000"
+        }
+      ],
+      "source_accession": "0001213900-26-049950",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "c64f6b03ea7d4be5a0c2f51338bfee35494cd77ecff3e018fb9b53f3f927f5e5"
+        },
+        "instance": {
+          "document": "ea0285441-20f_picsnv_htm.xml",
+          "sha256": "15714a795bf65038b7c3333231bfa2947974521e9f3bf1aa06202e3dafbd5b21"
+        },
+        "presentation": {
+          "document": "pics-20251231_pre.xml",
+          "sha256": "5be15f700071aa6670b956f7cc0b9edcfd84bd973e1283380e25946c03352e4c"
+        },
+        "primary_document": {
+          "document": "ea0285441-20f_picsnv.htm",
+          "sha256": "47b0e5fdc06382462c040ff6d4dab0b3cf5c3cf2bb4a9542d3645317b38da308"
+        },
+        "schema": {
+          "document": "pics-20251231.xsd",
+          "sha256": "54873dd9a255197a77964f85f7be91167762abc8f04504fd9fb4d48973aa2a01"
+        }
+      },
+      "standard_fact_count": 1312,
+      "ticker": "PICS"
+    },
+    {
+      "cik": "0002087398",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_TZrJ0nJNmkehH_4_BXWt7Q_13_5",
+          "field": "Assets",
+          "start": null,
+          "unit": "USD",
+          "value": "32948313"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_Y9GCvBTUqEWfbdSXa66e6w_9_5",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "18853498"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_paCqiP9m-UOG9GT4uAq6NA_24_5",
+          "field": "Equity",
+          "start": null,
+          "unit": "USD",
+          "value": "31185540"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_iu2GEPmzyk6OAn4rgRjLJg_25_5",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "32948313"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_Rg2i58r1LkKh2iFDFah2Aw_19_5",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "1762773"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_WoazWysXKkapPjhEZXww2w_18_5",
+          "field": "LiabilitiesCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "1762773"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_D9yjnlELR0qa12jQ9LQSRg_16_5",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "-3233596"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_HEmCn_zOHE6QgukszKPolg_14_5",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "1115351"
+        }
+      ],
+      "source_accession": "0001104659-26-049527",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "4e8138736ed95073d6260419574585b7fd032684daf278b910e6475d1f5066fc"
+        },
+        "instance": {
+          "document": "tmcr-20251231x20f_htm.xml",
+          "sha256": "eedfd8c445bd975ad34e1913833374cdeb1d742c6dd7c5df3348486745541897"
+        },
+        "presentation": {
+          "document": "tmcr-20251231_pre.xml",
+          "sha256": "9462a1685981f3e812d3423df8f3a6a06923d82f90e1f268786498c8b008dd77"
+        },
+        "primary_document": {
+          "document": "tmcr-20251231x20f.htm",
+          "sha256": "7d1afe072baf56853c459f9ec7f5c6c02682aa0d3000685b47c505cda4826837"
+        },
+        "schema": {
+          "document": "tmcr-20251231.xsd",
+          "sha256": "cc3449175fbc707c432484476652f4e4e9d9bd11e068535248dc12d8f2e9fd7f"
+        }
+      },
+      "standard_fact_count": 266,
+      "ticker": "TMCR"
+    },
+    {
+      "cik": "0002080073",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_mjK2arcUpUCbJ87Amqxfjw_15_4",
+          "field": "Assets",
+          "start": null,
+          "unit": "USD",
+          "value": "418008000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_VC8SQE-IUU-zQCG668H0Pg_9_4",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "24216000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_4NUq8LWL8ki1rfa39psEOQ_21_14",
+          "field": "Equity",
+          "start": null,
+          "unit": "USD",
+          "value": "233958000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_nMsqw1bDx06HdpOa6EJkyg_35_4",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "418008000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_Buxx3mxqPkKSFPChZzruwg_27_4",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "184050000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_YXBTU40Zk0iLXwb-PkWtFA_23_4",
+          "field": "LiabilitiesCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "32878000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_dmvoGGBDWkSnGBtexxNaLQ_19_4",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "16945000"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Tc_8uA5Bxts_UGfE5E4he-L5A_25_4",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "20332000"
+        }
+      ],
+      "source_accession": "0001104659-26-052847",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "563e396f1e96b84d49f075b4cc6fcde8e82e570e4e4dfb8b9fd1e007c2b5879d"
+        },
+        "instance": {
+          "document": "tmb-20251231x20f_htm.xml",
+          "sha256": "428b4db0f14e6075bbed9bee5b74b755c024a4049ab40d43f6e9beafafbefec8"
+        },
+        "presentation": {
+          "document": "tmb-20251231_pre.xml",
+          "sha256": "b6e6a5b85ba1d611f3b2dd2b885fa60cf12bf5b0505c26ead0acb86e7aa2796a"
+        },
+        "primary_document": {
+          "document": "tmb-20251231x20f.htm",
+          "sha256": "2d74bf0cd11bc1c93f3c90ddce4465a3c6f6b34bdd3cc5cf5e1b2cf313df9a1a"
+        },
+        "schema": {
+          "document": "tmb-20251231.xsd",
+          "sha256": "0992088e4c21b4c4b50f1f749481eb1c2643b987a559c3de84bd5d431c989ef2"
+        }
+      },
+      "standard_fact_count": 417,
+      "ticker": "VMET"
+    },
+    {
+      "cik": "0001875016",
+      "selected_anchors_checked": [
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000148",
+          "field": "Assets",
+          "start": null,
+          "unit": "USD",
+          "value": "7157176"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000115",
+          "field": "AssetsCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "5609483"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000530",
+          "field": "Equity",
+          "start": null,
+          "unit": "USD",
+          "value": "-6777635"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000229",
+          "field": "EquityAndLiabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "7157176"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000199",
+          "field": "Liabilities",
+          "start": null,
+          "unit": "USD",
+          "value": "13934811"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000184",
+          "field": "LiabilitiesCurrent",
+          "start": null,
+          "unit": "USD",
+          "value": "12902986"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000656",
+          "field": "NetCashProvidedByUsedInOperatingActivities",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "-3159037"
+        },
+        {
+          "end": "2025-12-31",
+          "fact_id": "Fact000308",
+          "field": "NetIncomeLoss",
+          "start": "2025-01-01",
+          "unit": "USD",
+          "value": "-20173616"
+        }
+      ],
+      "source_accession": "0001493152-26-019802",
+      "source_hashes": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "26720735692bae72d68ac0a036ab560a7f82623c153b79d65fbf85e3cf0372c4"
+        },
+        "instance": {
+          "document": "form20-f_htm.xml",
+          "sha256": "7939c867fad2ace84f96e3154515c2b76c8f187906aaeea1b9ed60eddafadd81"
+        },
+        "presentation": {
+          "document": "ymat-20251231_pre.xml",
+          "sha256": "4b5a64ac7985d6e5c2dc08cfc4d278b98342e8948075f2f03a8087f4b8e51793"
+        },
+        "primary_document": {
+          "document": "form20-f.htm",
+          "sha256": "ff8035265e2fb19e7db7d9f8eae2b59738368958e1b450ffd18ee5bdb8fd500b"
+        },
+        "schema": {
+          "document": "ymat-20251231.xsd",
+          "sha256": "5988dbab2450b80e60da456e717a99d842e834024689691a6249423dcc13e627"
+        }
+      },
+      "standard_fact_count": 846,
+      "ticker": "YMAT"
+    }
+  ],
+  "company_count": 17,
+  "schema": "raw_sec_inline_parser_v1",
+  "selected_anchor_count": 124,
+  "total_standard_fact_count": 18775
+}
