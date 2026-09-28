@@ -1,0 +1,71 @@
+start_utc=2026-09-28T17:46:32Z
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   393Gi    22Gi    95%    8.9M  230M    4%   /System/Volumes/Data
+/dev/disk3s5   460Gi   393Gi    22Gi    95%    8.9M  230M    4%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 51%
+cd api && .venv/bin/python -m screener.regress --all --baseline /tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json
+  6981 companies queued for recomputation
+  250/6981 recomputed
+  500/6981 recomputed
+  750/6981 recomputed
+  1000/6981 recomputed
+  1250/6981 recomputed
+  1500/6981 recomputed
+  1750/6981 recomputed
+  2000/6981 recomputed
+  2250/6981 recomputed
+  2500/6981 recomputed
+  2750/6981 recomputed
+  3000/6981 recomputed
+  3250/6981 recomputed
+  3500/6981 recomputed
+  3750/6981 recomputed
+  4000/6981 recomputed
+  4250/6981 recomputed
+  4500/6981 recomputed
+  4750/6981 recomputed
+  5000/6981 recomputed
+  5250/6981 recomputed
+  5500/6981 recomputed
+  5750/6981 recomputed
+  6000/6981 recomputed
+  6250/6981 recomputed
+  6500/6981 recomputed
+  6750/6981 recomputed
+  250/6981 compared
+  500/6981 compared
+  750/6981 compared
+  1000/6981 compared
+  1250/6981 compared
+  1500/6981 compared
+  1750/6981 compared
+  2000/6981 compared
+  2250/6981 compared
+  2500/6981 compared
+  2750/6981 compared
+  3000/6981 compared
+  3250/6981 compared
+  3500/6981 compared
+  3750/6981 compared
+  4000/6981 compared
+  4250/6981 compared
+  4500/6981 compared
+  4750/6981 compared
+  5000/6981 compared
+  5250/6981 compared
+  5500/6981 compared
+  5750/6981 compared
+  6000/6981 compared
+  6250/6981 compared
+  6500/6981 compared
+  6750/6981 compared
+
+no field moved across 6981 companies
+end_utc=2026-09-28T18:01:13Z
+exit_code=0
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   400Gi    14Gi    97%    9.1M  148M    6%   /System/Volumes/Data
+/dev/disk3s5   460Gi   400Gi    14Gi    97%    9.1M  148M    6%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 44%

@@ -1,0 +1,1563 @@
+start_utc=2026-09-28T18:23:51Z
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   403Gi    10Gi    98%    9.2M  107M    8%   /System/Volumes/Data
+/dev/disk3s5   460Gi   403Gi    10Gi    98%    9.2M  107M    8%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 47%
+{
+  "added_ciks": [
+    "0000016868",
+    "0001468642",
+    "0001561861",
+    "0001841644",
+    "0001875016",
+    "0001926293",
+    "0002020932",
+    "0002025774",
+    "0002039072",
+    "0002039972",
+    "0002054507",
+    "0002080073",
+    "0002080845",
+    "0002087398"
+  ],
+  "added_matches_expected": true,
+  "added_tickers": [
+    "AERO",
+    "AGMB",
+    "ALPS",
+    "AUGO",
+    "CNI",
+    "DAVI",
+    "GCDT",
+    "GMTL",
+    "HBNB",
+    "PAYP",
+    "PICS",
+    "TMCR",
+    "VMET",
+    "YMAT"
+  ],
+  "baseline": {
+    "engine_version": 185,
+    "generated": "2026-09-28T12:50:49+00:00",
+    "rows": 6981,
+    "unique_ciks": 6981,
+    "unique_tickers": 6981
+  },
+  "common_changed_path_count": 56,
+  "common_changed_paths": {
+    "alignment.defensive.passed": {
+      "count": 17,
+      "examples": [
+        [
+          "GAP",
+          "2",
+          "1"
+        ],
+        [
+          "RYN",
+          "2",
+          "3"
+        ],
+        [
+          "PNRG",
+          "2",
+          "3"
+        ],
+        [
+          "MXC",
+          "0",
+          "1"
+        ],
+        [
+          "WFC",
+          "3",
+          "4"
+        ],
+        [
+          "SEB",
+          "4",
+          "3"
+        ]
+      ]
+    },
+    "alignment.defensive.tests.valuation": {
+      "count": 17,
+      "examples": [
+        [
+          "GAP",
+          "'PASS'",
+          "'FAIL'"
+        ],
+        [
+          "RYN",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "PNRG",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "MXC",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "WFC",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "SEB",
+          "'PASS'",
+          "'FAIL'"
+        ]
+      ]
+    },
+    "alignment.enterprising.passed": {
+      "count": 13,
+      "examples": [
+        [
+          "THC",
+          "1",
+          "2"
+        ],
+        [
+          "VLY",
+          "2",
+          "3"
+        ],
+        [
+          "CCL",
+          "2",
+          "1"
+        ],
+        [
+          "FNWD",
+          "2",
+          "3"
+        ],
+        [
+          "GPI",
+          "2",
+          "3"
+        ],
+        [
+          "WNEB",
+          "3",
+          "2"
+        ]
+      ]
+    },
+    "alignment.enterprising.tests.tangible_assets": {
+      "count": 7,
+      "examples": [
+        [
+          "VLY",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "FNWD",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "WNEB",
+          "'PASS'",
+          "'FAIL'"
+        ],
+        [
+          "QTRX",
+          "'PASS'",
+          "'FAIL'"
+        ],
+        [
+          "BIVI",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "MNTR",
+          "'PASS'",
+          "'FAIL'"
+        ]
+      ]
+    },
+    "alignment.enterprising.tests.valuation": {
+      "count": 7,
+      "examples": [
+        [
+          "THC",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "CCL",
+          "'PASS'",
+          "'FAIL'"
+        ],
+        [
+          "ELLO",
+          "'FAIL'",
+          "'INSUFFICIENT_DATA'"
+        ],
+        [
+          "GPI",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "AR",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "ODD",
+          "'FAIL'",
+          "'PASS'"
+        ]
+      ]
+    },
+    "alignment.enterprising.unknown": {
+      "count": 1,
+      "examples": [
+        [
+          "ELLO",
+          "2",
+          "3"
+        ]
+      ]
+    },
+    "annual_ratios.2022.pb": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "1.66",
+          "0.21"
+        ]
+      ]
+    },
+    "annual_ratios.2022.pncav": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "5.52",
+          "0.69"
+        ]
+      ]
+    },
+    "annual_ratios.2022.price": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "4.08",
+          "0.51"
+        ]
+      ]
+    },
+    "annual_ratios.2022.ptbv": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "4.24",
+          "0.53"
+        ]
+      ]
+    },
+    "annual_ratios.2023.pb": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "4.42",
+          "0.55"
+        ]
+      ]
+    },
+    "annual_ratios.2023.price": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "3.56",
+          "0.445"
+        ]
+      ]
+    },
+    "annual_ratios.2024.pb": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "1.47",
+          "0.18"
+        ]
+      ]
+    },
+    "annual_ratios.2024.price": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "1.02",
+          "0.1275"
+        ]
+      ]
+    },
+    "annual_ratios.2024.ptbv": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "87.93",
+          "10.99"
+        ]
+      ]
+    },
+    "annual_ratios.2025.pb": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "1.57",
+          "0.2"
+        ]
+      ]
+    },
+    "annual_ratios.2025.pncav": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "4.55",
+          "0.57"
+        ]
+      ]
+    },
+    "annual_ratios.2025.price": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "1.35",
+          "0.1688"
+        ]
+      ]
+    },
+    "annual_ratios.2025.ptbv": {
+      "count": 1,
+      "examples": [
+        [
+          "BTLN",
+          "4.4",
+          "0.55"
+        ]
+      ]
+    },
+    "asset_quality.market_cap_to_net_cash": {
+      "count": 238,
+      "examples": [
+        [
+          "AMD",
+          "113.21309510598158",
+          "109.6189279769171"
+        ],
+        [
+          "SWKS",
+          "43.8157624875951",
+          "43.78589149851141"
+        ],
+        [
+          "AMAT",
+          "254.73927516778522",
+          "258.07093959731543"
+        ],
+        [
+          "BSET",
+          "2.9753766156161805",
+          "2.9908394590780807"
+        ],
+        [
+          "BIO",
+          "25.169090909090908",
+          "25.177678787878786"
+        ],
+        [
+          "COHU",
+          "17.07162377578662",
+          "17.381063346530528"
+        ]
+      ]
+    },
+    "context_notes": {
+      "count": 67,
+      "examples": [
+        [
+          "AAL",
+          "[{'kind': 'Cash conversion', 'text': 'Operating cash flow over FY2023\u2013FY2025 is 612% of reported net income \u2014 depreciation-heavy or working-capital-driven, so the earnings multiple understates what the business collects.'}, {'kind': 'Int...",
+          "[{'kind': 'Cash conversion', 'text': 'Operating cash flow over FY2023\u2013FY2025 is 612% of reported net income \u2014 depreciation-heavy or working-capital-driven, so the earnings multiple understates what the business collects.'}, {'kind': 'Int..."
+        ],
+        [
+          "LUV",
+          "[{'kind': 'Cash conversion', 'text': 'Operating cash flow over FY2023\u2013FY2025 is 399% of reported net income \u2014 depreciation-heavy or working-capital-driven, so the earnings multiple understates what the business collects.'}, {'kind': 'Buy...",
+          "[{'kind': 'Cash conversion', 'text': 'Operating cash flow over FY2023\u2013FY2025 is 399% of reported net income \u2014 depreciation-heavy or working-capital-driven, so the earnings multiple understates what the business collects.'}, {'kind': 'Buy..."
+        ],
+        [
+          "SRCO",
+          "[{'kind': 'Receivables', 'text': 'Receivables grew 1318% between FY2021 and FY2026 while sales grew 33%, so it now stands at 2% of sales against 0% then. Revenue booked and not yet collected is revenue the customer has not confirmed with...",
+          "[{'kind': 'Receivables', 'text': 'Receivables grew 1318% between FY2021 and FY2026 while sales grew 33%, so it now stands at 2% of sales against 0% then. Revenue booked and not yet collected is revenue the customer has not confirmed with..."
+        ],
+        [
+          "CREG",
+          "[{'kind': 'Peer efficiency', 'text': \"Operating margin of -1148.8% against a median of 1.7% across 116 companies in the same industry. Graham's sixth Penn Central signal was exactly this: an operating gap against comparable businesses th...",
+          "[{'kind': 'Peer efficiency', 'text': \"Operating margin of -1148.8% against a median of 1.8% across 117 companies in the same industry. Graham's sixth Penn Central signal was exactly this: an operating gap against comparable businesses th..."
+        ],
+        [
+          "ALK",
+          "[{'kind': 'Cash conversion', 'text': 'Operating cash flow over FY2023\u2013FY2025 is 515% of reported net income \u2014 depreciation-heavy or working-capital-driven, so the earnings multiple understates what the business collects.'}, {'kind': 'Int...",
+          "[{'kind': 'Cash conversion', 'text': 'Operating cash flow over FY2023\u2013FY2025 is 515% of reported net income \u2014 depreciation-heavy or working-capital-driven, so the earnings multiple understates what the business collects.'}, {'kind': 'Int..."
+        ],
+        [
+          "INVU",
+          "[{'kind': 'Debt discount', 'text': 'FY2020 interest of 0M includes 1M of amortised debt discount, 3043% of the bill. Debt sold below face value costs more than its coupon says, and the difference arrives as a charge rather than a payment...",
+          "[{'kind': 'Debt discount', 'text': 'FY2020 interest of 0M includes 1M of amortised debt discount, 3043% of the bill. Debt sold below face value costs more than its coupon says, and the difference arrives as a charge rather than a payment..."
+        ]
+      ]
+    },
+    "criteria[1].note": {
+      "count": 15,
+      "examples": [
+        [
+          "FRD",
+          "'newest earnings are 18 months older than this price, though it filed on 2026-08-06 \u2014 the earnings element it uses has gone stale, not the company'",
+          "'newest earnings are 1.5 years older than this price, though it filed on 2026-08-06 \u2014 the earnings element it uses has gone stale, not the company'"
+        ],
+        [
+          "MSB",
+          "'newest earnings are 1.6 years older than this price; the company appears to have stopped filing'",
+          "'newest earnings are 1.7 years older than this price; the company appears to have stopped filing'"
+        ],
+        [
+          "CFNB",
+          "'newest earnings are 9.2 years older than this price; the company appears to have stopped filing'",
+          "'newest earnings are 9.3 years older than this price; the company appears to have stopped filing'"
+        ],
+        [
+          "PTBS",
+          "'newest earnings are 14 years older than this price; the company appears to have stopped filing'",
+          "'newest earnings are 15 years older than this price; the company appears to have stopped filing'"
+        ],
+        [
+          "STRZ",
+          "'newest earnings are 18 months older than this price, though it filed on 2026-08-07 \u2014 the earnings element it uses has gone stale, not the company'",
+          "'newest earnings are 1.5 years older than this price, though it filed on 2026-08-07 \u2014 the earnings element it uses has gone stale, not the company'"
+        ],
+        [
+          "ELLO",
+          "'TTM EPS non-positive; P/E undefined'",
+          "'newest earnings are 15 months older than this price, though it filed on 2026-08-31 \u2014 the earnings element it uses has gone stale, not the company'"
+        ]
+      ]
+    },
+    "criteria[1].status": {
+      "count": 7,
+      "examples": [
+        [
+          "THC",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "CCL",
+          "'PASS'",
+          "'FAIL'"
+        ],
+        [
+          "ELLO",
+          "'FAIL'",
+          "'INSUFFICIENT_DATA'"
+        ],
+        [
+          "GPI",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "AR",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "ODD",
+          "'FAIL'",
+          "'PASS'"
+        ]
+      ]
+    },
+    "criteria[1].value": {
+      "count": 2474,
+      "examples": [
+        [
+          "AIR",
+          "23.8",
+          "23.92"
+        ],
+        [
+          "ABT",
+          "28.41",
+          "28.26"
+        ],
+        [
+          "ACU",
+          "26.37",
+          "26.67"
+        ],
+        [
+          "AMD",
+          "159.46",
+          "154.4"
+        ],
+        [
+          "AEM",
+          "20.99",
+          "20.82"
+        ],
+        [
+          "MATX",
+          "14.95",
+          "15.16"
+        ]
+      ]
+    },
+    "criteria[5].note": {
+      "count": 3,
+      "examples": [
+        [
+          "ASH",
+          "'yield of 241.98% is not meaningful against this price'",
+          "'yield of 241.49% is not meaningful against this price'"
+        ],
+        [
+          "BUR",
+          "'yield of 647.67% is not meaningful against this price'",
+          "'yield of 624.22% is not meaningful against this price'"
+        ],
+        [
+          "NLOP",
+          "'yield of 132.93% is not meaningful against this price'",
+          "'yield of 133.13% is not meaningful against this price'"
+        ]
+      ]
+    },
+    "criteria[5].value": {
+      "count": 921,
+      "examples": [
+        [
+          "ABT",
+          "2.48",
+          "2.5"
+        ],
+        [
+          "ACU",
+          "1.02",
+          "1.01"
+        ],
+        [
+          "ALX",
+          "7.28",
+          "7.23"
+        ],
+        [
+          "ALCO",
+          "0.52",
+          "0.51"
+        ],
+        [
+          "AEP",
+          "3.2",
+          "3.22"
+        ],
+        [
+          "AIG",
+          "2.69",
+          "2.73"
+        ]
+      ]
+    },
+    "criteria[7].note": {
+      "count": 12,
+      "examples": [
+        [
+          "CFNB",
+          "'balance sheet is 9.2 years older than this price'",
+          "'balance sheet is 9.3 years older than this price'"
+        ],
+        [
+          "PTBS",
+          "'balance sheet is 14 years older than this price'",
+          "'balance sheet is 15 years older than this price'"
+        ],
+        [
+          "ELLO",
+          "'missing: goodwill'",
+          "'balance sheet is 15 months older than this price'"
+        ],
+        [
+          "IX",
+          "'balance sheet is 14 years older than this price'",
+          "'balance sheet is 15 years older than this price'"
+        ],
+        [
+          "GGAL",
+          "'balance sheet is 18 months older than this price'",
+          "'balance sheet is 1.5 years older than this price'"
+        ],
+        [
+          "CAE",
+          "'balance sheet is 18 months older than this price'",
+          "'balance sheet is 1.5 years older than this price'"
+        ]
+      ]
+    },
+    "criteria[7].status": {
+      "count": 7,
+      "examples": [
+        [
+          "VLY",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "FNWD",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "WNEB",
+          "'PASS'",
+          "'FAIL'"
+        ],
+        [
+          "QTRX",
+          "'PASS'",
+          "'FAIL'"
+        ],
+        [
+          "BIVI",
+          "'FAIL'",
+          "'PASS'"
+        ],
+        [
+          "MNTR",
+          "'PASS'",
+          "'FAIL'"
+        ]
+      ]
+    },
+    "criteria[7].value": {
+      "count": 1482,
+      "examples": [
+        [
+          "AIR",
+          "5.48",
+          "5.51"
+        ],
+        [
+          "ACU",
+          "3.08",
+          "3.11"
+        ],
+        [
+          "AMD",
+          "39.06",
+          "37.82"
+        ],
+        [
+          "MATX",
+          "2.92",
+          "2.96"
+        ],
+        [
+          "AXP",
+          "7.08",
+          "7.07"
+        ],
+        [
+          "AIG",
+          "1.07",
+          "1.05"
+        ]
+      ]
+    },
+    "fx.asof": {
+      "count": 237,
+      "examples": [
+        [
+          "BNS",
+          "'2026-09-28T12:50:37+00:00'",
+          "'2026-09-28T18:21:42+00:00'"
+        ],
+        [
+          "SRL",
+          "'2026-09-28T12:50:37+00:00'",
+          "'2026-09-28T18:21:42+00:00'"
+        ],
+        [
+          "MUFG",
+          "'2026-09-28T12:50:37+00:00'",
+          "'2026-09-28T18:21:44+00:00'"
+        ],
+        [
+          "PHI",
+          "'2026-09-28T12:26:31+00:00'",
+          "'2026-09-28T17:20:25+00:00'"
+        ],
+        [
+          "UL",
+          "'2026-09-28T12:49:58+00:00'",
+          "'2026-09-28T18:21:00+00:00'"
+        ],
+        [
+          "SU",
+          "'2026-09-28T12:50:37+00:00'",
+          "'2026-09-28T18:21:42+00:00'"
+        ]
+      ]
+    },
+    "fx.rate": {
+      "count": 227,
+      "examples": [
+        [
+          "BNS",
+          "1.4168",
+          "1.4169"
+        ],
+        [
+          "SRL",
+          "1.4168",
+          "1.4169"
+        ],
+        [
+          "MUFG",
+          "157.228",
+          "157.3"
+        ],
+        [
+          "PHI",
+          "62.448",
+          "62.453"
+        ],
+        [
+          "UL",
+          "0.8794",
+          "0.8788"
+        ],
+        [
+          "SU",
+          "1.4168",
+          "1.4169"
+        ]
+      ]
+    },
+    "market_state": {
+      "count": 6610,
+      "examples": [
+        [
+          "AIR",
+          "'PRE'",
+          "'REGULAR'"
+        ],
+        [
+          "ABT",
+          "'PRE'",
+          "'REGULAR'"
+        ],
+        [
+          "ACU",
+          "'PRE'",
+          "'REGULAR'"
+        ],
+        [
+          "BKTI",
+          "'PRE'",
+          "'REGULAR'"
+        ],
+        [
+          "ADX",
+          "'PRE'",
+          "'REGULAR'"
+        ],
+        [
+          "AMD",
+          "'PRE'",
+          "'REGULAR'"
+        ]
+      ]
+    },
+    "market_state_asof": {
+      "count": 6612,
+      "examples": [
+        [
+          "AIR",
+          "'2026-09-28T12:48:25.754019+00:00'",
+          "'2026-09-28T18:19:20.718266+00:00'"
+        ],
+        [
+          "ABT",
+          "'2026-09-28T12:47:59.017933+00:00'",
+          "'2026-09-28T18:18:52.690461+00:00'"
+        ],
+        [
+          "ACU",
+          "'2026-09-28T12:48:25.821263+00:00'",
+          "'2026-09-28T18:19:20.687890+00:00'"
+        ],
+        [
+          "BKTI",
+          "'2026-09-28T12:48:25.807516+00:00'",
+          "'2026-09-28T18:19:20.766347+00:00'"
+        ],
+        [
+          "ADX",
+          "'2026-09-28T12:48:25.776339+00:00'",
+          "'2026-09-28T18:19:20.726082+00:00'"
+        ],
+        [
+          "AMD",
+          "'2026-09-28T12:47:59.005524+00:00'",
+          "'2026-09-28T18:18:52.689012+00:00'"
+        ]
+      ]
+    },
+    "n_pass": {
+      "count": 13,
+      "examples": [
+        [
+          "THC",
+          "1",
+          "2"
+        ],
+        [
+          "VLY",
+          "2",
+          "3"
+        ],
+        [
+          "CCL",
+          "2",
+          "1"
+        ],
+        [
+          "FNWD",
+          "2",
+          "3"
+        ],
+        [
+          "GPI",
+          "2",
+          "3"
+        ],
+        [
+          "WNEB",
+          "3",
+          "2"
+        ]
+      ]
+    },
+    "peer_efficiency": {
+      "count": 4,
+      "examples": [
+        [
+          "BFH",
+          "<MISSING>",
+          "{'margin': 9.1, 'industry_median': 9.1, 'peers': 5, 'behind': False}"
+        ],
+        [
+          "ENVA",
+          "<MISSING>",
+          "{'margin': 23.5, 'industry_median': 9.1, 'peers': 5, 'behind': False}"
+        ],
+        [
+          "LPRO",
+          "<MISSING>",
+          "{'margin': -5.4, 'industry_median': 9.1, 'peers': 5, 'behind': True}"
+        ],
+        [
+          "AFRM",
+          "<MISSING>",
+          "{'margin': 9.8, 'industry_median': 9.1, 'peers': 5, 'behind': False}"
+        ]
+      ]
+    },
+    "peer_efficiency.behind": {
+      "count": 2,
+      "examples": [
+        [
+          "AAL",
+          "False",
+          "True"
+        ],
+        [
+          "JETMF",
+          "False",
+          "True"
+        ]
+      ]
+    },
+    "peer_efficiency.industry_median": {
+      "count": 168,
+      "examples": [
+        [
+          "AAL",
+          "3.6",
+          "5.8"
+        ],
+        [
+          "DAL",
+          "3.6",
+          "5.8"
+        ],
+        [
+          "ESCA",
+          "-3.7",
+          "-4.7"
+        ],
+        [
+          "LUV",
+          "3.6",
+          "5.8"
+        ],
+        [
+          "UAL",
+          "3.6",
+          "5.8"
+        ],
+        [
+          "SRCO",
+          "1.7",
+          "1.8"
+        ]
+      ]
+    },
+    "peer_efficiency.peers": {
+      "count": 168,
+      "examples": [
+        [
+          "AAL",
+          "15",
+          "16"
+        ],
+        [
+          "DAL",
+          "15",
+          "16"
+        ],
+        [
+          "ESCA",
+          "14",
+          "15"
+        ],
+        [
+          "LUV",
+          "15",
+          "16"
+        ],
+        [
+          "UAL",
+          "15",
+          "16"
+        ],
+        [
+          "SRCO",
+          "116",
+          "117"
+        ]
+      ]
+    },
+    "price": {
+      "count": 5825,
+      "examples": [
+        [
+          "AIR",
+          "115.65",
+          "116.265"
+        ],
+        [
+          "ABT",
+          "101.42",
+          "100.885"
+        ],
+        [
+          "ACU",
+          "62.75",
+          "63.48"
+        ],
+        [
+          "BKTI",
+          "74.78",
+          "74.76"
+        ],
+        [
+          "ADX",
+          "25.93",
+          "25.835"
+        ],
+        [
+          "AMD",
+          "625.1",
+          "605.255"
+        ]
+      ]
+    },
+    "price_asof": {
+      "count": 5847,
+      "examples": [
+        [
+          "AIR",
+          "'2026-09-28T12:31:47+00:00'",
+          "'2026-09-28T18:17:41+00:00'"
+        ],
+        [
+          "ABT",
+          "'2026-09-28T11:58:12+00:00'",
+          "'2026-09-28T18:18:44+00:00'"
+        ],
+        [
+          "ACU",
+          "'2026-09-25T20:00:00+00:00'",
+          "'2026-09-28T18:09:46+00:00'"
+        ],
+        [
+          "BKTI",
+          "'2026-09-25T20:00:00+00:00'",
+          "'2026-09-28T18:11:32+00:00'"
+        ],
+        [
+          "ADX",
+          "'2026-09-28T11:03:44+00:00'",
+          "'2026-09-28T18:18:25+00:00'"
+        ],
+        [
+          "AMD",
+          "'2026-09-28T12:47:56+00:00'",
+          "'2026-09-28T18:18:51+00:00'"
+        ]
+      ]
+    },
+    "price_history_warning": {
+      "count": 7,
+      "examples": [
+        [
+          "IMMP",
+          "<MISSING>",
+          "{'kind': 'HISTORY_REJECTED', 'note': 'the refreshed history lost its oldest coverage; the previously validated history remains in use'}"
+        ],
+        [
+          "MTNB",
+          "<MISSING>",
+          "{'kind': 'HISTORY_REJECTED', 'note': 'the refreshed history lost its oldest coverage; the previously validated history remains in use'}"
+        ],
+        [
+          "FGNX",
+          "<MISSING>",
+          "{'kind': 'HISTORY_REJECTED', 'note': 'the refreshed history lost its oldest coverage; the previously validated history remains in use'}"
+        ],
+        [
+          "BTLN",
+          "<MISSING>",
+          "{'kind': 'HISTORY_REJECTED', 'note': 'the provider declared a split that the filing-derived per-share history does not yet reflect; contemporaneous historical closes remain in use'}"
+        ],
+        [
+          "NELR",
+          "<MISSING>",
+          "{'kind': 'HISTORY_REJECTED', 'note': 'the refreshed history ends before the stored history; the previously validated history remains in use'}"
+        ],
+        [
+          "DLXY",
+          "<MISSING>",
+          "{'kind': 'HISTORY_REJECTED', 'note': 'the refreshed history lost its oldest coverage; the previously validated history remains in use'}"
+        ]
+      ]
+    },
+    "price_history_warning.note": {
+      "count": 1,
+      "examples": [
+        [
+          "BRNX",
+          "'the provider declared a split that the filing-derived per-share history does not yet reflect; contemporaneous historical closes remain in use'",
+          "'historical closes were rescaled without matching split evidence; the previously validated history remains in use'"
+        ]
+      ]
+    },
+    "price_reporting_currency": {
+      "count": 235,
+      "examples": [
+        [
+          "BNS",
+          "132.442464",
+          "131.672517"
+        ],
+        [
+          "SRL",
+          "7.594048",
+          "7.3834659"
+        ],
+        [
+          "MUFG",
+          "3701.14712",
+          "3689.4715"
+        ],
+        [
+          "PHI",
+          "1074.1056",
+          "1071.69348"
+        ],
+        [
+          "UL",
+          "54.637122",
+          "54.889848"
+        ],
+        [
+          "SU",
+          "99.23153856",
+          "97.9148745"
+        ]
+      ]
+    },
+    "price_session": {
+      "count": 3545,
+      "examples": [
+        [
+          "AIR",
+          "'PRE'",
+          "'REGULAR'"
+        ],
+        [
+          "ABT",
+          "'PRE'",
+          "'REGULAR'"
+        ],
+        [
+          "ADX",
+          "'PRE'",
+          "'REGULAR'"
+        ],
+        [
+          "AMD",
+          "'PRE'",
+          "'REGULAR'"
+        ],
+        [
+          "AEM",
+          "'PRE'",
+          "'REGULAR'"
+        ],
+        [
+          "APD",
+          "'PRE'",
+          "'REGULAR'"
+        ]
+      ]
+    },
+    "price_stats": {
+      "count": 2,
+      "examples": [
+        [
+          "BTLN",
+          "{'high_52w': 5.12, 'pct_below_52w_high': 0.0, 'pct_above_52w_low': 911.66, 'pct_below_3y_high': 0.0, 'pct_below_5y_high': 68.28, 'average_3y': 1.16, 'pct_vs_3y_average': 339.62, 'price_to_3y_median': 4.57, 'drawdown_weeks': 253, 'history...",
+          "None"
+        ],
+        [
+          "BRNX",
+          "None",
+          "{'high_52w': 60.55, 'pct_below_52w_high': 96.12, 'pct_above_52w_low': 521.69, 'pct_below_3y_high': 99.81, 'pct_below_5y_high': 99.97, 'average_3y': 244.69, 'pct_vs_3y_average': -99.04, 'price_to_3y_median': 0.02, 'drawdown_weeks': 212, '..."
+        ]
+      ]
+    },
+    "price_stats.average_3y": {
+      "count": 1827,
+      "examples": [
+        [
+          "ABT",
+          "114.36",
+          "114.35"
+        ],
+        [
+          "ACU",
+          "42.13",
+          "42.14"
+        ],
+        [
+          "AMD",
+          "210.38",
+          "210.21"
+        ],
+        [
+          "AEM",
+          "118.25",
+          "118.18"
+        ],
+        [
+          "AKZOY",
+          "22.34",
+          "22.33"
+        ],
+        [
+          "ALX",
+          "225.68",
+          "225.69"
+        ]
+      ]
+    },
+    "price_stats.drawdown_weeks": {
+      "count": 5522,
+      "examples": [
+        [
+          "AIR",
+          "6",
+          "7"
+        ],
+        [
+          "ABT",
+          "247",
+          "248"
+        ],
+        [
+          "ACU",
+          "3",
+          "0"
+        ],
+        [
+          "BKTI",
+          "23",
+          "24"
+        ],
+        [
+          "ADX",
+          "6",
+          "7"
+        ],
+        [
+          "AMD",
+          "0",
+          "1"
+        ]
+      ]
+    },
+    "price_stats.high_52w": {
+      "count": 223,
+      "examples": [
+        [
+          "ACU",
+          "63.14",
+          "63.48"
+        ],
+        [
+          "ARTW",
+          "3.36",
+          "3.32"
+        ],
+        [
+          "AVT",
+          "103.5",
+          "103.08"
+        ],
+        [
+          "EBF",
+          "22.3",
+          "22.39"
+        ],
+        [
+          "FEIM",
+          "89.18",
+          "88.43"
+        ],
+        [
+          "PFE",
+          "28.67",
+          "28.77"
+        ]
+      ]
+    },
+    "price_stats.history_from": {
+      "count": 1,
+      "examples": [
+        [
+          "GOW",
+          "'2026-09-25'",
+          "'2025-03-03'"
+        ]
+      ]
+    },
+    "price_stats.history_weeks": {
+      "count": 676,
+      "examples": [
+        [
+          "ARTW",
+          "262",
+          "261"
+        ],
+        [
+          "NSARO",
+          "262",
+          "261"
+        ],
+        [
+          "AILIH",
+          "262",
+          "261"
+        ],
+        [
+          "ABCP",
+          "262",
+          "261"
+        ],
+        [
+          "RLBY",
+          "262",
+          "261"
+        ],
+        [
+          "MAYS",
+          "262",
+          "261"
+        ]
+      ]
+    },
+    "price_stats.pct_above_52w_low": {
+      "count": 5337,
+      "examples": [
+        [
+          "AIR",
+          "48.86",
+          "49.65"
+        ],
+        [
+          "ABT",
+          "20.28",
+          "19.65"
+        ],
+        [
+          "ACU",
+          "70.33",
+          "72.31"
+        ],
+        [
+          "BKTI",
+          "18.55",
+          "18.52"
+        ],
+        [
+          "ADX",
+          "21.68",
+          "21.23"
+        ],
+        [
+          "AMD",
+          "279.61",
+          "267.56"
+        ]
+      ]
+    },
+    "price_stats.pct_below_3y_high": {
+      "count": 5613,
+      "examples": [
+        [
+          "AIR",
+          "20.38",
+          "19.96"
+        ],
+        [
+          "ABT",
+          "26.51",
+          "26.9"
+        ],
+        [
+          "ACU",
+          "0.62",
+          "0.0"
+        ],
+        [
+          "BKTI",
+          "22.09",
+          "22.11"
+        ],
+        [
+          "ADX",
+          "1.37",
+          "1.73"
+        ],
+        [
+          "AMD",
+          "0.88",
+          "4.02"
+        ]
+      ]
+    },
+    "price_stats.pct_below_52w_high": {
+      "count": 5730,
+      "examples": [
+        [
+          "AIR",
+          "20.38",
+          "19.96"
+        ],
+        [
+          "ABT",
+          "24.65",
+          "25.04"
+        ],
+        [
+          "ACU",
+          "0.62",
+          "0.0"
+        ],
+        [
+          "BKTI",
+          "22.09",
+          "22.11"
+        ],
+        [
+          "ADX",
+          "1.37",
+          "1.73"
+        ],
+        [
+          "AMD",
+          "0.88",
+          "4.02"
+        ]
+      ]
+    },
+    "price_stats.pct_below_5y_high": {
+      "count": 5482,
+      "examples": [
+        [
+          "AIR",
+          "20.38",
+          "19.96"
+        ],
+        [
+          "ABT",
+          "27.94",
+          "28.32"
+        ],
+        [
+          "ACU",
+          "0.62",
+          "0.0"
+        ],
+        [
+          "BKTI",
+          "22.09",
+          "22.11"
+        ],
+        [
+          "ADX",
+          "1.37",
+          "1.73"
+        ],
+        [
+          "AMD",
+          "0.88",
+          "4.02"
+        ]
+      ]
+    },
+    "price_stats.pct_vs_3y_average": {
+      "count": 6250,
+      "examples": [
+        [
+          "AIR",
+          "43.3",
+          "44.07"
+        ],
+        [
+          "ABT",
+          "-11.31",
+          "-11.78"
+        ],
+        [
+          "ACU",
+          "48.94",
+          "50.65"
+        ],
+        [
+          "BKTI",
+          "66.13",
+          "66.08"
+        ],
+        [
+          "ADX",
+          "21.33",
+          "20.89"
+        ],
+        [
+          "AMD",
+          "197.13",
+          "187.92"
+        ]
+      ]
+    },
+    "price_stats.price_to_3y_median": {
+      "count": 4359,
+      "examples": [
+        [
+          "ACU",
+          "1.51",
+          "1.53"
+        ],
+        [
+          "AMD",
+          "3.8",
+          "3.68"
+        ],
+        [
+          "AEM",
+          "1.75",
+          "1.73"
+        ],
+        [
+          "AKZOY",
+          "0.97",
+          "0.96"
+        ],
+        [
+          "CECO",
+          "2.52",
+          "2.51"
+        ],
+        [
+          "MATX",
+          "1.76",
+          "1.78"
+        ]
+      ]
+    }
+  },
+  "new": {
+    "engine_version": 187,
+    "generated": "2026-09-28T18:22:09+00:00",
+    "rows": 6995,
+    "unique_ciks": 6995,
+    "unique_tickers": 6995
+  },
+  "removed_ciks": [],
+  "removed_tickers": [],
+  "ticker_identity_reassignments": []
+}
+end_utc=2026-09-28T18:23:55Z
+exit_code=0
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   403Gi    10Gi    98%    9.2M  107M    8%   /System/Volumes/Data
+/dev/disk3s5   460Gi   403Gi    10Gi    98%    9.2M  107M    8%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 38%

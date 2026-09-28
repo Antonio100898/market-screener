@@ -1,0 +1,110 @@
+start_utc=2026-09-28T18:22:32Z
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   403Gi    10Gi    98%    9.2M  109M    8%   /System/Volumes/Data
+/dev/disk3s5   460Gi   403Gi    10Gi    98%    9.2M  109M    8%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 45%
+cd api && .venv/bin/python -m screener.audit --filings
+auditing 22 companies
+
+  KO       ok
+      FILING?   total_liabilities shows 68483000000.0 vs 104217000000.0   assembled from components; the printed line is one of them
+  MSFT     ok
+      FILING?   FY2026 revenue   shows 331839000000.0    the statement tags no such concept
+      FILING?   FY2026 gross_profit shows 225465000000.0    the statement tags no such concept
+      FILING?   FY2026 eps       shows 17.95    the statement tags no such concept
+      FILING?   FY2026 operating_income shows 155237000000.0    the statement tags no such concept
+      FILING?   FY2025 revenue   shows 281724000000.0    the statement tags no such concept
+      FILING?   FY2025 gross_profit shows 193893000000.0    the statement tags no such concept
+      FILING?   FY2025 eps       shows 13.64    the statement tags no such concept
+      FILING?   FY2025 operating_income shows 128528000000.0    the statement tags no such concept
+      FILING?   FY2024 revenue   shows 245122000000.0    the statement tags no such concept
+      FILING?   FY2024 gross_profit shows 171008000000.0    the statement tags no such concept
+      FILING?   FY2024 eps       shows 11.8    the statement tags no such concept
+      FILING?   FY2024 operating_income shows 109433000000.0    the statement tags no such concept
+      FILING?   all-capex evidence + depreciation & amortisation shows 39000000000.0    the statement tags no such concept
+  JPM      ok
+      FILING?   goodwill         shows 52711000000.0    the statement tags no such concept; its nearest caption is a different one
+      FILING?   intangibles      shows 2600000000.0    no matching line on the statement
+      FILING?   FY2025 revenue   shows 182447000000.0    the statement tags no such concept
+      FILING?   FY2024 revenue   shows 177556000000.0    the statement tags no such concept
+      FILING?   FY2023 revenue   shows 158104000000.0    the statement tags no such concept
+  O        ok
+      FILING?   all-capex evidence - total capital expenditure shows -131800000.0    the statement tags no such concept
+  ZLAB     ok
+      FILING?   FY2025 eps       shows -1.6 vs -0.16   per receipt, which is 10 ordinary shares
+      FILING?   FY2024 eps       shows -2.6 vs -0.26   per receipt, which is 10 ordinary shares
+      FILING?   FY2023 eps       shows -3.5 vs -0.35   per receipt, which is 10 ordinary shares
+  GOOGL    ok
+      FILING?   all-capex evidence + depreciation & amortisation shows 21136000000.0    the statement tags no such concept
+  RIVN     ok
+  ET       ok
+      FILING?   total_liabilities shows 97646000000.0 vs 148168000000.0   assembled from components; the printed line is one of them
+      FILING?   noncontrolling_interest shows 15447000000.0 vs 15191000000.0   assembled from components; the printed line is one of them
+      FILING?   FY2025 eps       shows 1.21 vs 1210000.0   the same figure under the scale the statement declares
+      FILING?   FY2024 eps       shows 1.28 vs 1280000.0   the same figure under the scale the statement declares
+      FILING?   FY2023 eps       shows 1.09 vs 1090000.0   the same figure under the scale the statement declares
+  EML      ok
+      FILING?   intangibles      shows 9203959.0 vs 4121143.0   assembled from components; the printed line is one of them
+      FILING?   FY2025 revenue   shows 248970345.0    the statement tags no such concept
+      FILING?   FY2024 revenue   shows 272751967.0    the statement tags no such concept
+  AAPL     ok
+      FILING?   intangibles      shows 25417000000.0    the statement tags no such concept; its nearest caption is a different one
+  JNJ      ok
+  FUSB     ok
+      FILING?   goodwill         shows 7400000.0    the statement tags no such concept; its nearest caption is a different one
+      FILING?   intangibles      shows 0.0    the statement tags no such concept; its nearest caption is a different one
+  BRK-B    ok
+      FILING?   intangibles      shows 19000000000.0    the statement tags no such concept; its nearest caption is a different one
+      FILING?   FY2025 eps       shows 31.04 vs 46563.0   filed under a share-class dimension that the rendered statement reader cannot distinguish
+      FILING?   FY2024 eps       shows 41.27 vs 61900.0   filed under a share-class dimension that the rendered statement reader cannot distinguish
+      FILING?   FY2023 eps       shows 44.27 vs 66412.0   filed under a share-class dimension that the rendered statement reader cannot distinguish
+  PG       ok
+  XOM      ok
+  UNH      ok
+      FILING?   noncontrolling_interest shows 7502000000.0 vs 6066000000.0   assembled from components; the printed line is one of them
+  T        ok
+      FILING?   total_liabilities shows 301925000000.0 vs 428359000000.0   assembled from components; the printed line is one of them
+      FILING?   intangibles      shows 130711000000.0    the statement tags no such concept; its nearest caption is a different one
+      FILING?   noncontrolling_interest shows 17995000000.0 vs 15990000000.0   assembled from components; the printed line is one of them
+  F        ok
+      FILING?   goodwill         shows 483000000.0    the statement tags no such concept; its nearest caption is a different one
+      FILING?   intangibles      shows 170000000.0    the statement tags no such concept; its nearest caption is a different one
+      FILING?   FY2025 revenue   shows 187267000000.0    the statement tags no such concept
+      FILING?   FY2025 net_income shows -8182000000.0    the statement tags no such concept
+      FILING?   FY2025 eps       shows -2.06    the statement tags no such concept
+      FILING?   FY2025 operating_income shows -9169000000.0    the statement tags no such concept
+      FILING?   FY2024 revenue   shows 184992000000.0    the statement tags no such concept
+      FILING?   FY2024 net_income shows 5879000000.0    the statement tags no such concept
+      FILING?   FY2024 eps       shows 1.46    the statement tags no such concept
+      FILING?   FY2024 operating_income shows 5219000000.0    the statement tags no such concept
+      FILING?   FY2023 revenue   shows 176191000000.0    the statement tags no such concept
+      FILING?   FY2023 net_income shows 4347000000.0    the statement tags no such concept
+      FILING?   FY2023 eps       shows 1.08    the statement tags no such concept
+      FILING?   FY2023 operating_income shows 5458000000.0    the statement tags no such concept
+      FILING?   all-capex evidence + depreciation & amortisation shows 15974000000.0    the statement tags no such concept
+  PLTR     ok
+      FILING?   intangibles      shows 14611000.0    the statement tags no such concept; its nearest caption is a different one
+  MKL      ok
+  NKE      ok
+      FILING?   total_liabilities shows 23545000000.0 vs 38410000000.0   assembled from components; the printed line is one of them
+  ORCL     ok
+      FILING?   total_liabilities shows 236063000000.0 vs 303259000000.0   assembled from components; the printed line is one of them
+      FILING?   intangibles      shows 3229000000.0    the statement tags no such concept; its nearest caption is a different one
+      FILING?   FY2026 revenue   shows 67357000000.0    the statement tags no such concept
+      FILING?   FY2025 revenue   shows 57399000000.0    the statement tags no such concept
+      FILING?   FY2024 revenue   shows 52961000000.0    the statement tags no such concept
+      FILING?   all-capex evidence + depreciation & amortisation shows 9294000000.0    the statement tags no such concept
+
+  values matching the filing they name : 279 ok, 0 wrong
+  figures matching their own arithmetic: 3411 ok, 0 wrong
+  components superseded by a newer filing: 0
+  matching the published statement     : 378 ok, 0 wrong (66 lines not printed)
+  not checkable from the payload       : 0
+end_utc=2026-09-28T18:22:51Z
+exit_code=0
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   403Gi    10Gi    98%    9.2M  109M    8%   /System/Volumes/Data
+/dev/disk3s5   460Gi   403Gi    10Gi    98%    9.2M  109M    8%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 44%

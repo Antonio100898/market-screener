@@ -1,0 +1,247 @@
+utc=2026-09-28T17:46:07Z
+{
+  "all_dirty_unchanged": true,
+  "all_manifest_hashes_unchanged": true,
+  "count": 18,
+  "rows": [
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:44:22+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-010352"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:44:22+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-010352"
+      },
+      "cik": "0000016868",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:19:33+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001683168-26-002801"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:19:33+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001683168-26-002801"
+      },
+      "cik": "0001304409",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:19:36+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001171843-26-002783"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:19:36+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001171843-26-002783"
+      },
+      "cik": "0001468642",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:19:38+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001193125-26-197494"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:19:38+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001193125-26-197494"
+      },
+      "cik": "0001561861",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:19:41+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001213900-26-049950"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:19:41+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001213900-26-049950"
+      },
+      "cik": "0001841644",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:19:43+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001493152-26-019802"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:19:43+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001493152-26-019802"
+      },
+      "cik": "0001875016",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:44:27+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001493152-26-038530"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:44:27+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001493152-26-038530"
+      },
+      "cik": "0001926293",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:44:29+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001829126-26-005357"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:44:29+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001829126-26-005357"
+      },
+      "cik": "0002000756",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:19:47+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-047872"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:19:47+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-047872"
+      },
+      "cik": "0002020932",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:19:49+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001493152-26-036364"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:19:49+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001493152-26-036364"
+      },
+      "cik": "0002025774",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:19:51+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001683168-26-003530"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:19:51+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001683168-26-003530"
+      },
+      "cik": "0002039072",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:19:54+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-108373"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:19:54+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-108373"
+      },
+      "cik": "0002039972",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:44:49+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001213900-26-049771"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:44:49+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001213900-26-049771"
+      },
+      "cik": "0002054507",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:19:57+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001213900-26-050426"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:19:57+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001213900-26-050426"
+      },
+      "cik": "0002058601",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:20:00+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0002058897-26-000125"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:20:00+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0002058897-26-000125"
+      },
+      "cik": "0002058897",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:20:03+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-052847"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:20:03+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-052847"
+      },
+      "cik": "0002080073",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:20:06+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001193125-26-289382"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:20:06+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001193125-26-289382"
+      },
+      "cik": "0002080845",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    },
+    {
+      "after_dirty": {
+        "marked_at": "2026-09-28T17:20:08+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-049527"
+      },
+      "before_dirty": {
+        "marked_at": "2026-09-28T17:20:08+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-049527"
+      },
+      "cik": "0002087398",
+      "dirty_unchanged": true,
+      "manifest_sha256_unchanged": true
+    }
+  ]
+}
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   393Gi    22Gi    95%    8.9M  230M    4%   /System/Volumes/Data
+/dev/disk3s5   460Gi   393Gi    22Gi    95%    8.9M  230M    4%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 52%

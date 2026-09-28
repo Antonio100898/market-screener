@@ -1,0 +1,52 @@
+start_utc=2026-09-28T18:01:22Z
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   401Gi    13Gi    97%    9.1M  141M    6%   /System/Volumes/Data
+/dev/disk3s5   460Gi   401Gi    13Gi    97%    9.1M  141M    6%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 48%
+cd api && .venv/bin/python -m screener.sync derive
+  7247 dashboard-eligible snapshots predate engine v187 (0/7247)
+  recomputing snapshots (200/7247)
+  recomputing snapshots (400/7247)
+  recomputing snapshots (600/7247)
+  recomputing snapshots (800/7247)
+  recomputing snapshots (1000/7247)
+  recomputing snapshots (1200/7247)
+  recomputing snapshots (1400/7247)
+  recomputing snapshots (1600/7247)
+  recomputing snapshots (1800/7247)
+  recomputing snapshots (2000/7247)
+  recomputing snapshots (2200/7247)
+  recomputing snapshots (2400/7247)
+  recomputing snapshots (2600/7247)
+  recomputing snapshots (2800/7247)
+  recomputing snapshots (3000/7247)
+  recomputing snapshots (3200/7247)
+  recomputing snapshots (3400/7247)
+  recomputing snapshots (3600/7247)
+  recomputing snapshots (3800/7247)
+  recomputing snapshots (4000/7247)
+  recomputing snapshots (4200/7247)
+  recomputing snapshots (4400/7247)
+  recomputing snapshots (4600/7247)
+  recomputing snapshots (4800/7247)
+  recomputing snapshots (5000/7247)
+  recomputing snapshots (5200/7247)
+  recomputing snapshots (5400/7247)
+  recomputing snapshots (5600/7247)
+  recomputing snapshots (5800/7247)
+  recomputing snapshots (6000/7247)
+  recomputing snapshots (6200/7247)
+  recomputing snapshots (6400/7247)
+  recomputing snapshots (6600/7247)
+  recomputing snapshots (6800/7247)
+  recomputing snapshots (7000/7247)
+  recomputing snapshots (7200/7247)
+  done
+end_utc=2026-09-28T18:18:36Z
+exit_code=0
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   404Gi   9.7Gi    98%    9.2M  101M    8%   /System/Volumes/Data
+/dev/disk3s5   460Gi   404Gi   9.7Gi    98%    9.2M  101M    8%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 37%

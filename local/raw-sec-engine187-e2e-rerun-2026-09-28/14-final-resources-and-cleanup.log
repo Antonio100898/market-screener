@@ -1,0 +1,19 @@
+utc=2026-09-28T18:31:59Z
+baseline_before_cleanup:
+d45bfb04044b42fa8221742873be1b4c688d4b722981987052c92f356ab5ce4b  /tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json
+bytes=220362103
+baseline_removed=true
+new_payload:
+358b03211d87e3db8ffca57d9244d6244295225cac6eb3bd250196890d3014a5  api/screener/static/dashboard.json
+bytes=220681011
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   404Gi   9.7Gi    98%    9.2M  102M    8%   /System/Volumes/Data
+/dev/disk3s5   460Gi   404Gi   9.7Gi    98%    9.2M  102M    8%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 50%
+52887 /bin/zsh -c {\012  date -u '+utc=%Y-%m-%dT%H:%M:%SZ'\012  echo 'baseline_before_cleanup:'\012  shasum -a 256 /tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json\012  stat -f 'bytes=%z' /tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json\012  rm /tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json\012  if test -e /tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json; then echo 'baseline_removed=false'; exit 1; else echo 'baseline_removed=true'; fi\012  echo 'new_payload:'\012  shasum -a 256 api/screener/static/dashboard.json\012  stat -f 'bytes=%z' api/screener/static/dashboard.json\012  df -h . /tmp\012  memory_pressure -Q\012  ps -axo pid,command | rg '/Users/antonmishanin/Dev/Screener|screener\.(sync|regress|audit)' || true\012  git status --short\012} 2>&1 | tee local/raw-sec-engine187-e2e-rerun-2026-09-28/14-final-resources-and-cleanup.log
+52888 /bin/zsh -c {\012  date -u '+utc=%Y-%m-%dT%H:%M:%SZ'\012  echo 'baseline_before_cleanup:'\012  shasum -a 256 /tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json\012  stat -f 'bytes=%z' /tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json\012  rm /tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json\012  if test -e /tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json; then echo 'baseline_removed=false'; exit 1; else echo 'baseline_removed=true'; fi\012  echo 'new_payload:'\012  shasum -a 256 api/screener/static/dashboard.json\012  stat -f 'bytes=%z' api/screener/static/dashboard.json\012  df -h . /tmp\012  memory_pressure -Q\012  ps -axo pid,command | rg '/Users/antonmishanin/Dev/Screener|screener\.(sync|regress|audit)' || true\012  git status --short\012} 2>&1 | tee local/raw-sec-engine187-e2e-rerun-2026-09-28/14-final-resources-and-cleanup.log
+52903 rg /Users/antonmishanin/Dev/Screener|screener\.(sync|regress|audit)
+?? local/dev26-current-guidance.md
+?? local/dev26-review-map.md
+?? local/raw-sec-engine187-e2e-rerun-2026-09-28/

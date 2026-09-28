@@ -1,0 +1,1068 @@
+start_utc=2026-09-28T18:29:31Z
+{
+  "additions_exact": true,
+  "all_exclusions_pass": true,
+  "all_targets_pass": true,
+  "dirty_remaining": [],
+  "exclusions": [
+    {
+      "absent": true,
+      "cik": "0001304409",
+      "cover": null,
+      "failure": "UnsupportedFilerError: foreign filer has no exact filing-cover security title for this ticker",
+      "snapshot": {
+        "computed_at": "2026-09-28T18:12:26+00:00",
+        "data": null,
+        "engine_version": 187,
+        "status": "foreign"
+      },
+      "supplement_state": "applied",
+      "ticker": "AHNRF"
+    },
+    {
+      "absent": true,
+      "cik": "0002058601",
+      "cover": {
+        "accn": "0001213900-26-050426",
+        "ratio": null,
+        "symbol": "BRBI",
+        "title": "American Depositary Shares, each representing four units (or a right to receive four units)"
+      },
+      "failure": "UnsupportedFilerError: foreign filer has no exact filing-cover security title for this ticker",
+      "snapshot": {
+        "computed_at": "2026-09-28T18:18:32+00:00",
+        "data": null,
+        "engine_version": 187,
+        "status": "foreign"
+      },
+      "supplement_state": "applied",
+      "ticker": "BRBI"
+    },
+    {
+      "absent": true,
+      "cik": "0002000756",
+      "cover": null,
+      "failure": "UnsupportedFilerError: foreign filer has no exact filing-cover security title for this ticker",
+      "snapshot": {
+        "computed_at": "2026-09-28T18:18:28+00:00",
+        "data": null,
+        "engine_version": 187,
+        "status": "foreign"
+      },
+      "supplement_state": "applied",
+      "ticker": "NXAT"
+    },
+    {
+      "absent": true,
+      "cik": "0002058897",
+      "cover": {
+        "accn": "0002058897-26-000125",
+        "ratio": null,
+        "symbol": "CIB",
+        "title": "American Depositary Shares"
+      },
+      "failure": "UnsupportedFilerError: foreign depositary security has no resolved positive cover-page ratio",
+      "snapshot": {
+        "computed_at": "2026-09-28T18:18:34+00:00",
+        "data": null,
+        "engine_version": 187,
+        "status": "foreign"
+      },
+      "supplement_state": "applied",
+      "ticker": "CIB"
+    }
+  ],
+  "payload_engine": 187,
+  "payload_rows": 6995,
+  "targets": [
+    {
+      "alignment_sha256": "415b4917e9430be38687ac92d0d70df5d91cef2e910300630b2a991d8dd83c62",
+      "annual": {
+        "accession": "0001193125-26-197494",
+        "document": "d101275d20f.htm",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "annual_ratio_years": [
+        "2023",
+        "2024",
+        "2025"
+      ],
+      "annual_ratios_sha256": "4b365791d3c20c2806e26f2342569021f09b06726ae9a539f2d30dca7a271e07",
+      "balance_sheet_date": "2025-12-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0001561861",
+      "criteria_sha256": "c4d2139f26b3661a871cbc2adc24fdaba0cb42f150912c3c6ae38b8c79f248b7",
+      "financials": {
+        "bvps": -4.356023709882221,
+        "current_assets": 1979596000.0,
+        "current_liabilities": 3095938000.0,
+        "ncavps": -42.57141518668286,
+        "shares": 136423959.0,
+        "tbvps": null,
+        "total_assets": 7193091000.0,
+        "total_liabilities": 7785307000.0,
+        "ttm_eps": 2.4,
+        "ttm_net_income": 351861000.0,
+        "ttm_revenue": 5360570000.0
+      },
+      "n_pass": 1,
+      "notes_count": 3,
+      "notes_sha256": "236395d0b1bf2df701c9bc33c1313f28685f725cec210457ce3aa9e2a16da9a9",
+      "pass": true,
+      "profile": "OPERATING",
+      "profile_meta_sha256": "77d205edf2955398e314f84e0212fb8df1f52a7aff0502854145e3c5deade0c0",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001193125-26-197494",
+        "document": "d101275d20f.htm",
+        "filed": "2026-04-30",
+        "filing_document": null,
+        "form": "20-F",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001193125-26-197494",
+        "canonical_tag": "Assets",
+        "document": "d101275d20f.htm",
+        "end": "2025-12-31",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "tag": "ifrs-full:Assets",
+        "unit": "USD"
+      },
+      "sources_count": 15,
+      "sources_sha256": "ce06e92875e7c827549baff4a18d13c7231a954107d73bf80bf86996d44824bc",
+      "ticker": "AERO",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "726e027a27ea2ae547e63b6e342f951b66dcc42be08496f8ae2c203627675dbf",
+      "annual": {
+        "accession": "0001104659-26-047872",
+        "document": "agmb-20251231x20f.htm",
+        "filed": "2026-04-23",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "annual_ratio_years": [
+        "2023",
+        "2024",
+        "2025"
+      ],
+      "annual_ratios_sha256": "38c405ec887277acc2b1cd018ec21e32eb048862da6f9f8390b85f201b57832a",
+      "balance_sheet_date": "2025-12-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0002020932",
+      "criteria_sha256": "6de07b2bf3fcb97b950158e71f266f9845eb9ceb980649a30adebe8d54c2c18a",
+      "financials": {
+        "bvps": 241.90669086312616,
+        "current_assets": 121237000.0,
+        "current_liabilities": 18589000.0,
+        "ncavps": 181.9040297453828,
+        "shares": 541126.0,
+        "tbvps": 188.82847987344906,
+        "total_assets": 153706000.0,
+        "total_liabilities": 22804000.0,
+        "ttm_eps": -143.22,
+        "ttm_net_income": -62547000.0,
+        "ttm_revenue": null
+      },
+      "n_pass": 2,
+      "notes_count": 1,
+      "notes_sha256": "e6336766c54e831a1ae385ea40fdcf4ccaa1fb39fb80392e0b49d070cf4f2877",
+      "pass": true,
+      "profile": "OPERATING",
+      "profile_meta_sha256": "77d205edf2955398e314f84e0212fb8df1f52a7aff0502854145e3c5deade0c0",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001104659-26-047872",
+        "document": "agmb-20251231x20f.htm",
+        "filed": "2026-04-23",
+        "filing_document": null,
+        "form": "20-F",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001104659-26-047872",
+        "canonical_tag": "Assets",
+        "document": "agmb-20251231x20f.htm",
+        "end": "2025-12-31",
+        "filed": "2026-04-23",
+        "form": "20-F",
+        "tag": "ifrs-full:Assets",
+        "unit": "EUR"
+      },
+      "sources_count": 13,
+      "sources_sha256": "26baccd2ff03080619df59aa0dc1d663f9955ee35c1607b68d158868c2d121bc",
+      "ticker": "AGMB",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "caeaffa4350f6966c516602632e3467405897e9549a7f12bdef3c64f7aa0399f",
+      "annual": {
+        "accession": "0001493152-26-036364",
+        "document": "form20-f.htm",
+        "filed": "2026-08-06",
+        "form": "20-F",
+        "report_date": "2026-03-31"
+      },
+      "annual_ratio_years": [
+        "2024",
+        "2025",
+        "2026"
+      ],
+      "annual_ratios_sha256": "47307c71f0fdb96a6443fdff5b0b35c109a17b69bcc8b6bb0eaf7d9076c27086",
+      "balance_sheet_date": "2026-03-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0002025774",
+      "criteria_sha256": "187c7d8fc90ab47b480cf11b4d275ecaf74a9ddadd5dd127aa17556419fea319",
+      "financials": {
+        "bvps": -0.017575796161057724,
+        "current_assets": 1974923.0,
+        "current_liabilities": 5476117.0,
+        "ncavps": -0.04759056524376511,
+        "shares": 166400314.0,
+        "tbvps": null,
+        "total_assets": 6969390.0,
+        "total_liabilities": 10199391.0,
+        "ttm_eps": -0.02,
+        "ttm_net_income": -2008428.0,
+        "ttm_revenue": 268615.0
+      },
+      "n_pass": 0,
+      "notes_count": 2,
+      "notes_sha256": "6bb47cf4d68119fad3dd48b79b579e60de63366ee339fc5d3d8835546651c598",
+      "pass": true,
+      "profile": "OPERATING",
+      "profile_meta_sha256": "77d205edf2955398e314f84e0212fb8df1f52a7aff0502854145e3c5deade0c0",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001493152-26-036364",
+        "document": "form20-f.htm",
+        "filed": "2026-08-06",
+        "filing_document": null,
+        "form": "20-F",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001493152-26-036364",
+        "canonical_tag": "Assets",
+        "document": "form20-f.htm",
+        "end": "2026-03-31",
+        "filed": "2026-08-06",
+        "form": "20-F",
+        "tag": "ifrs-full:Assets",
+        "unit": "USD"
+      },
+      "sources_count": 16,
+      "sources_sha256": "39b36a1b016592288d952a7344300d255d0c3cb793e456316ef5154e2997d9fe",
+      "ticker": "ALPS",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "3aabed3c6b9b182462e8518152d334dba39496a541d045b0c91429095ee28eed",
+      "annual": {
+        "accession": "0001171843-26-002783",
+        "document": "f20fa_033126.htm",
+        "filed": "2026-04-29",
+        "form": "20-F/A",
+        "report_date": "2025-12-31"
+      },
+      "annual_ratio_years": [
+        "2023",
+        "2024",
+        "2025"
+      ],
+      "annual_ratios_sha256": "f6acdfec082f6af6aaf3e90fb35124af848a4440090765359eebb05f28410d48",
+      "balance_sheet_date": "2025-12-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0001468642",
+      "criteria_sha256": "4632d9831ecbefdbf4a93ab26ed5a92a83de76a85311d44fa50922b06cdf7679",
+      "financials": {
+        "bvps": 3.3959515670038494,
+        "current_assets": 512486000.0,
+        "current_liabilities": 526254000.0,
+        "ncavps": -10.616755932273222,
+        "shares": 78251116.0,
+        "tbvps": null,
+        "total_assets": 1608996000.0,
+        "total_liabilities": 1343259000.0,
+        "ttm_eps": -1.01,
+        "ttm_net_income": 66129000.0,
+        "ttm_revenue": 195981000.0
+      },
+      "n_pass": 0,
+      "notes_count": 1,
+      "notes_sha256": "51c82edba9e5c07137ebe17d448d5cd66949519a8dd7c283784a2d2343adaee1",
+      "pass": true,
+      "profile": "OPERATING",
+      "profile_meta_sha256": "77d205edf2955398e314f84e0212fb8df1f52a7aff0502854145e3c5deade0c0",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001171843-26-002783",
+        "document": "f20fa_033126.htm",
+        "filed": "2026-04-29",
+        "filing_document": null,
+        "form": "20-F/A",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001171843-26-002783",
+        "canonical_tag": "Assets",
+        "document": "f20fa_033126.htm",
+        "end": "2025-12-31",
+        "filed": "2026-04-29",
+        "form": "20-F/A",
+        "tag": "ifrs-full:Assets",
+        "unit": "USD"
+      },
+      "sources_count": 12,
+      "sources_sha256": "efa4a845dd85270d8df509dda1656dc723dfeb5c3dab58e2a85ec13a4dc73997",
+      "ticker": "AUGO",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "884c676f96cc08aeac6fbbdff56af75cf72d75687685bf861d682c56002dd495",
+      "annual": {
+        "accession": "0001104659-26-010352",
+        "document": "tm261145d1_40f.htm",
+        "filed": "2026-02-04",
+        "form": "40-F",
+        "report_date": "2025-12-31"
+      },
+      "annual_ratio_years": [
+        "2022",
+        "2023",
+        "2024",
+        "2025"
+      ],
+      "annual_ratios_sha256": "c780dbab0f920160a826e396baf70ff9f212d1b362c5886036d7903741170520",
+      "balance_sheet_date": "2025-12-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0000016868",
+      "criteria_sha256": "34bb490516439e151f6e0fca785380e73520ac469477b56a9cb962576de103f3",
+      "financials": {
+        "bvps": 35.16712864829611,
+        "current_assets": 2471000000.0,
+        "current_liabilities": 3696000000.0,
+        "ncavps": -56.279145605739444,
+        "shares": 613300000.0,
+        "tbvps": 34.808413500733735,
+        "total_assets": 58555000000.0,
+        "total_liabilities": 36987000000.0,
+        "ttm_eps": 7.57,
+        "ttm_net_income": 4720000000.0,
+        "ttm_revenue": 17304000000.0
+      },
+      "n_pass": 1,
+      "notes_count": 1,
+      "notes_sha256": "cadd4d5989311bdcd8dae949e3c09650c7d40513921665e18f2659514e1208a2",
+      "pass": true,
+      "profile": "OPERATING",
+      "profile_meta_sha256": "77d205edf2955398e314f84e0212fb8df1f52a7aff0502854145e3c5deade0c0",
+      "relationship": "incorporated_annual_exhibit",
+      "source": {
+        "accession": "0000016868-26-000011",
+        "document": "cni-20251231.htm",
+        "filed": "2026-02-04",
+        "filing_document": "cni-20251231_d2.htm",
+        "form": "6-K",
+        "report_date": "2025-12-31"
+      },
+      "source_total_assets": {
+        "accn": "0000016868-26-000011",
+        "annual_accn": "0001104659-26-010352",
+        "annual_filed": "2026-02-04",
+        "annual_form": "40-F",
+        "canonical_tag": "Assets",
+        "document": "cni-20251231.htm",
+        "end": "2025-12-31",
+        "filed": "2026-02-04",
+        "form": "6-K",
+        "tag": "us-gaap:Assets",
+        "unit": "CAD"
+      },
+      "sources_count": 23,
+      "sources_sha256": "a6ee37dfe4dd8112b6e540913b05dd945e8f4819f3a00c867d0e26c8b4fb9a7a",
+      "ticker": "CNI",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "1ef914c09d87ad963030cb4375ddc38388e4a724dfb046fd3cddbaaaf23f550b",
+      "annual": {
+        "accession": "0001683168-26-003530",
+        "document": "davion_i20fa1.htm",
+        "filed": "2026-05-06",
+        "form": "20-F/A",
+        "report_date": "2025-12-31"
+      },
+      "annual_ratio_years": [
+        "2024",
+        "2025"
+      ],
+      "annual_ratios_sha256": "c7974e814151e8827f483e07329e881b2da11834d0461c5f841ddd72e6a23a0d",
+      "balance_sheet_date": "2025-12-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0002039072",
+      "criteria_sha256": "3df6d27569797199062243478fa31d5db1f1779af92594c23e317b3af48b78d6",
+      "financials": {
+        "bvps": 2.56577664,
+        "current_assets": 140598.0,
+        "current_liabilities": null,
+        "ncavps": -0.03422336,
+        "shares": 25000000.0,
+        "tbvps": null,
+        "total_assets": 65140598.0,
+        "total_liabilities": 996182.0,
+        "ttm_eps": -0.03,
+        "ttm_net_income": -823977.0,
+        "ttm_revenue": null
+      },
+      "n_pass": 0,
+      "notes_count": 2,
+      "notes_sha256": "19bd2029f76a5e1a1b1dd0fe0a00c3065aebadcd0ec14a417034f3584d0b3a48",
+      "pass": true,
+      "profile": "OPERATING",
+      "profile_meta_sha256": "77d205edf2955398e314f84e0212fb8df1f52a7aff0502854145e3c5deade0c0",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001683168-26-003530",
+        "document": "davion_i20fa1.htm",
+        "filed": "2026-05-06",
+        "filing_document": null,
+        "form": "20-F/A",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001683168-26-003530",
+        "canonical_tag": "Assets",
+        "document": "davion_i20fa1.htm",
+        "end": "2025-12-31",
+        "filed": "2026-05-06",
+        "form": "20-F/A",
+        "tag": "ifrs-full:Assets",
+        "unit": "EUR"
+      },
+      "sources_count": 10,
+      "sources_sha256": "bdfa5b6c06af62f26e41719959baa81c4c4d83e67d520b7f47206f694d46d9cb",
+      "ticker": "DAVI",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "2a92f8156bd4da06ea44a256096593df38ea0d24b8815130d464d12da0e33a73",
+      "annual": {
+        "accession": "0001493152-26-038530",
+        "document": "form20-f.htm",
+        "filed": "2026-08-14",
+        "form": "20-F",
+        "report_date": "2026-03-31"
+      },
+      "annual_ratio_years": [
+        "2024",
+        "2025",
+        "2026"
+      ],
+      "annual_ratios_sha256": "fbcccb322b138a60e1a2c4b815b1b0a08b362fc94caddaa4ca5fd71eefa3a6ea",
+      "balance_sheet_date": "2026-03-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0001926293",
+      "criteria_sha256": "4e3f7f1c6d4ea0dc46a008a8760238fbe51fd96af65e3b913f4eb22b7447bab6",
+      "financials": {
+        "bvps": 4.236420504854369,
+        "current_assets": 42914212.0,
+        "current_liabilities": 10162665.0,
+        "ncavps": 2.515178718446602,
+        "shares": 12875000.0,
+        "tbvps": null,
+        "total_assets": 65075200.0,
+        "total_liabilities": 10531286.0,
+        "ttm_eps": -1.24,
+        "ttm_net_income": -13113273.0,
+        "ttm_revenue": 5418194.0
+      },
+      "n_pass": 1,
+      "notes_count": 3,
+      "notes_sha256": "71ca02f8ce625a3442394e1bf596e371573003389820c0f7fb5418edd75e2848",
+      "pass": true,
+      "profile": "OPERATING",
+      "profile_meta_sha256": "77d205edf2955398e314f84e0212fb8df1f52a7aff0502854145e3c5deade0c0",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001493152-26-038530",
+        "document": "form20-f.htm",
+        "filed": "2026-08-14",
+        "filing_document": null,
+        "form": "20-F",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001493152-26-038530",
+        "canonical_tag": "Assets",
+        "document": "form20-f.htm",
+        "end": "2026-03-31",
+        "filed": "2026-08-14",
+        "form": "20-F",
+        "tag": "ifrs-full:Assets",
+        "unit": "HKD"
+      },
+      "sources_count": 14,
+      "sources_sha256": "0e23e0c0b82c9eafdb9f7d146dfe14acf97586112b31caf9e88ebab729e0fe06",
+      "ticker": "GCDT",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "c181e5d8bdeac860e94ea44a8017eac56fb8bdab2d9e767095bf5872b5d87005",
+      "annual": {
+        "accession": "0001104659-26-108373",
+        "document": "gmtl-20260630x20f.htm",
+        "filed": "2026-09-17",
+        "form": "20-F",
+        "report_date": "2026-06-30"
+      },
+      "annual_ratio_years": [
+        "2024",
+        "2025",
+        "2026"
+      ],
+      "annual_ratios_sha256": "be85951fe2d4b5e83bf610b2555d148efaa940e4b9423ffc9d077d8fb885ddad",
+      "balance_sheet_date": "2026-06-30",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0002039972",
+      "criteria_sha256": "84b3cffe6347865d72c2f4a5979b8af443c92016db23c44db1894cd40e060364",
+      "financials": {
+        "bvps": null,
+        "current_assets": 55854000.0,
+        "current_liabilities": 3646000.0,
+        "ncavps": null,
+        "shares": 38961596.2,
+        "tbvps": null,
+        "total_assets": 97279000.0,
+        "total_liabilities": null,
+        "ttm_eps": -0.15,
+        "ttm_net_income": -10043000.0,
+        "ttm_revenue": null
+      },
+      "n_pass": 1,
+      "notes_count": 2,
+      "notes_sha256": "fc5a39759b777909c76ebe8780b8babf7e26f2bc0c3840aa7911e1fde8dcb4e5",
+      "pass": true,
+      "profile": "OPERATING",
+      "profile_meta_sha256": "77d205edf2955398e314f84e0212fb8df1f52a7aff0502854145e3c5deade0c0",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001104659-26-108373",
+        "document": "gmtl-20260630x20f.htm",
+        "filed": "2026-09-17",
+        "filing_document": null,
+        "form": "20-F",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001104659-26-108373",
+        "canonical_tag": "Assets",
+        "document": "gmtl-20260630x20f.htm",
+        "end": "2026-06-30",
+        "filed": "2026-09-17",
+        "form": "20-F",
+        "tag": "ifrs-full:Assets",
+        "unit": "USD"
+      },
+      "sources_count": 11,
+      "sources_sha256": "31fb6a327522dfe939881de83cecf19a511d20f5ab4c609754f70a4b4251720d",
+      "ticker": "GMTL",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "09ce6dcb345d294d145f2c9949cb33aad5825d8174260637aa4c062bce195888",
+      "annual": {
+        "accession": "0001213900-26-049771",
+        "document": "ea0286666-20f_hotel101.htm",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "annual_ratio_years": [
+        "2023",
+        "2024",
+        "2025"
+      ],
+      "annual_ratios_sha256": "35f749b484be5fdc4cad00ea2fdff277b45f2912540cbb1cbac1be592174a42b",
+      "balance_sheet_date": "2025-12-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0002054507",
+      "criteria_sha256": "d5b8aa50c672f5deab105ce4bb68845f21834d2a54dbd18301637cb600eb305d",
+      "financials": {
+        "bvps": 0.07307948219261884,
+        "current_assets": 109253662.0,
+        "current_liabilities": 102521862.0,
+        "ncavps": -0.11076740713114541,
+        "shares": 234152398.0,
+        "tbvps": null,
+        "total_assets": 152301852.0,
+        "total_liabilities": 135190116.0,
+        "ttm_eps": -0.13,
+        "ttm_net_income": -26713293.0,
+        "ttm_revenue": 75866090.0
+      },
+      "n_pass": 0,
+      "notes_count": 2,
+      "notes_sha256": "c7c7cb1bdc28afcc6c258176f865c2ba2f348cdd8b9125091a349645f98474cf",
+      "pass": true,
+      "profile": "OPERATING",
+      "profile_meta_sha256": "77d205edf2955398e314f84e0212fb8df1f52a7aff0502854145e3c5deade0c0",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001213900-26-049771",
+        "document": "ea0286666-20f_hotel101.htm",
+        "filed": "2026-04-30",
+        "filing_document": null,
+        "form": "20-F",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001213900-26-049771",
+        "canonical_tag": "Assets",
+        "document": "ea0286666-20f_hotel101.htm",
+        "end": "2025-12-31",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "tag": "ifrs-full:Assets",
+        "unit": "USD"
+      },
+      "sources_count": 11,
+      "sources_sha256": "185fa037b310568b26d791e95b3f2db96effe8fb4ba68621cce49669f1831a31",
+      "ticker": "HBNB",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "e7384b1ba1c39dc2603837663a42bbf3ee9a68dabe7802897392e4abc364da27",
+      "annual": {
+        "accession": "0001193125-26-289382",
+        "document": "payp-20260331.htm",
+        "filed": "2026-06-30",
+        "form": "20-F",
+        "report_date": "2026-03-31"
+      },
+      "annual_ratio_years": [
+        "2024",
+        "2025",
+        "2026"
+      ],
+      "annual_ratios_sha256": "f8aa778260146dc8892d0ea57baf6a9c2ec10fd4bcd575e4c97ca9a5aebd326d",
+      "balance_sheet_date": "2026-03-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0002080845",
+      "criteria_sha256": "f8018f61e70f74bf35b800bdb6ea63c5b30352e6de49e44c62b891f8d3afa07a",
+      "financials": {
+        "bvps": null,
+        "current_assets": null,
+        "current_liabilities": null,
+        "ncavps": null,
+        "shares": null,
+        "tbvps": null,
+        "total_assets": 2053580000000.0,
+        "total_liabilities": 1752840000000.0,
+        "ttm_eps": 178.55,
+        "ttm_net_income": 115034000000.0,
+        "ttm_revenue": 311217000000.0
+      },
+      "n_pass": 1,
+      "notes_count": 3,
+      "notes_sha256": "8cd8255e4696bed9e0ddd087f6dbe0ea02b5e72a265427dbfad6eeb5925066e8",
+      "pass": true,
+      "profile": "OPERATING",
+      "profile_meta_sha256": "77d205edf2955398e314f84e0212fb8df1f52a7aff0502854145e3c5deade0c0",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001193125-26-289382",
+        "document": "payp-20260331.htm",
+        "filed": "2026-06-30",
+        "filing_document": null,
+        "form": "20-F",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001193125-26-289382",
+        "canonical_tag": "Assets",
+        "document": "payp-20260331.htm",
+        "end": "2026-03-31",
+        "filed": "2026-06-30",
+        "form": "20-F",
+        "segments": "ifrs-full:MaturityAxis=ifrs-full:NotLaterThanOneYearMember",
+        "tag": "ifrs-full:Assets",
+        "unit": "JPY"
+      },
+      "sources_count": 13,
+      "sources_sha256": "ce4d3eafd0a72ca078200c131f5fcffb0da2da3ab8c4871c73973df5972fef58",
+      "ticker": "PAYP",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "7e993f656ad05ebc80f1c64205558bd016772853c69980ca52121ecad4961f81",
+      "annual": {
+        "accession": "0001213900-26-049950",
+        "document": "ea0285441-20f_picsnv.htm",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "annual_ratio_years": [
+        "2023",
+        "2024",
+        "2025"
+      ],
+      "annual_ratios_sha256": "faf7d0c9c7972a32ac69ee358abd87f60903d10d92d8046a1b520089b0e77306",
+      "balance_sheet_date": "2025-12-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0001841644",
+      "criteria_sha256": "d7f3b6405b22e6095e13ad2080627d253be49a36e3b9674d1b09ac7a73febd3a",
+      "financials": {
+        "bvps": 59.64412164256892,
+        "current_assets": null,
+        "current_liabilities": null,
+        "ncavps": null,
+        "shares": 43135919.0,
+        "tbvps": null,
+        "total_assets": 41986108000.0,
+        "total_liabilities": 39396174000.0,
+        "ttm_eps": -25.30343679475103,
+        "ttm_net_income": -1091487000.0,
+        "ttm_revenue": 10277824000.0
+      },
+      "n_pass": 0,
+      "notes_count": 3,
+      "notes_sha256": "091f5eeca80e86f9f6e12748585b08f120d6f70d20d65515d6061fd79a0ccc05",
+      "pass": true,
+      "profile": "FINANCIAL",
+      "profile_meta_sha256": "a81d54d3d18f4f0b164e95a831e3337b1025ef72e10483b19dddfd9cbf0e7494",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001213900-26-049950",
+        "document": "ea0285441-20f_picsnv.htm",
+        "filed": "2026-04-30",
+        "filing_document": null,
+        "form": "20-F",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001213900-26-049950",
+        "canonical_tag": "Assets",
+        "document": "ea0285441-20f_picsnv.htm",
+        "end": "2025-12-31",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "tag": "ifrs-full:Assets",
+        "unit": "BRL"
+      },
+      "sources_count": 11,
+      "sources_sha256": "b3f76ba916f5c664555e2fb206ba1f9441ee880e78b3d71e8387abbd05c4d979",
+      "ticker": "PICS",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "d4e9be9284ea71bf8ce4e20ca2d10738f10209b80965b6280022f6122ad0cc98",
+      "annual": {
+        "accession": "0001104659-26-049527",
+        "document": "tmcr-20251231x20f.htm",
+        "filed": "2026-04-27",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "annual_ratio_years": [
+        "2024",
+        "2025"
+      ],
+      "annual_ratios_sha256": "3dc0bd7bd14404ec5357ab22fe5018c600ce52d1b320712d1edcf1fa6e5545f7",
+      "balance_sheet_date": "2025-12-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0002087398",
+      "criteria_sha256": "ed7367897f95bac38617e88370f0c85fb5db623e4b225d0599528b5b0da34919",
+      "financials": {
+        "bvps": 0.013382526454920482,
+        "current_assets": 18853498.0,
+        "current_liabilities": 1762773.0,
+        "ncavps": -0.2633845489723334,
+        "shares": 50926632.0,
+        "tbvps": null,
+        "total_assets": 32948313.0,
+        "total_liabilities": 32266786.0,
+        "ttm_eps": 0.02190113416492966,
+        "ttm_net_income": 1115351.0,
+        "ttm_revenue": 0.0
+      },
+      "n_pass": 2,
+      "notes_count": 3,
+      "notes_sha256": "93fb2792f3bca47c52a18730e2f02fff8feda564e6c1faddfbf12de9939311ba",
+      "pass": true,
+      "profile": "OPERATING",
+      "profile_meta_sha256": "77d205edf2955398e314f84e0212fb8df1f52a7aff0502854145e3c5deade0c0",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001104659-26-049527",
+        "document": "tmcr-20251231x20f.htm",
+        "filed": "2026-04-27",
+        "filing_document": null,
+        "form": "20-F",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001104659-26-049527",
+        "canonical_tag": "Assets",
+        "document": "tmcr-20251231x20f.htm",
+        "end": "2025-12-31",
+        "filed": "2026-04-27",
+        "form": "20-F",
+        "tag": "ifrs-full:Assets",
+        "unit": "USD"
+      },
+      "sources_count": 14,
+      "sources_sha256": "abcf55013f1446231bd5cf538f7ea6376490b8939267a4999db1bc2a7337df8f",
+      "ticker": "TMCR",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "028bd3d59278789a8c881b6f3421d003b5dc81c1cfac6afea22b41a3856e943d",
+      "annual": {
+        "accession": "0001104659-26-052847",
+        "document": "tmb-20251231x20f.htm",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "annual_ratio_years": [
+        "2024",
+        "2025"
+      ],
+      "annual_ratios_sha256": "df0904dcf8a7e1b4ed3a3ff65093bee83f402519957afb595b9454fdd9ed15d8",
+      "balance_sheet_date": "2025-12-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0002080073",
+      "criteria_sha256": "35c1b5d761f947134c27ae9a749231ab1320cf2ce5b3b132710865c14dca5981",
+      "financials": {
+        "bvps": 2.5045886627576794,
+        "current_assets": 24216000.0,
+        "current_liabilities": 32878000.0,
+        "ncavps": -1.711069612166333,
+        "shares": 93411746.0,
+        "tbvps": null,
+        "total_assets": 418008000.0,
+        "total_liabilities": 184050000.0,
+        "ttm_eps": 0.21,
+        "ttm_net_income": 20332000.0,
+        "ttm_revenue": 34761000.0
+      },
+      "n_pass": 0,
+      "notes_count": 2,
+      "notes_sha256": "db34a7381a1cfe0750de99ff0859557bbd8d555f3190adf39f7a4cf77f96ac54",
+      "pass": true,
+      "profile": "FINANCIAL",
+      "profile_meta_sha256": "a81d54d3d18f4f0b164e95a831e3337b1025ef72e10483b19dddfd9cbf0e7494",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001104659-26-052847",
+        "document": "tmb-20251231x20f.htm",
+        "filed": "2026-04-30",
+        "filing_document": null,
+        "form": "20-F",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001104659-26-052847",
+        "canonical_tag": "Assets",
+        "document": "tmb-20251231x20f.htm",
+        "end": "2025-12-31",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "tag": "ifrs-full:Assets",
+        "unit": "USD"
+      },
+      "sources_count": 13,
+      "sources_sha256": "c2f782124f4677bc91710b05446d957e7c84f97f4a789d41e48add625889b207",
+      "ticker": "VMET",
+      "verdict": "FAIL"
+    },
+    {
+      "alignment_sha256": "213b20f5ac9d32159bdd8fc140c34324090fa86fe07b8640d109929cca63d7ac",
+      "annual": {
+        "accession": "0001493152-26-019802",
+        "document": "form20-f.htm",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "annual_ratio_years": [
+        "2023",
+        "2024",
+        "2025"
+      ],
+      "annual_ratios_sha256": "44ac0ecda412875a68571b8828ab58a56a083d6541962983987930c0fd1e4f68",
+      "balance_sheet_date": "2025-12-31",
+      "checks": {
+        "annual_date": true,
+        "annual_relationship": true,
+        "criteria_verdict": true,
+        "financial_contract": true,
+        "identity_unique": true,
+        "ratios_profiles_notes": true,
+        "source_identity": true
+      },
+      "cik": "0001875016",
+      "criteria_sha256": "2dc006736ec73761165f4003683d303d0d688f9fe5de01f656b933e3e44efd0a",
+      "financials": {
+        "bvps": -0.394039680618814,
+        "current_assets": 5609483.0,
+        "current_liabilities": 12902986.0,
+        "ncavps": -0.484019807228756,
+        "shares": 17200387.0,
+        "tbvps": null,
+        "total_assets": 7157176.0,
+        "total_liabilities": 13934811.0,
+        "ttm_eps": -1.23,
+        "ttm_net_income": -20173616.0,
+        "ttm_revenue": 4678501.0
+      },
+      "n_pass": 0,
+      "notes_count": 1,
+      "notes_sha256": "37533854d7ad4d3b8ecefc3af7b476cbe0798ef4f469216785e6a9520d057e90",
+      "pass": true,
+      "profile": "OPERATING",
+      "profile_meta_sha256": "77d205edf2955398e314f84e0212fb8df1f52a7aff0502854145e3c5deade0c0",
+      "relationship": "direct_annual",
+      "source": {
+        "accession": "0001493152-26-019802",
+        "document": "form20-f.htm",
+        "filed": "2026-04-30",
+        "filing_document": null,
+        "form": "20-F",
+        "report_date": null
+      },
+      "source_total_assets": {
+        "accn": "0001493152-26-019802",
+        "canonical_tag": "Assets",
+        "document": "form20-f.htm",
+        "end": "2025-12-31",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "tag": "ifrs-full:Assets",
+        "unit": "USD"
+      },
+      "sources_count": 16,
+      "sources_sha256": "22b332b47197837c3de1242e74b9e99bc1eaa207e667e1ca5ec778a86b1b32c8",
+      "ticker": "YMAT",
+      "verdict": "FAIL"
+    }
+  ]
+}
+end_utc=2026-09-28T18:29:43Z
+exit_code=0
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   404Gi   9.5Gi    98%    9.2M   99M    9%   /System/Volumes/Data
+/dev/disk3s5   460Gi   404Gi   9.5Gi    98%    9.2M   99M    9%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 42%

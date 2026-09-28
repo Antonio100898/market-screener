@@ -1,0 +1,806 @@
+start_utc=2026-09-28T18:31:37Z
+{
+  "count": 14,
+  "all_have_grade": true,
+  "unique_tickers": 14,
+  "unique_ciks": 14,
+  "rows": [
+    {
+      "ticker": "AERO",
+      "cik": "0001561861",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 2,
+        "note": "a business result, not the price, is in the way; 2 further criteria cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": 2162319750.15,
+      "current_ratio": 0.6394171976312187,
+      "price_to_book": null,
+      "price_to_pass": null,
+      "pe3": 5.342696629213483,
+      "return_quality": {
+        "score": 0,
+        "returnScore": 0,
+        "missingInputs": [
+          "ROE",
+          "FCF/revenue",
+          "D/E",
+          "CapEx/OCF"
+        ],
+        "inputsPresent": 2,
+        "noReturnEvidence": false,
+        "cashFlowMissing": true,
+        "roe": null,
+        "roic": 26.011324047541777,
+        "ronta": 26.011324047541777,
+        "fcfRevenue": null,
+        "fcfRevenueYears": 0,
+        "capexOcf": null,
+        "capexOcfYears": 0,
+        "debtToEquity": null,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": true,
+          "debtToEquity": false
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "goodwill",
+          "intangibles",
+          "noncurrent_investments",
+          "short_term_investments"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts."
+      }
+    },
+    {
+      "ticker": "AGMB",
+      "cik": "0002020932",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 1,
+        "note": "a business result, not the price, is in the way; 1 further criterion cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": 5557364.02,
+      "current_ratio": 6.521975361773092,
+      "price_to_book": 0.037308914308230585,
+      "price_to_pass": null,
+      "pe3": null,
+      "return_quality": {
+        "score": 0,
+        "returnScore": 0,
+        "missingInputs": [
+          "ROE",
+          "FCF/revenue",
+          "CapEx/OCF"
+        ],
+        "inputsPresent": 3,
+        "noReturnEvidence": false,
+        "cashFlowMissing": true,
+        "roe": null,
+        "roic": -159.18734557954667,
+        "ronta": -319.21482039959074,
+        "fcfRevenue": null,
+        "fcfRevenueYears": 0,
+        "capexOcf": null,
+        "capexOcfYears": 0,
+        "debtToEquity": 0,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": true,
+          "debtToEquity": true
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "debt",
+          "noncurrent_investments",
+          "short_term_debt",
+          "short_term_investments",
+          "tax_rate"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts."
+      }
+    },
+    {
+      "ticker": "ALPS",
+      "cik": "0002025774",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 1,
+        "note": "a business result, not the price, is in the way; 1 further criterion cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": 62400117.75,
+      "current_ratio": 0.3606429519310855,
+      "price_to_book": null,
+      "price_to_pass": null,
+      "pe3": null,
+      "return_quality": {
+        "score": 3.459867380225637,
+        "returnScore": 3.459867380225637,
+        "missingInputs": [
+          "ROE",
+          "RONTA",
+          "D/E",
+          "CapEx/OCF"
+        ],
+        "inputsPresent": 2,
+        "noReturnEvidence": false,
+        "cashFlowMissing": false,
+        "roe": null,
+        "roic": -923.1213050038433,
+        "ronta": null,
+        "fcfRevenue": -960.8126873033896,
+        "fcfRevenueYears": 1,
+        "capexOcf": null,
+        "capexOcfYears": 0,
+        "debtToEquity": null,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": false,
+          "debtToEquity": true
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "debt",
+          "goodwill",
+          "noncurrent_investments",
+          "short_term_debt",
+          "short_term_investments",
+          "tax_rate"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts.",
+        "highDebtWeight": false
+      }
+    },
+    {
+      "ticker": "AUGO",
+      "cik": "0001468642",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 2,
+        "note": "a business result, not the price, is in the way; 2 further criteria cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": 6228788833.599999,
+      "current_ratio": 0.9738377285493317,
+      "price_to_book": 23.439674691894616,
+      "price_to_pass": null,
+      "pe3": null,
+      "return_quality": {
+        "score": 0,
+        "returnScore": 0,
+        "missingInputs": [
+          "ROIC",
+          "RONTA",
+          "FCF/revenue",
+          "CapEx/OCF"
+        ],
+        "inputsPresent": 2,
+        "noReturnEvidence": false,
+        "cashFlowMissing": true,
+        "roe": 27.06,
+        "roic": null,
+        "ronta": null,
+        "fcfRevenue": null,
+        "fcfRevenueYears": 0,
+        "capexOcf": null,
+        "capexOcfYears": 0,
+        "debtToEquity": 0,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": false,
+          "debtToEquity": true
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "debt",
+          "goodwill",
+          "intangibles",
+          "noncurrent_investments",
+          "operating_income",
+          "short_term_debt",
+          "short_term_investments"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts."
+      }
+    },
+    {
+      "ticker": "CNI",
+      "cik": "0000016868",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 1,
+        "note": "a business result, not the price, is in the way; 1 further criterion cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": 74160236000,
+      "current_ratio": 0.6685606060606061,
+      "price_to_book": 4.871923144862759,
+      "price_to_pass": null,
+      "pe3": 22.241222154911295,
+      "return_quality": {
+        "score": 19.841256688345076,
+        "returnScore": 59.895577032012895,
+        "missingInputs": [],
+        "inputsPresent": 6,
+        "noReturnEvidence": false,
+        "cashFlowMissing": false,
+        "roe": 22.15,
+        "roic": 9.113457755394979,
+        "ronta": 9.166769418375685,
+        "fcfRevenue": 19.596625057790106,
+        "fcfRevenueYears": 3,
+        "capexOcf": 51.893885657540075,
+        "capexOcfYears": 3,
+        "debtToEquity": 0.9874,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": true,
+          "debtToEquity": false
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "short_term_investments"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts.",
+        "highDebtWeight": false
+      }
+    },
+    {
+      "ticker": "DAVI",
+      "cik": "0002039072",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 4,
+        "note": "a business result, not the price, is in the way; 4 further criteria cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": null,
+      "current_ratio": null,
+      "price_to_book": null,
+      "price_to_pass": null,
+      "pe3": null,
+      "return_quality": {
+        "score": 0,
+        "returnScore": 0,
+        "missingInputs": [
+          "ROE",
+          "FCF/revenue",
+          "D/E",
+          "CapEx/OCF"
+        ],
+        "inputsPresent": 2,
+        "noReturnEvidence": false,
+        "cashFlowMissing": true,
+        "roe": null,
+        "roic": -1.266218518320396,
+        "ronta": -1115.9102913094705,
+        "fcfRevenue": null,
+        "fcfRevenueYears": 0,
+        "capexOcf": null,
+        "capexOcfYears": 0,
+        "debtToEquity": null,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": true,
+          "debtToEquity": false
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "current_liabilities",
+          "goodwill",
+          "noncurrent_investments",
+          "short_term_debt",
+          "short_term_investments",
+          "tax_rate"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts."
+      }
+    },
+    {
+      "ticker": "GCDT",
+      "cik": "0001926293",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 2,
+        "note": "a business result, not the price, is in the way; 2 further criteria cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": 6347375,
+      "current_ratio": 4.222732127842451,
+      "price_to_book": 0.9129020822103086,
+      "price_to_pass": null,
+      "pe3": null,
+      "return_quality": {
+        "score": 18.2101265104482,
+        "returnScore": 25.7199569353779,
+        "missingInputs": [],
+        "inputsPresent": 6,
+        "noReturnEvidence": false,
+        "cashFlowMissing": false,
+        "roe": -78.19,
+        "roic": -42.158930090559856,
+        "ronta": -42.158930090559856,
+        "fcfRevenue": -211.04952187592087,
+        "fcfRevenueYears": 2,
+        "capexOcf": 25.212640608385517,
+        "capexOcfYears": 1,
+        "debtToEquity": 0.128,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": true,
+          "debtToEquity": true
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "debt",
+          "goodwill",
+          "intangibles",
+          "noncurrent_investments",
+          "short_term_investments",
+          "tax_rate"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts.",
+        "highDebtWeight": false
+      }
+    },
+    {
+      "ticker": "GMTL",
+      "cik": "0002039972",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 2,
+        "note": "a business result, not the price, is in the way; 2 further criteria cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": 365264964.375,
+      "current_ratio": 15.319253976961054,
+      "price_to_book": null,
+      "price_to_pass": null,
+      "pe3": null,
+      "return_quality": {
+        "score": 0,
+        "returnScore": 0,
+        "missingInputs": [
+          "ROE",
+          "FCF/revenue",
+          "D/E",
+          "CapEx/OCF"
+        ],
+        "inputsPresent": 2,
+        "noReturnEvidence": false,
+        "cashFlowMissing": true,
+        "roe": null,
+        "roic": -36.63250926425303,
+        "ronta": -131.55888784754765,
+        "fcfRevenue": null,
+        "fcfRevenueYears": 0,
+        "capexOcf": null,
+        "capexOcfYears": 0,
+        "debtToEquity": null,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": true,
+          "debtToEquity": true
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "debt",
+          "goodwill",
+          "noncurrent_investments",
+          "short_term_debt",
+          "short_term_investments",
+          "tax_rate"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts."
+      }
+    },
+    {
+      "ticker": "HBNB",
+      "cik": "0002054507",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 2,
+        "note": "a business result, not the price, is in the way; 2 further criteria cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": 1170761990,
+      "current_ratio": 1.0656620926373732,
+      "price_to_book": 68.41865664594171,
+      "price_to_pass": null,
+      "pe3": null,
+      "return_quality": {
+        "score": 22.85781465403848,
+        "returnScore": 22.85781465403848,
+        "missingInputs": [
+          "ROIC",
+          "RONTA",
+          "CapEx/OCF"
+        ],
+        "inputsPresent": 3,
+        "noReturnEvidence": false,
+        "cashFlowMissing": false,
+        "roe": -289.01,
+        "roic": null,
+        "ronta": null,
+        "fcfRevenue": -56.89692193178797,
+        "fcfRevenueYears": 1,
+        "capexOcf": null,
+        "capexOcfYears": 0,
+        "debtToEquity": 0,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": false,
+          "debtToEquity": true
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "debt",
+          "goodwill",
+          "intangibles",
+          "noncurrent_investments",
+          "operating_income",
+          "short_term_debt",
+          "short_term_investments",
+          "tax_rate"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts.",
+        "highDebtWeight": false
+      }
+    },
+    {
+      "ticker": "PAYP",
+      "cik": "0002080845",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 3,
+        "note": "a business result, not the price, is in the way; 3 further criteria cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": null,
+      "current_ratio": null,
+      "price_to_book": null,
+      "price_to_pass": null,
+      "pe3": 31.804023591637982,
+      "return_quality": {
+        "score": 82.73048031906758,
+        "returnScore": 85.29017833508658,
+        "missingInputs": [
+          "RONTA",
+          "D/E"
+        ],
+        "inputsPresent": 4,
+        "noReturnEvidence": false,
+        "cashFlowMissing": false,
+        "roe": 46.57,
+        "roic": 3.459648917649413,
+        "ronta": null,
+        "fcfRevenue": 118.543652821022,
+        "fcfRevenueYears": 1,
+        "capexOcf": 3.0940204941963056,
+        "capexOcfYears": 3,
+        "debtToEquity": null,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": false,
+          "debtToEquity": false
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "current_liabilities",
+          "noncurrent_investments",
+          "short_term_debt",
+          "short_term_investments",
+          "tax_rate"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts.",
+        "highDebtWeight": false
+      }
+    },
+    {
+      "ticker": "PICS",
+      "cik": "0001841644",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 4,
+        "note": "a business result, not the price, is in the way; 4 further criteria cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": 363204437.98,
+      "current_ratio": null,
+      "price_to_book": 0.7361061709166785,
+      "price_to_pass": null,
+      "pe3": null,
+      "return_quality": {
+        "score": 62.3492965538971,
+        "returnScore": 63.26970593194678,
+        "missingInputs": [
+          "D/E"
+        ],
+        "inputsPresent": 5,
+        "noReturnEvidence": false,
+        "cashFlowMissing": false,
+        "roe": -52.21,
+        "roic": 0.09070649411027473,
+        "ronta": 0.09405911906110656,
+        "fcfRevenue": 39.38128011789648,
+        "fcfRevenueYears": 3,
+        "capexOcf": 1.4762145347606954,
+        "capexOcfYears": 2,
+        "debtToEquity": null,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": true,
+          "debtToEquity": false
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "current_liabilities",
+          "goodwill",
+          "noncurrent_investments",
+          "short_term_debt",
+          "short_term_investments"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts.",
+        "highDebtWeight": false
+      }
+    },
+    {
+      "ticker": "TMCR",
+      "cik": "0002087398",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 2,
+        "note": "a business result, not the price, is in the way; 2 further criteria cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": 256670225.28,
+      "current_ratio": 10.695363498306362,
+      "price_to_book": 376.6105015355225,
+      "price_to_pass": null,
+      "pe3": null,
+      "return_quality": {
+        "score": 42.63830759149711,
+        "returnScore": 42.63830759149711,
+        "missingInputs": [
+          "ROE",
+          "RONTA",
+          "FCF/revenue",
+          "CapEx/OCF"
+        ],
+        "inputsPresent": 2,
+        "noReturnEvidence": false,
+        "cashFlowMissing": false,
+        "roe": null,
+        "roic": -40.87512814023358,
+        "ronta": null,
+        "fcfRevenue": null,
+        "fcfRevenueYears": 0,
+        "capexOcf": null,
+        "capexOcfYears": 0,
+        "debtToEquity": 0,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": false,
+          "debtToEquity": true
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "debt",
+          "goodwill",
+          "noncurrent_investments",
+          "short_term_debt",
+          "short_term_investments",
+          "tax_rate"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts.",
+        "highDebtWeight": false
+      }
+    },
+    {
+      "ticker": "VMET",
+      "cik": "0002080073",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 1,
+        "note": "a business result, not the price, is in the way; 1 further criterion cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": 834166891.78,
+      "current_ratio": 0.7365411521382079,
+      "price_to_book": 3.565455730430248,
+      "price_to_pass": null,
+      "pe3": null,
+      "return_quality": {
+        "score": 0,
+        "returnScore": 0,
+        "missingInputs": [
+          "FCF/revenue",
+          "CapEx/OCF"
+        ],
+        "inputsPresent": 4,
+        "noReturnEvidence": false,
+        "cashFlowMissing": true,
+        "roe": 9.13,
+        "roic": 10.287110865438672,
+        "ronta": 10.287110865438672,
+        "fcfRevenue": null,
+        "fcfRevenueYears": 0,
+        "capexOcf": null,
+        "capexOcfYears": 0,
+        "debtToEquity": 0.6027,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": true,
+          "debtToEquity": true
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "debt",
+          "goodwill",
+          "intangibles",
+          "noncurrent_investments",
+          "short_term_debt",
+          "short_term_investments"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts."
+      }
+    },
+    {
+      "ticker": "YMAT",
+      "cik": "0001875016",
+      "grade": {
+        "label": "BLOCKED",
+        "unknown": 1,
+        "note": "a business result, not the price, is in the way; 1 further criterion cannot be measured"
+      },
+      "verdict": "FAIL",
+      "market_cap_quote_currency": 27348615.330000002,
+      "current_ratio": 0.43474301219888173,
+      "price_to_book": null,
+      "price_to_pass": null,
+      "pe3": null,
+      "return_quality": {
+        "score": 0,
+        "returnScore": 0,
+        "missingInputs": [
+          "ROE",
+          "FCF/revenue",
+          "D/E",
+          "CapEx/OCF"
+        ],
+        "inputsPresent": 2,
+        "noReturnEvidence": false,
+        "cashFlowMissing": true,
+        "roe": null,
+        "roic": -149.21616158945324,
+        "ronta": -150.116984503515,
+        "fcfRevenue": null,
+        "fcfRevenueYears": 0,
+        "capexOcf": null,
+        "capexOcfYears": 0,
+        "debtToEquity": null,
+        "assumptionMode": true,
+        "assumptionApplied": true,
+        "assumedInputs": {
+          "roe": false,
+          "roic": true,
+          "ronta": true,
+          "debtToEquity": false
+        },
+        "estimated": false,
+        "estimatedInputs": {
+          "roic": false,
+          "ronta": false
+        },
+        "assumptions": [
+          "goodwill",
+          "noncurrent_investments",
+          "short_term_investments"
+        ],
+        "estimateNote": "Return Quality uses the same explicit zero-assumption convention as the company detail. These values are discovery estimates, not lower bounds, and do not change Graham criteria or verdicts."
+      }
+    }
+  ]
+}
+end_utc=2026-09-28T18:31:38Z
+exit_code=0
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   404Gi   9.5Gi    98%    9.2M  100M    8%   /System/Volumes/Data
+/dev/disk3s5   460Gi   404Gi   9.5Gi    98%    9.2M  100M    8%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 44%

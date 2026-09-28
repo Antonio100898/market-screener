@@ -1,0 +1,120 @@
+start_utc=2026-09-28T18:30:51Z
+{
+  "categories": {
+    "live_quote_time_fx_and_dependents": {
+      "alignment.defensive.passed": 17,
+      "alignment.defensive.tests.valuation": 17,
+      "alignment.enterprising.passed": 13,
+      "alignment.enterprising.tests.tangible_assets": 7,
+      "alignment.enterprising.tests.valuation": 7,
+      "alignment.enterprising.unknown": 1,
+      "asset_quality.market_cap_to_net_cash": 238,
+      "criteria[1].note": 15,
+      "criteria[1].status": 7,
+      "criteria[1].value": 2474,
+      "criteria[5].note": 3,
+      "criteria[5].value": 921,
+      "criteria[7].note": 12,
+      "criteria[7].status": 7,
+      "criteria[7].value": 1482,
+      "fx.asof": 237,
+      "fx.rate": 227,
+      "market_state": 6610,
+      "market_state_asof": 6612,
+      "n_pass": 13,
+      "price": 5825,
+      "price_asof": 5847,
+      "price_reporting_currency": 235,
+      "price_session": 3545
+    },
+    "peer_set_from_additions": {
+      "context_notes": 67,
+      "peer_efficiency": 4,
+      "peer_efficiency.behind": 2,
+      "peer_efficiency.industry_median": 168,
+      "peer_efficiency.peers": 168
+    },
+    "validated_market_history_refresh": {
+      "annual_ratios.2022.pb": 1,
+      "annual_ratios.2022.pncav": 1,
+      "annual_ratios.2022.price": 1,
+      "annual_ratios.2022.ptbv": 1,
+      "annual_ratios.2023.pb": 1,
+      "annual_ratios.2023.price": 1,
+      "annual_ratios.2024.pb": 1,
+      "annual_ratios.2024.price": 1,
+      "annual_ratios.2024.ptbv": 1,
+      "annual_ratios.2025.pb": 1,
+      "annual_ratios.2025.pncav": 1,
+      "annual_ratios.2025.price": 1,
+      "annual_ratios.2025.ptbv": 1,
+      "price_history_warning": 7,
+      "price_history_warning.note": 1,
+      "price_stats": 2,
+      "price_stats.average_3y": 1827,
+      "price_stats.drawdown_weeks": 5522,
+      "price_stats.high_52w": 223,
+      "price_stats.history_from": 1,
+      "price_stats.history_weeks": 676,
+      "price_stats.pct_above_52w_low": 5337,
+      "price_stats.pct_below_3y_high": 5613,
+      "price_stats.pct_below_52w_high": 5730,
+      "price_stats.pct_below_5y_high": 5482,
+      "price_stats.pct_vs_3y_average": 6250,
+      "price_stats.price_to_3y_median": 4359
+    }
+  },
+  "category_path_counts": {
+    "live_quote_time_fx_and_dependents": 24,
+    "peer_set_from_additions": 5,
+    "validated_market_history_refresh": 27
+  },
+  "changed_path_count": 56,
+  "context_note_delta": {
+    "added:Peer efficiency": 67,
+    "removed:Peer efficiency": 64
+  },
+  "context_note_examples": {
+    "added:Peer efficiency": [
+      {
+        "text": "Operating margin of -22.8% against a median of 1.8% across 117 companies in the same industry. Graham's sixth Penn Central signal was exactly this: an operating gap against comparable businesses that had been visible for years before the failure.",
+        "ticker": "INVU"
+      },
+      {
+        "text": "Operating margin of -5.4% against a median of 9.1% across 5 companies in the same industry. Graham's sixth Penn Central signal was exactly this: an operating gap against comparable businesses that had been visible for years before the failure.",
+        "ticker": "LPRO"
+      },
+      {
+        "text": "Operating margin of -7.0% against a median of 1.8% across 117 companies in the same industry. Graham's sixth Penn Central signal was exactly this: an operating gap against comparable businesses that had been visible for years before the failure.",
+        "ticker": "QH"
+      }
+    ],
+    "removed:Peer efficiency": [
+      {
+        "text": "Operating margin of -22.8% against a median of 1.7% across 116 companies in the same industry. Graham's sixth Penn Central signal was exactly this: an operating gap against comparable businesses that had been visible for years before the failure.",
+        "ticker": "INVU"
+      },
+      {
+        "text": "Operating margin of -7.0% against a median of 1.7% across 116 companies in the same industry. Graham's sixth Penn Central signal was exactly this: an operating gap against comparable businesses that had been visible for years before the failure.",
+        "ticker": "QH"
+      },
+      {
+        "text": "Operating margin of -155.5% against a median of 1.7% across 116 companies in the same industry. Graham's sixth Penn Central signal was exactly this: an operating gap against comparable businesses that had been visible for years before the failure.",
+        "ticker": "UK"
+      }
+    ]
+  },
+  "explanations": {
+    "live_quote_time_fx_and_dependents": "Normal export refreshed current quotes and FX. Criteria 1, 5, and 7, alignment, n_pass, and market-cap ratios are direct price dependents. Staleness wording changed when the quote date advanced.",
+    "peer_set_from_additions": "The 14 accepted rows expanded peer groups. 168 existing rows changed peer counts/medians; context-note changes are exclusively Peer efficiency notes.",
+    "validated_market_history_refresh": "Normal export refreshed validated weekly histories. Price statistics changed with the new observation. BTLN historical price multiples moved with a split-basis warning; eight other rows gained or changed explicit rejected-history warnings while retained histories stayed dated."
+  },
+  "unexplained_paths": []
+}
+end_utc=2026-09-28T18:30:56Z
+exit_code=0
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   404Gi   9.5Gi    98%    9.2M  100M    8%   /System/Volumes/Data
+/dev/disk3s5   460Gi   404Gi   9.5Gi    98%    9.2M  100M    8%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 40%

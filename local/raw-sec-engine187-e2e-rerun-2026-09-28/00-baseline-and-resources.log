@@ -1,0 +1,15 @@
+utc=2026-09-28T17:43:52Z
+codex/company-import
+846a36b7585a3a102ee9401375a23793883ad4fc
+d45bfb04044b42fa8221742873be1b4c688d4b722981987052c92f356ab5ce4b  /tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json
+bytes=220362103
+zsh:8: command not found: python
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   392Gi    23Gi    95%    8.9M  240M    4%   /System/Volumes/Data
+/dev/disk3s5   460Gi   392Gi    23Gi    95%    8.9M  240M    4%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 51%
+?? local/dev26-current-guidance.md
+?? local/dev26-review-map.md
+?? local/raw-sec-engine187-e2e-rerun-2026-09-28/
+{"engine_version": 185, "generated": "2026-09-28T12:50:49+00:00", "row_count": 6981, "unique_ciks": 6981, "unique_tickers": 6981}

@@ -1,0 +1,1202 @@
+utc=2026-09-28T17:45:29Z
+{
+  "all_dirty_or_engine_stale": true,
+  "all_verified": true,
+  "count": 18,
+  "engine_version": 187,
+  "rows": [
+    {
+      "annual": {
+        "accession": "0001104659-26-010352",
+        "document": "tm261145d1_40f.htm",
+        "filed": "2026-02-04",
+        "form": "40-F",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0000016868",
+      "dirty": {
+        "marked_at": "2026-09-28T17:44:22+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-010352"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 8,
+      "files": {
+        "annual_index": {
+          "document": "index.json",
+          "sha256": "50e83ef941db63b3d5020c0d851837cd873dcaedebe220cb4fb22db8d4624c89",
+          "size": 2298
+        },
+        "annual_primary_document": {
+          "document": "tm261145d1_40f.htm",
+          "sha256": "7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f",
+          "size": 420374
+        },
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "6bbe88ca9cbbff7468ade8ed263ec128bd84841a6feba282bfd89a25d3ca6cca",
+          "size": 78289
+        },
+        "instance": {
+          "document": "cni-20251231_d2_htm.xml",
+          "sha256": "83d63da8c1367aa525db38b13d436536746cf615e6ce0a9c22ef1dc8b322e9d2",
+          "size": 4175070
+        },
+        "presentation": {
+          "document": "cni-20251231_pre.xml",
+          "sha256": "26a61742ea6898eaec749380102749f28cf092ba14e87ff28c89d60c5e3566db",
+          "size": 1070019
+        },
+        "primary_document": {
+          "document": "cni-20251231.htm",
+          "sha256": "a3789c3b3a1a2a1b2ee15a6985c6e757c699c8c2992436ec6036b4e985fbb79d",
+          "size": 2665133
+        },
+        "schema": {
+          "document": "cni-20251231.xsd",
+          "sha256": "6b5abc09e7f60586c4b176b326f40b198e81e2bdd70695656fb527dd73a6ff5c",
+          "size": 138508
+        },
+        "source_index": {
+          "document": "index.json",
+          "sha256": "78fc8952f13a716fd9606b5ac2812020fcb6d84da3f58605b518a268868f2778",
+          "size": 14232
+        }
+      },
+      "manifest_sha256": "c4a1df2bb6fc9e253ecde8aecebfe4fc6cd5f85f6c9b3930245ee28ad8a3db10",
+      "name": "CANADIAN NATIONAL RAILWAY CO",
+      "relationship": "incorporated_annual_exhibit",
+      "relationship_evidence": {
+        "accession": "0000016868-26-000011",
+        "document": "cni-20251231.htm",
+        "href": "http://www.sec.gov/Archives/edgar/data/16868/000001686826000011/cni-20251231.htm",
+        "incorporation_text": "Incorporated by reference from the Registrant\u2019s Form 6-K",
+        "link_text": "Audited Annual Consolidated Financial Statements for the year ended December 31, 2025*"
+      },
+      "snapshot": {
+        "computed_at": "2026-09-28T12:38:41+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0000016868-26-000011",
+        "document": "cni-20251231.htm",
+        "filed": "2026-02-04",
+        "filing_document": "cni-20251231_d2.htm",
+        "form": "6-K",
+        "report_date": "2025-12-31"
+      },
+      "ticker": "CNI",
+      "verified_fact_entries": 1804
+    },
+    {
+      "annual": {
+        "accession": "0001683168-26-002801",
+        "document": "athenagold_i20f-123125.htm",
+        "filed": "2026-04-10",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0001304409",
+      "dirty": {
+        "marked_at": "2026-09-28T17:19:33+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001683168-26-002801"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "5ea0f1f6502dbe2dc96ad0d98f0116c4b946dae6109a4d846a958e77c29a233c",
+          "size": 35653
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "d297b7c9b1f22ae44b8a6f4c83e06f8f3f4d979a849a91646476b3224bb1bac8",
+          "size": 8222
+        },
+        "instance": {
+          "document": "athenagold_i20f-123125_htm.xml",
+          "sha256": "7bfb3b852ebe383e948d22690a47dbff5cd94b833163d1b75163d7de43cbdff8",
+          "size": 1402077
+        },
+        "presentation": {
+          "document": "ahnr-20251231_pre.xml",
+          "sha256": "e30724edb98c97e59fcd7407c8749a89aa0c58e1c668ba878cf7f67c32f9472e",
+          "size": 371934
+        },
+        "primary_document": {
+          "document": "athenagold_i20f-123125.htm",
+          "sha256": "5b21db614e8dc5211217ea5e804641d0eb405b87c143ae12b52da8716abd77a6",
+          "size": 1824470
+        },
+        "schema": {
+          "document": "ahnr-20251231.xsd",
+          "sha256": "bc3fb4da28ccffca065cd9e6445bfb47fccfa3b45b792deaf1e5e8f0aafaee59",
+          "size": 76775
+        }
+      },
+      "manifest_sha256": "62874ceea91ba1896a21c6be34f12a673d51119200dce55434669ddcd0a44c9b",
+      "name": "ATHENA GOLD CORP",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:44:19+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001683168-26-002801",
+        "document": "athenagold_i20f-123125.htm",
+        "filed": "2026-04-10",
+        "form": "20-F"
+      },
+      "ticker": "AHNRF",
+      "verified_fact_entries": 552
+    },
+    {
+      "annual": {
+        "accession": "0001171843-26-002783",
+        "document": "f20fa_033126.htm",
+        "filed": "2026-04-29",
+        "form": "20-F/A",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0001468642",
+      "dirty": {
+        "marked_at": "2026-09-28T17:19:36+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001171843-26-002783"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "e86651c2d477db1063f8ca26c28eae3985f51c3c84e65f1487930e016dbf3e88",
+          "size": 77222
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "711f62279e7fc0561dc4716487dcad8c6e58201c6336af3743250c59f5788e73",
+          "size": 17512
+        },
+        "instance": {
+          "document": "f20fa_033126_htm.xml",
+          "sha256": "c47f19478362c7a5e16b333414e5d972defd957d161c70a5bef132df19a6b9a9",
+          "size": 3381970
+        },
+        "presentation": {
+          "document": "cik0001468642-20251231_pre.xml",
+          "sha256": "fac29520672e2f2b3a7a147b733473d239833190af64e6f63240a9dbd3e735e0",
+          "size": 517893
+        },
+        "primary_document": {
+          "document": "f20fa_033126.htm",
+          "sha256": "0c462ffc492f6201307862f36ce626df06a9acd8d24af95e3c86d4afe4dcad2a",
+          "size": 5544631
+        },
+        "schema": {
+          "document": "cik0001468642-20251231.xsd",
+          "sha256": "e349749978e5101e9294a26607b1da8abd968068d7ddf81b395dc11162ddd55b",
+          "size": 159477
+        }
+      },
+      "manifest_sha256": "f43ef138dc74ddf762fa24682549a832d09117520a5a50cc72a9090b9781e543",
+      "name": "Aura Minerals Inc.",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:45:22+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001171843-26-002783",
+        "document": "f20fa_033126.htm",
+        "filed": "2026-04-29",
+        "form": "20-F/A"
+      },
+      "ticker": "AUGO",
+      "verified_fact_entries": 710
+    },
+    {
+      "annual": {
+        "accession": "0001193125-26-197494",
+        "document": "d101275d20f.htm",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0001561861",
+      "dirty": {
+        "marked_at": "2026-09-28T17:19:38+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001193125-26-197494"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "3ff95b8a90d77891c06f3afef1e8a21fbb95a3cf9cf2df79f8564ab253052764",
+          "size": 93226
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "eedf4cfda3a6a7f923464b3321abd4eb3be4e4154cd1bcd53da113f439449b4c",
+          "size": 16967
+        },
+        "instance": {
+          "document": "d101275d20f_htm.xml",
+          "sha256": "3e6614e5acfdb677750d9189e9aac2cdd1417c212aa751681b22e84caee43b19",
+          "size": 6760228
+        },
+        "presentation": {
+          "document": "ck0001561861-20251231.xsd",
+          "sha256": "30f70090d1860858457af1d381235756fc3109bdb8a87f1c50274e2810217479",
+          "size": 2519310
+        },
+        "primary_document": {
+          "document": "d101275d20f.htm",
+          "sha256": "b842756f7ce62b0ae1bd2cf14d6fc3373c61297c0a74934f020493332415326e",
+          "size": 6601960
+        },
+        "schema": {
+          "document": "ck0001561861-20251231.xsd",
+          "sha256": "30f70090d1860858457af1d381235756fc3109bdb8a87f1c50274e2810217479",
+          "size": 2519310
+        }
+      },
+      "manifest_sha256": "b096381fcc30d00e92b0dbe1e1df29d433f853055903ea9935f4dde24f8c2f39",
+      "name": "Grupo Aeromexico, S.A.B. de C.V.",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:46:02+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001193125-26-197494",
+        "document": "d101275d20f.htm",
+        "filed": "2026-04-30",
+        "form": "20-F"
+      },
+      "ticker": "AERO",
+      "verified_fact_entries": 1876
+    },
+    {
+      "annual": {
+        "accession": "0001213900-26-049950",
+        "document": "ea0285441-20f_picsnv.htm",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0001841644",
+      "dirty": {
+        "marked_at": "2026-09-28T17:19:41+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001213900-26-049950"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "c64f6b03ea7d4be5a0c2f51338bfee35494cd77ecff3e018fb9b53f3f927f5e5",
+          "size": 92065
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "36f8ed56ceb01e1e7e19894815bb1410bfb2af5d224a119238eb14113ef71f5f",
+          "size": 33947
+        },
+        "instance": {
+          "document": "ea0285441-20f_picsnv_htm.xml",
+          "sha256": "15714a795bf65038b7c3333231bfa2947974521e9f3bf1aa06202e3dafbd5b21",
+          "size": 4181845
+        },
+        "presentation": {
+          "document": "pics-20251231_pre.xml",
+          "sha256": "5be15f700071aa6670b956f7cc0b9edcfd84bd973e1283380e25946c03352e4c",
+          "size": 670027
+        },
+        "primary_document": {
+          "document": "ea0285441-20f_picsnv.htm",
+          "sha256": "47b0e5fdc06382462c040ff6d4dab0b3cf5c3cf2bb4a9542d3645317b38da308",
+          "size": 6564268
+        },
+        "schema": {
+          "document": "pics-20251231.xsd",
+          "sha256": "54873dd9a255197a77964f85f7be91167762abc8f04504fd9fb4d48973aa2a01",
+          "size": 216191
+        }
+      },
+      "manifest_sha256": "90392faa91760634591a80dad787dc780ecd27524baa4cdd69910367cd9a22e5",
+      "name": "PicS N.V.",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:31+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001213900-26-049950",
+        "document": "ea0285441-20f_picsnv.htm",
+        "filed": "2026-04-30",
+        "form": "20-F"
+      },
+      "ticker": "PICS",
+      "verified_fact_entries": 1312
+    },
+    {
+      "annual": {
+        "accession": "0001493152-26-019802",
+        "document": "form20-f.htm",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0001875016",
+      "dirty": {
+        "marked_at": "2026-09-28T17:19:43+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001493152-26-019802"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "26720735692bae72d68ac0a036ab560a7f82623c153b79d65fbf85e3cf0372c4",
+          "size": 85545
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "1268b64b4869757e02158aa66e37403c2ff078d7c37a5cd8692abb6f94248239",
+          "size": 19213
+        },
+        "instance": {
+          "document": "form20-f_htm.xml",
+          "sha256": "7939c867fad2ace84f96e3154515c2b76c8f187906aaeea1b9ed60eddafadd81",
+          "size": 4863600
+        },
+        "presentation": {
+          "document": "ymat-20251231_pre.xml",
+          "sha256": "4b5a64ac7985d6e5c2dc08cfc4d278b98342e8948075f2f03a8087f4b8e51793",
+          "size": 599144
+        },
+        "primary_document": {
+          "document": "form20-f.htm",
+          "sha256": "ff8035265e2fb19e7db7d9f8eae2b59738368958e1b450ffd18ee5bdb8fd500b",
+          "size": 4672079
+        },
+        "schema": {
+          "document": "ymat-20251231.xsd",
+          "sha256": "5988dbab2450b80e60da456e717a99d842e834024689691a6249423dcc13e627",
+          "size": 127567
+        }
+      },
+      "manifest_sha256": "d2fd53071b76d030d324b898a39e8d9cc970a2051ca4ed7c97f22704b8972991",
+      "name": "J-Star Holding Co., Ltd.",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:37+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001493152-26-019802",
+        "document": "form20-f.htm",
+        "filed": "2026-04-30",
+        "form": "20-F"
+      },
+      "ticker": "YMAT",
+      "verified_fact_entries": 846
+    },
+    {
+      "annual": {
+        "accession": "0001493152-26-038530",
+        "document": "form20-f.htm",
+        "filed": "2026-08-14",
+        "form": "20-F",
+        "report_date": "2026-03-31"
+      },
+      "cik": "0001926293",
+      "dirty": {
+        "marked_at": "2026-09-28T17:44:27+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001493152-26-038530"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "da6df23104b386f737e555cd3a9e2b123fd1ff56784e746ebe5aa6f3e17f302c",
+          "size": 64804
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "dd6cae8014243634109ae1fdc3585f133b84c65aad7e97775ed0d1ee49df286e",
+          "size": 17726
+        },
+        "instance": {
+          "document": "form20-f_htm.xml",
+          "sha256": "33970d63e6696f2d590136bde34ac70543cd71acf9dc4db53fa02104c8730017",
+          "size": 2131738
+        },
+        "presentation": {
+          "document": "gcdt-20260331_pre.xml",
+          "sha256": "f6fea6d2c62612a5bbc0a8172a0d6fc11815dee2a44cd8ff06fd80646806181f",
+          "size": 504445
+        },
+        "primary_document": {
+          "document": "form20-f.htm",
+          "sha256": "4eb0a26e230cedad453c5578c8894f793c1e1af38e687b62b8b7d128301743f2",
+          "size": 2675766
+        },
+        "schema": {
+          "document": "gcdt-20260331.xsd",
+          "sha256": "d09c2d40b5dd3f1a1ee97a9cc23a18256c4ad4fa2a58f10b47a44258e35661b4",
+          "size": 100567
+        }
+      },
+      "manifest_sha256": "e6d1ba04c34ff571c70e0efc11def07dfedaa506e741a22e601e5871e6e44e88",
+      "name": "Green Circle Decarbonize Technology Ltd",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:41+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001493152-26-038530",
+        "document": "form20-f.htm",
+        "filed": "2026-08-14",
+        "form": "20-F"
+      },
+      "ticker": "GCDT",
+      "verified_fact_entries": 561
+    },
+    {
+      "annual": {
+        "accession": "0001829126-26-005357",
+        "document": "kwavemedia_20f.htm",
+        "filed": "2026-05-15",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0002000756",
+      "dirty": {
+        "marked_at": "2026-09-28T17:44:29+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001829126-26-005357"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "b8f33021042d5b16d01c86c44c4a907209d6bafc7c7809403816975a70988d32",
+          "size": 117786
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "cd9164f1feb770b4b7791d57c15e8c0dc6885f94c1d8eb1b9741097bf5221d12",
+          "size": 21504
+        },
+        "instance": {
+          "document": "kwavemedia_20f_htm.xml",
+          "sha256": "d0b9b673f5d5dbecb69a593ccf2aaaf46890731f6252b53e106529180b5bb5c0",
+          "size": 8827629
+        },
+        "presentation": {
+          "document": "kwm-20251231_pre.xml",
+          "sha256": "d5bbf0b20571724d93bf3e7c11db708c93e6752288a6ecce2182bb2070f54ae2",
+          "size": 971370
+        },
+        "primary_document": {
+          "document": "kwavemedia_20f.htm",
+          "sha256": "872bb5de611764437a1b7332d40c0038849817a1089cc3e5668789d06b0ecfbf",
+          "size": 6530735
+        },
+        "schema": {
+          "document": "kwm-20251231.xsd",
+          "sha256": "296a3ae6c07efffb31e0c01b01a139fc523d39faa0925ba5f3cdd7967b733f3f",
+          "size": 298707
+        }
+      },
+      "manifest_sha256": "61937a99570e098a43e332bf342f3aea513f1dfb15d74290331ae0db399efc31",
+      "name": "Nexus Advanced Technologies Inc.",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:45+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001829126-26-005357",
+        "document": "kwavemedia_20f.htm",
+        "filed": "2026-05-15",
+        "form": "20-F"
+      },
+      "ticker": "NXAT",
+      "verified_fact_entries": 1368
+    },
+    {
+      "annual": {
+        "accession": "0001104659-26-047872",
+        "document": "agmb-20251231x20f.htm",
+        "filed": "2026-04-23",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0002020932",
+      "dirty": {
+        "marked_at": "2026-09-28T17:19:47+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-047872"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "d44c56e104a0f96013ea356c71f3da9aeaf4a1d258d6a0c55ad2e082233538e6",
+          "size": 70218
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "a62bc055aef53780aa13ca07c261fbbf7b6fb0e6e214308d9e3a2aec93ae7c35",
+          "size": 16704
+        },
+        "instance": {
+          "document": "agmb-20251231x20f_htm.xml",
+          "sha256": "fd99a0169601beddab5f334d4a556f75258f172dde3f0c17dd91f7161dc8fb30",
+          "size": 3324666
+        },
+        "presentation": {
+          "document": "agmb-20251231_pre.xml",
+          "sha256": "abe0c7211e89e044c9131d9a4fbbc994b7a56ff4a900e2b98e637aecae7ed314",
+          "size": 633634
+        },
+        "primary_document": {
+          "document": "agmb-20251231x20f.htm",
+          "sha256": "60fe7a656a74cd290164610d88792e0fe9fdde426ed2f78f56f6fd599ace63b3",
+          "size": 4541946
+        },
+        "schema": {
+          "document": "agmb-20251231.xsd",
+          "sha256": "98db45d84288399a77b69bf62e4990c7395b648d082a11e208d9fdae21aeaacb",
+          "size": 116972
+        }
+      },
+      "manifest_sha256": "edbf975ab9bb2dd0dd32b8b0b14c2c264d21efaaaabb0e1d9d280b09ac3e1e01",
+      "name": "AgomAb Therapeutics NV",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:46+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001104659-26-047872",
+        "document": "agmb-20251231x20f.htm",
+        "filed": "2026-04-23",
+        "form": "20-F"
+      },
+      "ticker": "AGMB",
+      "verified_fact_entries": 865
+    },
+    {
+      "annual": {
+        "accession": "0001493152-26-036364",
+        "document": "form20-f.htm",
+        "filed": "2026-08-06",
+        "form": "20-F",
+        "report_date": "2026-03-31"
+      },
+      "cik": "0002025774",
+      "dirty": {
+        "marked_at": "2026-09-28T17:19:49+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001493152-26-036364"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "9774fee61f10d377f43bf7aa8248bcac94e8f36cbeb367a4e1d8c0c93fa01f31",
+          "size": 71550
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "475933eb4c5ca63f6ec457982e2b6e13ce63d323027a27b796f47c3c67a13dcf",
+          "size": 20441
+        },
+        "instance": {
+          "document": "form20-f_htm.xml",
+          "sha256": "25db8eb9392152f7f8ff94967591704281c6c55e9fd423f2a9289f870e2d16a5",
+          "size": 3430288
+        },
+        "presentation": {
+          "document": "alps-20260331_pre.xml",
+          "sha256": "79d459cde53df5bf33f8ecadf1f5b579b8d76d807e496e8c2a557d2707f9bc20",
+          "size": 512517
+        },
+        "primary_document": {
+          "document": "form20-f.htm",
+          "sha256": "5d29de90aa410a3b8adf1ed8010b54453b8b008aa6afefb85de6d0113f9941a7",
+          "size": 4422511
+        },
+        "schema": {
+          "document": "alps-20260331.xsd",
+          "sha256": "c9f2d9a64131ec71301bf61651a7360f0b0c7e135d7296be6ee302723dea4e60",
+          "size": 119962
+        }
+      },
+      "manifest_sha256": "f37cc1df214a34c162e18298b362427b19bf8e1b95aefa16543a57fc8042c5f4",
+      "name": "Alps Group Inc",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:46+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001493152-26-036364",
+        "document": "form20-f.htm",
+        "filed": "2026-08-06",
+        "form": "20-F"
+      },
+      "ticker": "ALPS",
+      "verified_fact_entries": 946
+    },
+    {
+      "annual": {
+        "accession": "0001683168-26-003530",
+        "document": "davion_i20fa1.htm",
+        "filed": "2026-05-06",
+        "form": "20-F/A",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0002039072",
+      "dirty": {
+        "marked_at": "2026-09-28T17:19:51+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001683168-26-003530"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "217c09f7b95ca606139ab30ea1af216c677b60e5abe7368d5373ebb52b6f60a2",
+          "size": 37434
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "88e2a9e867535eded117da35e6e5105ad705f91c54670461d2e381685c265610",
+          "size": 8900
+        },
+        "instance": {
+          "document": "davion_i20fa1_htm.xml",
+          "sha256": "738c15c8fe1cd13e5ff3f663b59264162b1d8e840b9343d4c3ab52c86b37e98c",
+          "size": 478131
+        },
+        "presentation": {
+          "document": "davi-20251231_pre.xml",
+          "sha256": "b3011f52a60d251fbb362ca6325957c7ca9bc81b6b15b12fd58d7c7e2944ca70",
+          "size": 249959
+        },
+        "primary_document": {
+          "document": "davion_i20fa1.htm",
+          "sha256": "26ca942654ccbf2a780e9c08bf162d6607c224baf2c3ba48d60775d6d7e1139f",
+          "size": 1116049
+        },
+        "schema": {
+          "document": "davi-20251231.xsd",
+          "sha256": "d995c00685e30cb25bceae4fb8925bb17703091af8bce526d85d83bf18e6e582",
+          "size": 46183
+        }
+      },
+      "manifest_sha256": "9763de581210cf192a17306f27a796bfac60369c0d747c6f3c9a19fe6a13b3f6",
+      "name": "DAVION HEALTHCARE PLC",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:47+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001683168-26-003530",
+        "document": "davion_i20fa1.htm",
+        "filed": "2026-05-06",
+        "form": "20-F/A"
+      },
+      "ticker": "DAVI",
+      "verified_fact_entries": 163
+    },
+    {
+      "annual": {
+        "accession": "0001104659-26-108373",
+        "document": "gmtl-20260630x20f.htm",
+        "filed": "2026-09-17",
+        "form": "20-F",
+        "report_date": "2026-06-30"
+      },
+      "cik": "0002039972",
+      "dirty": {
+        "marked_at": "2026-09-28T17:19:54+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-108373"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "6904798c43676848c907bb6c11cfd64f0f7d5d26062456066abd5e5c6c2916b1",
+          "size": 47763
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "e7b2fcedd31588ce046764ff58e49ad0260d63c16cd69a7d46367152923eb4ec",
+          "size": 39794
+        },
+        "instance": {
+          "document": "gmtl-20260630x20f_htm.xml",
+          "sha256": "e70cd342462870a81ef2c5c956e1fd94b1f6069f1e3636ac3ac4830cb87b9664",
+          "size": 1761534
+        },
+        "presentation": {
+          "document": "gmtl-20260630_pre.xml",
+          "sha256": "c71b3283213e58e78e8a196c06e042c8a3fabb2266e0d542aa7db7923b71fb19",
+          "size": 407595
+        },
+        "primary_document": {
+          "document": "gmtl-20260630x20f.htm",
+          "sha256": "3593e6671ed56ac5ad6d0a7e5fc7fb77638ddf67f120718d89515ce4f754479f",
+          "size": 2991613
+        },
+        "schema": {
+          "document": "gmtl-20260630.xsd",
+          "sha256": "9fbf12d7e675b1c2c7c80ced7cb644586376def25396980cb5951e6fedaabec3",
+          "size": 74991
+        }
+      },
+      "manifest_sha256": "9255570b5f27fd6472622bf72351de62bd74df4861039e72dc40bb9b5da4a344",
+      "name": "Guardian Metal Resources PLC",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:47+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001104659-26-108373",
+        "document": "gmtl-20260630x20f.htm",
+        "filed": "2026-09-17",
+        "form": "20-F"
+      },
+      "ticker": "GMTL",
+      "verified_fact_entries": 461
+    },
+    {
+      "annual": {
+        "accession": "0001213900-26-049771",
+        "document": "ea0286666-20f_hotel101.htm",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0002054507",
+      "dirty": {
+        "marked_at": "2026-09-28T17:44:49+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001213900-26-049771"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "4b622d80497ac6fbb6736c840ed1856cd5b56f867584e551f5d29189840a7eb7",
+          "size": 65208
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "04b9631e1086f1593ff07ee69d92eecda2c2cbed4eef3c1e807e308cf967da89",
+          "size": 17575
+        },
+        "instance": {
+          "document": "ea0286666-20f_hotel101_htm.xml",
+          "sha256": "8f3b4244509db2998c9e5184fd0ddfe640ec46823123fe0ac7dc4ab77d40be60",
+          "size": 1359041
+        },
+        "presentation": {
+          "document": "hbnb-20251231_pre.xml",
+          "sha256": "0ddce8062e4b81a2c2f0a42ad14f6a8f88a498bb55e44593c0c9fa505dff9e2c",
+          "size": 375465
+        },
+        "primary_document": {
+          "document": "ea0286666-20f_hotel101.htm",
+          "sha256": "da03c9474388fbfceefc3b3d2e015590182d76c77cbae8e62cfb6577d1d9bd6d",
+          "size": 2354919
+        },
+        "schema": {
+          "document": "hbnb-20251231.xsd",
+          "sha256": "f8df8ae2daed45031efb47f33d9410ff7387580a14c30850c1945f4351d1b65d",
+          "size": 114121
+        }
+      },
+      "manifest_sha256": "a4ff07c0daa2013d3faa7c2d4f39f2286ec3d0c5184123dc8c8e1ec7644e104a",
+      "name": "Hotel101 Global Holdings Corp.",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:47+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001213900-26-049771",
+        "document": "ea0286666-20f_hotel101.htm",
+        "filed": "2026-04-30",
+        "form": "20-F"
+      },
+      "ticker": "HBNB",
+      "verified_fact_entries": 492
+    },
+    {
+      "annual": {
+        "accession": "0001213900-26-050426",
+        "document": "ea0285533-20f_brbibr.htm",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0002058601",
+      "dirty": {
+        "marked_at": "2026-09-28T17:19:57+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001213900-26-050426"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "950cc37cb4c47ab88ed881e38b88be919f6e8f3ff2e0e96d1ca6b7b77ff736e5",
+          "size": 57970
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "b0f45f02bcdd4bbc730e9a509e5a30f583d4ca1fde54ebdaa04e4e61eab0c662",
+          "size": 14033
+        },
+        "instance": {
+          "document": "ea0285533-20f_brbibr_htm.xml",
+          "sha256": "f597c5ea828b51f45926dd650ec185120bb844690a8b7696cc0ea1cf70219693",
+          "size": 2820531
+        },
+        "presentation": {
+          "document": "brbi-20251231_pre.xml",
+          "sha256": "20597bc581903aae450b41501e309330f943a85cd299137ad75a388783a87833",
+          "size": 468112
+        },
+        "primary_document": {
+          "document": "ea0285533-20f_brbibr.htm",
+          "sha256": "5c33b7ebc53ceeacc9492ee9a845924c5d3f84efd45846ae06da5322ffa5541d",
+          "size": 3553910
+        },
+        "schema": {
+          "document": "brbi-20251231.xsd",
+          "sha256": "55906fc69043380ba877459d5367eb5bb58e5ecf7dcd347949273dbb71426425",
+          "size": 150103
+        }
+      },
+      "manifest_sha256": "515a558a6275a76695e8e5d6dc0ba3a51a0a4841cf7341f03fa627b1ba3d8aa4",
+      "name": "BRBI BR Partners S.A.",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:47+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001213900-26-050426",
+        "document": "ea0285533-20f_brbibr.htm",
+        "filed": "2026-04-30",
+        "form": "20-F"
+      },
+      "ticker": "BRBI",
+      "verified_fact_entries": 784
+    },
+    {
+      "annual": {
+        "accession": "0002058897-26-000125",
+        "document": "cib-20251231.htm",
+        "filed": "2026-04-08",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0002058897",
+      "dirty": {
+        "marked_at": "2026-09-28T17:20:00+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0002058897-26-000125"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "0b41d58b30d2282f237bf03f8a39ffc2509c7e82902755bafc3d30f587aeadb6",
+          "size": 167774
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "ae1d8e729b51b2a3479b2c740f0882ad6fcb4961ffd9299b45ff7654a2955c4d",
+          "size": 28420
+        },
+        "instance": {
+          "document": "cib-20251231_htm.xml",
+          "sha256": "9ed4fa706e5792f1472c0f27ca7621013c7f79e52216ae434d2af1d731da2df0",
+          "size": 19008981
+        },
+        "presentation": {
+          "document": "cib-20251231_pre.xml",
+          "sha256": "1bd17df80f868f32a02164e75e422627b11df38ddd8ca9ffda70267b327966b5",
+          "size": 2850702
+        },
+        "primary_document": {
+          "document": "cib-20251231.htm",
+          "sha256": "f05d92a8c53a451afc40d649fed70f0384d35cc8792f00f2752c9fcd43d7a271",
+          "size": 14587757
+        },
+        "schema": {
+          "document": "cib-20251231.xsd",
+          "sha256": "6d4225514b4b02c4901796b38e2414a037f711fe420580135c40c3363e7b6312",
+          "size": 418779
+        }
+      },
+      "manifest_sha256": "8182b1eb52675abc291905550d52c425ad3eb9bed927562aee30f89db5150c67",
+      "name": "Grupo Cibest S.A.",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:47+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0002058897-26-000125",
+        "document": "cib-20251231.htm",
+        "filed": "2026-04-08",
+        "form": "20-F"
+      },
+      "ticker": "CIB",
+      "verified_fact_entries": 5193
+    },
+    {
+      "annual": {
+        "accession": "0001104659-26-052847",
+        "document": "tmb-20251231x20f.htm",
+        "filed": "2026-04-30",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0002080073",
+      "dirty": {
+        "marked_at": "2026-09-28T17:20:03+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-052847"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "563e396f1e96b84d49f075b4cc6fcde8e82e570e4e4dfb8b9fd1e007c2b5879d",
+          "size": 46315
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "21723ff41d844729d591a6812e057ef7009fc506a6d2599c792bbd196986f7ca",
+          "size": 11280
+        },
+        "instance": {
+          "document": "tmb-20251231x20f_htm.xml",
+          "sha256": "428b4db0f14e6075bbed9bee5b74b755c024a4049ab40d43f6e9beafafbefec8",
+          "size": 3101019
+        },
+        "presentation": {
+          "document": "tmb-20251231_pre.xml",
+          "sha256": "b6e6a5b85ba1d611f3b2dd2b885fa60cf12bf5b0505c26ead0acb86e7aa2796a",
+          "size": 497151
+        },
+        "primary_document": {
+          "document": "tmb-20251231x20f.htm",
+          "sha256": "2d74bf0cd11bc1c93f3c90ddce4465a3c6f6b34bdd3cc5cf5e1b2cf313df9a1a",
+          "size": 4630883
+        },
+        "schema": {
+          "document": "tmb-20251231.xsd",
+          "sha256": "0992088e4c21b4c4b50f1f749481eb1c2643b987a559c3de84bd5d431c989ef2",
+          "size": 100419
+        }
+      },
+      "manifest_sha256": "bffeff6ec31ffa51fb125b588ce3e79c6d375863d0fa0cd2386612fd13e44b97",
+      "name": "Versamet Royalties Corp",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:48+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001104659-26-052847",
+        "document": "tmb-20251231x20f.htm",
+        "filed": "2026-04-30",
+        "form": "20-F"
+      },
+      "ticker": "VMET",
+      "verified_fact_entries": 417
+    },
+    {
+      "annual": {
+        "accession": "0001193125-26-289382",
+        "document": "payp-20260331.htm",
+        "filed": "2026-06-30",
+        "form": "20-F",
+        "report_date": "2026-03-31"
+      },
+      "cik": "0002080845",
+      "dirty": {
+        "marked_at": "2026-09-28T17:20:06+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001193125-26-289382"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "7a160405b925c7990cd5c48bfbba114df55a5e7851a0aa2799059a66984c5125",
+          "size": 128402
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "3bf44f54af9cb804132eb7e2a30b3f29b6012babca35d5a9914212ac3190b0d6",
+          "size": 20523
+        },
+        "instance": {
+          "document": "payp-20260331_htm.xml",
+          "sha256": "7d700a1b77a6e12e8986341c791970af1ddb085e15c451d979779d90c9b35ecc",
+          "size": 16181287
+        },
+        "presentation": {
+          "document": "payp-20260331.xsd",
+          "sha256": "b92faf082921715e2c5381a3b4717771b51f86ef57d3a957116ea972e65a73c9",
+          "size": 3103948
+        },
+        "primary_document": {
+          "document": "payp-20260331.htm",
+          "sha256": "cfb4334a0390b866e7ed7054e09cd5c51250a7b5cd19e28a52f1cfcf7c8d6936",
+          "size": 13288107
+        },
+        "schema": {
+          "document": "payp-20260331.xsd",
+          "sha256": "b92faf082921715e2c5381a3b4717771b51f86ef57d3a957116ea972e65a73c9",
+          "size": 3103948
+        }
+      },
+      "manifest_sha256": "9915b332bcf971fbc0f141affa096c9e759ec150ae20ee9ab3f5271fb0cddaeb",
+      "name": "PayPay Corp",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:48+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001193125-26-289382",
+        "document": "payp-20260331.htm",
+        "filed": "2026-06-30",
+        "form": "20-F"
+      },
+      "ticker": "PAYP",
+      "verified_fact_entries": 1963
+    },
+    {
+      "annual": {
+        "accession": "0001104659-26-049527",
+        "document": "tmcr-20251231x20f.htm",
+        "filed": "2026-04-27",
+        "form": "20-F",
+        "report_date": "2025-12-31"
+      },
+      "cik": "0002087398",
+      "dirty": {
+        "marked_at": "2026-09-28T17:20:08+00:00",
+        "reason": "retained Inline-XBRL statement activated: 0001104659-26-049527"
+      },
+      "dirty_or_engine_stale": true,
+      "file_count": 6,
+      "files": {
+        "filing_summary": {
+          "document": "FilingSummary.xml",
+          "sha256": "4e8138736ed95073d6260419574585b7fd032684daf278b910e6475d1f5066fc",
+          "size": 35534
+        },
+        "index": {
+          "document": "index.json",
+          "sha256": "a8bf31aa90ae43e770c5a0b693320f95c1e362864d71f1bae37e8b8b06ebf0de",
+          "size": 9082
+        },
+        "instance": {
+          "document": "tmcr-20251231x20f_htm.xml",
+          "sha256": "eedfd8c445bd975ad34e1913833374cdeb1d742c6dd7c5df3348486745541897",
+          "size": 1105007
+        },
+        "presentation": {
+          "document": "tmcr-20251231_pre.xml",
+          "sha256": "9462a1685981f3e812d3423df8f3a6a06923d82f90e1f268786498c8b008dd77",
+          "size": 336063
+        },
+        "primary_document": {
+          "document": "tmcr-20251231x20f.htm",
+          "sha256": "7d1afe072baf56853c459f9ec7f5c6c02682aa0d3000685b47c505cda4826837",
+          "size": 1990481
+        },
+        "schema": {
+          "document": "tmcr-20251231.xsd",
+          "sha256": "cc3449175fbc707c432484476652f4e4e9d9bd11e068535248dc12d8f2e9fd7f",
+          "size": 56957
+        }
+      },
+      "manifest_sha256": "16e8df3a8c0f4b71909245903f5e369da88592d4e34d2607ed7ccb4b4d4ec2cd",
+      "name": "Metals Royalty Co Inc.",
+      "relationship": "direct_annual",
+      "relationship_evidence": null,
+      "snapshot": {
+        "computed_at": "2026-09-28T12:47:48+00:00",
+        "engine_version": 185,
+        "status": "foreign"
+      },
+      "source": {
+        "accession": "0001104659-26-049527",
+        "document": "tmcr-20251231x20f.htm",
+        "filed": "2026-04-27",
+        "form": "20-F"
+      },
+      "ticker": "TMCR",
+      "verified_fact_entries": 266
+    }
+  ]
+}
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   393Gi    22Gi    95%    8.9M  231M    4%   /System/Volumes/Data
+/dev/disk3s5   460Gi   393Gi    22Gi    95%    8.9M  231M    4%   /System/Volumes/Data
+The system has 17179869184 (1048576 pages with a page size of 16384).
+System-wide memory free percentage: 54%
