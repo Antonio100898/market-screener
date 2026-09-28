@@ -164,6 +164,27 @@ def test_two_workers_cannot_claim_the_same_job(repository):
     assert claimed[0].lease.owner in {"worker-1", "worker-2"}
 
 
+def test_claim_filter_leaves_other_job_kinds_queued(repository):
+    _enqueue(repository, "unknown", kind="unknown", priority=100)
+    expected = _enqueue(repository, "known", kind="known", priority=1)
+
+    claimed = repository.claim_next(
+        owner="specialized-worker",
+        lease_duration=LEASE,
+        now=NOW,
+        allowed_kinds={"known"},
+    )
+
+    assert claimed is not None
+    assert claimed.job.job_id == expected.job_id
+    assert claimed.job.kind == "known"
+    with repository.engine.connect() as connection:
+        unknown_status = connection.scalar(
+            select(durable_job.c.status).where(durable_job.c.kind == "unknown")
+        )
+    assert unknown_status == "pending"
+
+
 def test_database_rejects_a_running_job_without_active_ownership(repository):
     stored = _enqueue(repository, "invalid-state")
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import math
 import random
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
@@ -217,11 +217,16 @@ class DurableJobRepository:
         owner: str,
         lease_duration: timedelta,
         now: datetime | None = None,
+        allowed_kinds: Collection[str] | None = None,
     ) -> ClaimedJob | None:
         worker = _required_text("owner", owner)
         duration = _positive_duration("lease_duration", lease_duration)
         current = _utc_datetime("now", now or datetime.now(timezone.utc))
+        kinds = _job_kinds(allowed_kinds)
+        if kinds == ():
+            return None
         lease_expires = current + duration
+        kind_filter = () if kinds is None else (durable_job.c.kind.in_(kinds),)
 
         with self.engine.begin() as connection:
             expired_job_id = connection.scalar(
@@ -230,6 +235,7 @@ class DurableJobRepository:
                     durable_job.c.status.in_(_RUNNABLE_STATUSES),
                     durable_job.c.deadline_at.is_not(None),
                     durable_job.c.deadline_at <= current,
+                    *kind_filter,
                 )
                 .order_by(durable_job.c.deadline_at, durable_job.c.job_id)
                 .limit(1)
@@ -261,6 +267,7 @@ class DurableJobRepository:
                         durable_job.c.deadline_at.is_(None),
                         durable_job.c.deadline_at > current,
                     ),
+                    *kind_filter,
                 )
                 .order_by(
                     durable_job.c.priority.desc(),
@@ -644,3 +651,11 @@ def _lease_token(value: LeaseToken) -> LeaseToken:
         owner=_required_text("lease owner", value.owner),
         generation=_positive_integer("lease generation", value.generation),
     )
+
+
+def _job_kinds(value: Collection[str] | None) -> tuple[str, ...] | None:
+    if value is None:
+        return None
+    if isinstance(value, (str, bytes)) or not isinstance(value, Collection):
+        raise ValueError("allowed job kinds must be a collection of names")
+    return tuple(sorted({_required_text("allowed job kind", kind) for kind in value}))

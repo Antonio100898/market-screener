@@ -102,3 +102,28 @@ def test_lease_duration_and_error_summary_validate_before_sql():
             error_summary="x" * 2001,
             now=NOW,
         )
+
+
+def test_claim_kind_filter_validates_and_empty_filter_skips_sql():
+    repository = DurableJobRepository(NoDatabaseEngine())
+
+    assert repository.claim_next(
+        owner="worker",
+        lease_duration=timedelta(minutes=1),
+        now=NOW,
+        allowed_kinds=set(),
+    ) is None
+    with pytest.raises(ValueError, match="collection of names"):
+        repository.claim_next(
+            owner="worker",
+            lease_duration=timedelta(minutes=1),
+            now=NOW,
+            allowed_kinds="sec",
+        )
+    with pytest.raises(ValueError, match="allowed job kind must not be empty"):
+        repository.claim_next(
+            owner="worker",
+            lease_duration=timedelta(minutes=1),
+            now=NOW,
+            allowed_kinds={" "},
+        )
