@@ -1,0 +1,8 @@
+{
+  "error": {
+    "message": "Request too large for gpt-6-luna in organization org-mxIVVKrjjaNS2EFSXqPSnvpE on tokens per min (TPM): Limit 200000, Requested 222435. The input or output tokens must be reduced in order to run successfully. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "type": "tokens",
+    "param": null,
+    "code": "rate_limit_exceeded"
+  }
+}

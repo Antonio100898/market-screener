@@ -1,0 +1,374 @@
+{
+  "id": "resp_01df577bcfb9a784016aba86928eec87d291d4dfaf488ecea6",
+  "object": "response",
+  "created_at": 1790609042,
+  "status": "completed",
+  "access_programs": null,
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1790609051,
+  "error": null,
+  "frequency_penalty": 0.0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": 8192,
+  "max_tool_calls": null,
+  "model": "gpt-6-luna",
+  "moderation": null,
+  "output": [
+    {
+      "id": "msg_01df577bcfb9a784016aba8693e7f887d2be3fe9f2a2aef937",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"request_id\":\"pilot-cni-wrapper-neighbour-v1\",\"results\":[{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index (Table W:91), Exhibit 99.2 entry\"}],\"outcome\":\"not_found\",\"reason\":\"The wrapper identifies the audited annual consolidated financial statements as Exhibit 99.2 but that incorporated exhibit is intentionally absent; the wrapper contains no consolidated primary balance sheet reporting this amount.\",\"requested_field\":\"AssetsCurrent\"},{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index (Table W:91), Exhibit 99.2 entry\"}],\"outcome\":\"not_found\",\"reason\":\"The wrapper identifies the audited annual consolidated financial statements as Exhibit 99.2 but that incorporated exhibit is intentionally absent; the wrapper contains no consolidated primary balance sheet reporting this amount.\",\"requested_field\":\"Assets\"},{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index (Table W:91), Exhibit 99.2 entry\"}],\"outcome\":\"not_found\",\"reason\":\"The wrapper identifies the audited annual consolidated financial statements as Exhibit 99.2 but that incorporated exhibit is intentionally absent; the wrapper contains no consolidated primary balance sheet reporting this amount.\",\"requested_field\":\"LiabilitiesCurrent\"},{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index (Table W:91), Exhibit 99.2 entry\"}],\"outcome\":\"not_found\",\"reason\":\"The wrapper identifies the audited annual consolidated financial statements as Exhibit 99.2 but that incorporated exhibit is intentionally absent; the wrapper contains no consolidated primary balance sheet reporting this amount.\",\"requested_field\":\"Liabilities\"},{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index (Table W:91), Exhibit 99.2 entry\"}],\"outcome\":\"not_found\",\"reason\":\"The wrapper identifies the audited annual consolidated financial statements as Exhibit 99.2 but that incorporated exhibit is intentionally absent; the wrapper contains no consolidated primary balance sheet reporting this amount.\",\"requested_field\":\"LiabilitiesAndStockholdersEquity\"},{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index (Table W:91), Exhibit 99.2 entry\"}],\"outcome\":\"not_found\",\"reason\":\"The wrapper identifies the audited annual consolidated financial statements as Exhibit 99.2 but that incorporated exhibit is intentionally absent; the wrapper contains no primary income statement reporting consolidated net income for the requested period.\",\"requested_field\":\"NetIncomeLoss\"},{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index (Table W:91), Exhibit 99.2 entry\"}],\"outcome\":\"not_found\",\"reason\":\"The wrapper identifies the audited annual consolidated financial statements as Exhibit 99.2 but that incorporated exhibit is intentionally absent; the wrapper contains no consolidated primary cash-flow statement reporting this amount.\",\"requested_field\":\"NetCashProvidedByUsedInOperatingActivities\"}],\"schema\":\"statement_candidate_v1\"}"
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0.0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "24h",
+  "reasoning": {
+    "context": "all_turns",
+    "effort": "none",
+    "mode": "standard",
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": false,
+  "temperature": 1.0,
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "description": null,
+      "name": "statement_candidate_v1",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "accounting_basis": {
+                      "enum": [
+                        "US-GAAP",
+                        "IFRS"
+                      ]
+                    },
+                    "consolidation_scope": {
+                      "enum": [
+                        "consolidated",
+                        "parent_only",
+                        "segment"
+                      ]
+                    },
+                    "currency": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "evidence_quote": {
+                      "type": "string"
+                    },
+                    "location": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "accession": {
+                          "type": "string"
+                        },
+                        "column": {
+                          "type": "string"
+                        },
+                        "document": {
+                          "type": "string"
+                        },
+                        "document_sha256": {
+                          "type": "string"
+                        },
+                        "html_anchor": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "page": {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "row": {
+                          "type": "string"
+                        },
+                        "table": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "accession",
+                        "document",
+                        "document_sha256",
+                        "table",
+                        "row",
+                        "column",
+                        "html_anchor",
+                        "page"
+                      ],
+                      "type": "object"
+                    },
+                    "outcome": {
+                      "enum": [
+                        "found"
+                      ]
+                    },
+                    "period": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "end": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "enum": [
+                            "instant",
+                            "duration"
+                          ]
+                        },
+                        "start": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "start",
+                        "end"
+                      ],
+                      "type": "object"
+                    },
+                    "requested_field": {
+                      "type": "string"
+                    },
+                    "scale": {
+                      "type": "string"
+                    },
+                    "source_label": {
+                      "type": "string"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "requested_field",
+                    "outcome",
+                    "value",
+                    "scale",
+                    "source_label",
+                    "unit",
+                    "currency",
+                    "period",
+                    "accounting_basis",
+                    "consolidation_scope",
+                    "location",
+                    "evidence_quote"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "checked_locations": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "accession": {
+                            "type": "string"
+                          },
+                          "document": {
+                            "type": "string"
+                          },
+                          "document_sha256": {
+                            "type": "string"
+                          },
+                          "locator": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "accession",
+                          "document",
+                          "document_sha256",
+                          "locator"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "outcome": {
+                      "enum": [
+                        "not_found"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "requested_field": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "requested_field",
+                    "outcome",
+                    "reason",
+                    "checked_locations"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "checked_locations": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "accession": {
+                            "type": "string"
+                          },
+                          "document": {
+                            "type": "string"
+                          },
+                          "document_sha256": {
+                            "type": "string"
+                          },
+                          "locator": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "accession",
+                          "document",
+                          "document_sha256",
+                          "locator"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "outcome": {
+                      "enum": [
+                        "ambiguous"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "requested_field": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "requested_field",
+                    "outcome",
+                    "reason",
+                    "checked_locations"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "schema": {
+            "enum": [
+              "statement_candidate_v1"
+            ]
+          }
+        },
+        "required": [
+          "schema",
+          "request_id",
+          "results"
+        ],
+        "type": "object"
+      },
+      "strict": true
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tool_usage": {
+    "image_gen": {
+      "input_tokens": 0,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "output_tokens": 0,
+      "output_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "total_tokens": 0
+    },
+    "web_search": {
+      "num_requests": 0
+    }
+  },
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 0.98,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 31905,
+    "input_tokens_details": {
+      "cache_write_tokens": 31902,
+      "cached_tokens": 0
+    },
+    "output_tokens": 1045,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 32950
+  },
+  "user": null,
+  "metadata": {}
+}

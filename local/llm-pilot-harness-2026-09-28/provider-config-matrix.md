@@ -4,14 +4,16 @@ Checked against current official documentation on 2026-09-28. These are the exac
 bodies emitted by `pilot.py`. No provider request has been made, so access, latency, billed tokens,
 schema compilation, and model behavior remain **UNVERIFIED**.
 
-All four configurations are `CONFIG_READY`: every included option is documented for the named
-endpoint and model. Options without model-specific proof are omitted. A connectivity error blocks
-that provider; the runner must not guess another field or retry a possibly charged request.
+All four configurations were `CONFIG_READY` before the live screen: every included option was
+documented for the named endpoint and model. The live screen then disproved one Fireworks behavior
+assumption, recorded below. Options without model-specific proof remain omitted. A connectivity
+error blocks that provider; the runner must not guess another field or retry a possibly charged
+request.
 
 | Provider | Endpoint and model | Structured output | Thinking and sampling | Storage | Success path | Failure path | Context fit |
 |---|---|---|---|---|---|---|---|
 | OpenAI | `POST https://api.openai.com/v1/responses`; `gpt-6-luna` | `text.format={type:json_schema,name:statement_candidate_v1,strict:true,schema:...}` | `reasoning.effort=none`; temperature, top-p, and seed omitted | `store=false` | Require `status=completed`; scan `output[*].content[*]` for `type=output_text`, then read `.text` | Block on HTTP error, `status=incomplete/failed`, `error`, `incomplete_details`, `type=refusal`, absent text, or canonical-schema failure | 1,050,000; largest upper estimate 785,506 input + 8,192 output |
-| Fireworks | `POST https://api.fireworks.ai/inference/v1/chat/completions`; `accounts/fireworks/models/glm-5p3-flash` | `response_format={type:json_schema,json_schema:{name,schema}}` | Reasoning option omitted; JSON-schema mode disables reasoning output. Temperature, top-p, top-k, and seed omitted | Chat Completions has zero data retention by default; no `store` field sent | Require HTTP 2xx and `choices[0].finish_reason=stop`; read `choices[0].message.content` | Block on HTTP error, non-`stop` finish, absent content, or canonical-schema failure | 1,040,000; largest upper estimate 785,493 input + 8,192 output |
+| Fireworks | `POST https://api.fireworks.ai/inference/v1/chat/completions`; `accounts/fireworks/models/glm-5p3-flash` | `response_format={type:json_schema,json_schema:{name,schema}}` | Reasoning option omitted. Live responses returned `reasoning_content`; temperature, top-p, top-k, and seed omitted | Chat Completions has zero data retention by default; no `store` field sent | Require HTTP 2xx and `choices[0].finish_reason=stop`; read `choices[0].message.content` | Block on HTTP error, non-`stop` finish, absent content, or canonical-schema failure | 1,040,000; largest upper estimate 785,493 input + 8,192 output |
 | Google | `POST https://generativelanguage.googleapis.com/v1/interactions`; `gemini-3.5-flash-lite` | `response_format={type:text,mime_type:application/json,schema:...}` | `generation_config.thinking_level=minimal`; `thinking_summaries=none`; temperature, top-p, top-k, and seed omitted | `store=false` | Require `status=completed`; scan `steps[*]` for `type=model_output`, then `content[*][type=text].text` | Block on HTTP error, `failed/incomplete/cancelled/requires_action`, non-empty `errors`, absent text, or canonical-schema failure | 1,048,576; largest upper estimate 785,482 input + 8,192 output |
 | Anthropic | `POST https://api.anthropic.com/v1/messages`; `claude-sonnet-5` | `output_config.format={type:json_schema,schema:...}` | `thinking.type=disabled`; `output_config.effort=low`; temperature, top-p, and top-k omitted | No per-request storage flag. Standard API retention applies unless the organization has ZDR | Require HTTP 2xx and `stop_reason=end_turn`; scan `content[*][type=text].text` | Block on HTTP error, `max_tokens/refusal`, absent text, or canonical-schema failure | 1,000,000; largest upper estimate 785,459 input + 8,192 output |
 
@@ -34,8 +36,10 @@ completed/incomplete status, and explicit refusal handling.
 `model`, `messages`, `response_format`, `max_tokens=8192`, `stream=false`, `n=1`, and
 `context_length_exceeded_behavior=error`. The last field prevents Fireworks' documented default
 output truncation from silently reducing the response budget. No sampling or reasoning field is
-sent. The structured-output guide says `response_format` disables reasoning output and documents
-the response content path.
+sent. Contrary to the documented expectation, all eight live responses returned visible
+`reasoning_content`. The stopped AERO candidate used all 8,192 completion tokens as reasoning,
+returned empty `content`, and ended with `finish_reason=length`. This configuration therefore does
+not guarantee that the output budget is available for the JSON answer.
 
 - [GLM 5.3 Flash model ID, context, and price](https://fireworks.ai/models/fireworks/glm-5p3-flash)
 - [Chat Completions request and response](https://docs.fireworks.ai/api-reference/post-chatcompletions)

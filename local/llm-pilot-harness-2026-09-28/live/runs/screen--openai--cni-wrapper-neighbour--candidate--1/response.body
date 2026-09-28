@@ -1,0 +1,374 @@
+{
+  "id": "resp_05d5ad02d1638009016aba869bd3fc87d28d5add5669826115",
+  "object": "response",
+  "created_at": 1790609051,
+  "status": "completed",
+  "access_programs": null,
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1790609067,
+  "error": null,
+  "frequency_penalty": 0.0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": 8192,
+  "max_tool_calls": null,
+  "model": "gpt-6-luna",
+  "moderation": null,
+  "output": [
+    {
+      "id": "msg_05d5ad02d1638009016aba869d87d487d2b822454bbd71850e",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"request_id\":\"pilot-cni-wrapper-neighbour-v1\",\"results\":[{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index, Table W:91, cells C91.7.1 and C91.7.3; identifies Exhibit 99.2 as audited annual consolidated financial statements for year ended December 31, 2025, but incorporated exhibit is absent\"},{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Items 11-12 and filing body: no consolidated primary balance sheet reporting current assets\"}],\"outcome\":\"not_found\",\"reason\":\"The supplied document is the Form 40-F wrapper only. The referenced Exhibit 99.2 containing the audited consolidated financial statements is absent; no qualifying primary balance-sheet value is reported in the wrapper.\",\"requested_field\":\"AssetsCurrent\"},{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index, Table W:91, cells C91.7.1 and C91.7.3; identifies Exhibit 99.2 as audited annual consolidated financial statements for year ended December 31, 2025, but incorporated exhibit is absent\"},{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Items 11-12 and filing body: no consolidated primary balance sheet reporting total assets\"}],\"outcome\":\"not_found\",\"reason\":\"The supplied document is the Form 40-F wrapper only. The referenced Exhibit 99.2 containing the audited consolidated financial statements is absent; no qualifying primary balance-sheet value is reported in the wrapper.\",\"requested_field\":\"Assets\"},{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index, Table W:91, cells C91.7.1 and C91.7.3; identifies Exhibit 99.2 as audited annual consolidated financial statements for year ended December 31, 2025, but incorporated exhibit is absent\"},{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Items 11-12 and filing body: no consolidated primary balance sheet reporting current liabilities\"}],\"outcome\":\"not_found\",\"reason\":\"The supplied document is the Form 40-F wrapper only. The referenced Exhibit 99.2 containing the audited consolidated financial statements is absent; no qualifying primary balance-sheet value is reported in the wrapper.\",\"requested_field\":\"LiabilitiesCurrent\"},{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index, Table W:91, cells C91.7.1 and C91.7.3; identifies Exhibit 99.2 as audited annual consolidated financial statements for year ended December 31, 2025, but incorporated exhibit is absent\"},{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Items 11-12 and filing body: no consolidated primary balance sheet reporting total liabilities\"}],\"outcome\":\"not_found\",\"reason\":\"The supplied document is the Form 40-F wrapper only. The referenced Exhibit 99.2 containing the audited consolidated financial statements is absent; no qualifying primary balance-sheet value is reported in the wrapper.\",\"requested_field\":\"Liabilities\"},{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index, Table W:91, cells C91.7.1 and C91.7.3; identifies Exhibit 99.2 as audited annual consolidated financial statements for year ended December 31, 2025, but incorporated exhibit is absent\"},{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Items 11-12 and filing body: no consolidated primary balance sheet reporting total liabilities and stockholders' equity\"}],\"outcome\":\"not_found\",\"reason\":\"The supplied document is the Form 40-F wrapper only. The referenced Exhibit 99.2 containing the audited consolidated financial statements is absent; no qualifying primary balance-sheet value is reported in the wrapper.\",\"requested_field\":\"LiabilitiesAndStockholdersEquity\"},{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index, Table W:91, cells C91.7.1 and C91.7.3; identifies Exhibit 99.2 as audited annual consolidated financial statements for year ended December 31, 2025, but incorporated exhibit is absent\"},{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Filing body and Items 11-12: no consolidated primary income statement reporting net income or loss for 2025\"}],\"outcome\":\"not_found\",\"reason\":\"The supplied document is the Form 40-F wrapper only. The referenced Exhibit 99.2 containing the audited consolidated financial statements is absent; no qualifying primary income-statement value is reported in the wrapper.\",\"requested_field\":\"NetIncomeLoss\"},{\"checked_locations\":[{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Exhibit Index, Table W:91, cells C91.7.1 and C91.7.3; identifies Exhibit 99.2 as audited annual consolidated financial statements for year ended December 31, 2025, but incorporated exhibit is absent\"},{\"accession\":\"0001104659-26-010352\",\"document\":\"tm261145d1_40f.htm\",\"document_sha256\":\"7490bb0e34394e55e1e349e7f3c44581fe3bfe50ee02b368a1c4b938af13ab2f\",\"locator\":\"Filing body and Items 11-12: no consolidated primary cash-flow statement reporting operating cash flows for 2025\"}],\"outcome\":\"not_found\",\"reason\":\"The supplied document is the Form 40-F wrapper only. The referenced Exhibit 99.2 containing the audited consolidated financial statements is absent; no qualifying primary cash-flow value is reported in the wrapper.\",\"requested_field\":\"NetCashProvidedByUsedInOperatingActivities\"}],\"schema\":\"statement_candidate_v1\"}"
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0.0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "24h",
+  "reasoning": {
+    "context": "all_turns",
+    "effort": "none",
+    "mode": "standard",
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": false,
+  "temperature": 1.0,
+  "text": {
+    "format": {
+      "type": "json_schema",
+      "description": null,
+      "name": "statement_candidate_v1",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "accounting_basis": {
+                      "enum": [
+                        "US-GAAP",
+                        "IFRS"
+                      ]
+                    },
+                    "consolidation_scope": {
+                      "enum": [
+                        "consolidated",
+                        "parent_only",
+                        "segment"
+                      ]
+                    },
+                    "currency": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "evidence_quote": {
+                      "type": "string"
+                    },
+                    "location": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "accession": {
+                          "type": "string"
+                        },
+                        "column": {
+                          "type": "string"
+                        },
+                        "document": {
+                          "type": "string"
+                        },
+                        "document_sha256": {
+                          "type": "string"
+                        },
+                        "html_anchor": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "page": {
+                          "anyOf": [
+                            {
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "row": {
+                          "type": "string"
+                        },
+                        "table": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "accession",
+                        "document",
+                        "document_sha256",
+                        "table",
+                        "row",
+                        "column",
+                        "html_anchor",
+                        "page"
+                      ],
+                      "type": "object"
+                    },
+                    "outcome": {
+                      "enum": [
+                        "found"
+                      ]
+                    },
+                    "period": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "end": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "enum": [
+                            "instant",
+                            "duration"
+                          ]
+                        },
+                        "start": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "start",
+                        "end"
+                      ],
+                      "type": "object"
+                    },
+                    "requested_field": {
+                      "type": "string"
+                    },
+                    "scale": {
+                      "type": "string"
+                    },
+                    "source_label": {
+                      "type": "string"
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "requested_field",
+                    "outcome",
+                    "value",
+                    "scale",
+                    "source_label",
+                    "unit",
+                    "currency",
+                    "period",
+                    "accounting_basis",
+                    "consolidation_scope",
+                    "location",
+                    "evidence_quote"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "checked_locations": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "accession": {
+                            "type": "string"
+                          },
+                          "document": {
+                            "type": "string"
+                          },
+                          "document_sha256": {
+                            "type": "string"
+                          },
+                          "locator": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "accession",
+                          "document",
+                          "document_sha256",
+                          "locator"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "outcome": {
+                      "enum": [
+                        "not_found"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "requested_field": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "requested_field",
+                    "outcome",
+                    "reason",
+                    "checked_locations"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "checked_locations": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "accession": {
+                            "type": "string"
+                          },
+                          "document": {
+                            "type": "string"
+                          },
+                          "document_sha256": {
+                            "type": "string"
+                          },
+                          "locator": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "accession",
+                          "document",
+                          "document_sha256",
+                          "locator"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "outcome": {
+                      "enum": [
+                        "ambiguous"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "requested_field": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "requested_field",
+                    "outcome",
+                    "reason",
+                    "checked_locations"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "schema": {
+            "enum": [
+              "statement_candidate_v1"
+            ]
+          }
+        },
+        "required": [
+          "schema",
+          "request_id",
+          "results"
+        ],
+        "type": "object"
+      },
+      "strict": true
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tool_usage": {
+    "image_gen": {
+      "input_tokens": 0,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "output_tokens": 0,
+      "output_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "total_tokens": 0
+    },
+    "web_search": {
+      "num_requests": 0
+    }
+  },
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 0.98,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 32208,
+    "input_tokens_details": {
+      "cache_write_tokens": 32205,
+      "cached_tokens": 0
+    },
+    "output_tokens": 1984,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 34192
+  },
+  "user": null,
+  "metadata": {}
+}

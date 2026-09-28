@@ -1,13 +1,24 @@
 # Audited LLM extraction pilot harness
 
 The harness builds 48 redacted provider request artifacts for six frozen SEC cases and four
-providers. It does not import a provider SDK, read API keys, or contain a send command.
+providers. Live calls require an explicit flag and a spend cap no greater than USD 16.
 
 ```sh
 python3 local/llm-pilot-harness-2026-09-28/pilot.py build
 python3 local/llm-pilot-harness-2026-09-28/pilot.py self-test
 python3 local/llm-pilot-harness-2026-09-28/pilot.py dry-run
 ```
+
+Run the approved connectivity screen only after exporting all four provider keys:
+
+```sh
+python3 local/llm-pilot-harness-2026-09-28/pilot.py live-screen --live --cap-usd 16
+```
+
+The live runner uses Python's standard HTTP client. It writes the redacted request and ledger entry
+before sending. It writes the response, request ID, usage, latency, calculated cost, schema result,
+source checks, and field score immediately after each response. A provider stops on a configuration
+or response-shape error. A request with an uncertain transport result is never retried.
 
 `raw/` and `artifacts/` are ignored. Raw files are exact SEC copies whose hashes must match the
 approved frozen manifest. Generated request artifacts contain public filing text but are not source
@@ -37,12 +48,10 @@ only. It cannot update shared data, snapshots, or the dashboard.
 
 ## Limits
 
-- No model behavior has been tested.
-- No API key or provider account has been checked.
-- Provider-side schema compilation and exact token counts remain unverified.
+- A new checkout has no model behavior evidence until `live-screen` completes.
+- The live screen is one sample per arm and case. It does not establish a stable ranking.
 - Raw filing bytes and run artifacts are not yet registered through S3/PostgreSQL.
-- A future live runner must persist each request before sending, persist the exact response and
-  provider request ID after receipt, alternate arms, and stop on an uncertain charged failure.
+- The screen never updates shared facts, snapshots, or the dashboard.
 
 See [provider configuration](provider-config-matrix.md), [cost bound](cost-report.md), and
 [reuse decision](reuse-decision.md).

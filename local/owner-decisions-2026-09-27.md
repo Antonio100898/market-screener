@@ -20,3 +20,7 @@
    `local/llm-statement-extraction-proposal-2026-09-28/prompt.md`. The first implementation remains
    supplement-only and shadow-only: it can propose deterministically missing fields but cannot
    override deterministic data or change the dashboard.
+9. Approve the four-provider connectivity screen with a hard maximum spend of USD 16. Run 48
+   standard calls one at a time across six frozen cases, baseline and approved prompt, and four
+   models. Stop a provider on a configuration error. Do not automatically retry a call whose charge
+   is uncertain. The screen cannot publish data.
