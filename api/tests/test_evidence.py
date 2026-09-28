@@ -1,10 +1,13 @@
 """Evidence assembly and invalidation — the boundary shared by every pipeline."""
+import hashlib
 import json
 import zipfile
 from datetime import date
 
+import pytest
+
 from screener import evidence, store
-from screener.sources import dera
+from screener.sources import dera, inline_xbrl
 
 
 def test_dera_candidate_is_the_immediately_preceding_closed_quarter():
@@ -21,6 +24,65 @@ class EdgarStub:
 
     def company_facts(self, cik):  # pragma: no cover - supplied facts should win
         raise AssertionError("unexpected network fetch")
+
+
+def _write_manifest(tmp_path, cik="0000000001", accession="0000000001-26-000001"):
+    directory = inline_xbrl.accession_directory(tmp_path, accession)
+    directory.mkdir(parents=True)
+    documents = {
+        "index": "index.json",
+        "instance": "annual_htm.xml",
+        "filing_summary": "FilingSummary.xml",
+        "presentation": "issuer_pre.xml",
+        "schema": "issuer.xsd",
+        "primary_document": "annual.htm",
+    }
+    records = {}
+    base = ("https://www.sec.gov/Archives/edgar/data/"
+            f"{int(cik)}/{accession.replace('-', '')}/")
+    for role, document in documents.items():
+        raw = f"{role}-bytes".encode()
+        (directory / document).write_bytes(raw)
+        records[role] = {
+            "document": document,
+            "url": base + document,
+            "sha256": hashlib.sha256(raw).hexdigest(),
+            "size": len(raw),
+        }
+    manifest = {
+        "schema": inline_xbrl.MANIFEST_SCHEMA,
+        "parser_contract_revision": inline_xbrl.PARSER_CONTRACT_REVISION,
+        "relationship": "direct_annual",
+        "cik": cik,
+        "entity_name": "Example PLC",
+        "annual": {
+            "accession": accession,
+            "form": "20-F",
+            "filed": "2026-03-01",
+            "report_date": "2025-12-31",
+            "document": "annual.htm",
+        },
+        "source": {
+            "accession": accession,
+            "form": "20-F",
+            "filed": "2026-03-01",
+            "document": "annual.htm",
+        },
+        "files": records,
+    }
+    path = inline_xbrl.current_manifest_path(tmp_path, cik)
+    path.parent.mkdir(parents=True)
+    path.write_bytes(inline_xbrl.manifest_bytes(manifest))
+    return manifest, path
+
+
+def _current_facts(accession="0000000001-26-000001"):
+    return {"cik": "0000000001", "facts": {"dei": {"EntityPublicFloat": {
+        "units": {"USD": [{
+            "val": 1, "end": "2025-12-31", "accn": accession,
+            "form": "20-F", "filed": "2026-03-01",
+        }]},
+    }}}}
 
 
 def test_loader_always_adds_dimensioned_and_cover_evidence(tmp_path):
@@ -41,6 +103,71 @@ def test_loader_always_adds_dimensioned_and_cover_evidence(tmp_path):
     assert bundle.dimensioned == dimensioned
     assert bundle.receipt["ratio"] == "13"
     assert bundle.receipt["accn"] == "accn-1"
+
+
+def test_loader_merges_only_a_verified_current_manifest(tmp_path, monkeypatch):
+    manifest, _ = _write_manifest(tmp_path)
+    supplemental = {
+        "cik": "0000000001",
+        "facts": {"ifrs-full": {"Assets": {"units": {"USD": [{
+            "val": "10", "end": "2025-12-31",
+            "accn": manifest["annual"]["accession"], "form": "20-F",
+            "filed": "2026-03-01", "_source_context_id": "instant",
+        }]}}}},
+        "_inline_xbrl": {"source_accession": manifest["annual"]["accession"]},
+    }
+    monkeypatch.setattr(inline_xbrl, "parse_inline_xbrl", lambda *args: supplemental)
+
+    bundle = evidence.EvidenceLoader(
+        store.connect(tmp_path / "store.db"), EdgarStub(tmp_path)
+    ).load("0000000001", "TEST", _current_facts())
+
+    assert bundle.supplement_state == "applied"
+    assert bundle.facts["facts"]["ifrs-full"]["Assets"]["units"]["USD"][0][
+        "_source_context_id"
+    ] == "instant"
+
+
+def test_loader_ignores_a_stale_manifest_with_explicit_state(tmp_path, monkeypatch):
+    _write_manifest(tmp_path)
+    monkeypatch.setattr(
+        inline_xbrl, "parse_inline_xbrl",
+        lambda *args: pytest.fail("stale manifest must not be parsed"),
+    )
+    facts = _current_facts("0000000001-26-000002")
+
+    bundle = evidence.EvidenceLoader(
+        store.connect(tmp_path / "store.db"), EdgarStub(tmp_path)
+    ).load("0000000001", "TEST", facts)
+
+    assert bundle.facts is facts
+    assert bundle.supplement_state == "stale"
+
+
+def test_loader_fails_closed_for_missing_or_changed_retained_bytes(tmp_path, monkeypatch):
+    manifest, _ = _write_manifest(tmp_path)
+    monkeypatch.setattr(inline_xbrl, "parse_inline_xbrl", lambda *args: {})
+    directory = inline_xbrl.accession_directory(tmp_path, manifest["annual"]["accession"])
+    (directory / manifest["files"]["instance"]["document"]).write_bytes(b"changed")
+
+    with pytest.raises(ValueError, match="file verification failed: instance"):
+        evidence.EvidenceLoader(
+            store.connect(tmp_path / "store.db"), EdgarStub(tmp_path)
+        ).load("0000000001", "TEST", _current_facts())
+
+
+def test_loader_rejects_an_incorporated_source_relationship(tmp_path):
+    manifest, path = _write_manifest(tmp_path)
+    manifest["source"]["accession"] = "0000000001-26-000099"
+    path.write_bytes(inline_xbrl.manifest_bytes(manifest))
+
+    with pytest.raises(
+        inline_xbrl.UnsupportedInlineXbrlRelationship,
+        match="incorporated_filing_relationship",
+    ):
+        evidence.EvidenceLoader(
+            store.connect(tmp_path / "store.db"), EdgarStub(tmp_path)
+        ).load("0000000001", "TEST", _current_facts())
 
 
 def _prior_security(title="Class A Ordinary Shares, par value $0.001 per share"):

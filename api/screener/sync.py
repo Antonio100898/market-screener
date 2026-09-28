@@ -7,6 +7,7 @@
     python -m screener.sync derive --all-snapshots  recompute every cached snapshot
     python -m screener.sync events                  material 8-K items from each filing index
     python -m screener.sync cover                   what each filing's cover says the ticker is
+    python -m screener.sync inline --cik CIK        retain direct annual structured statements
     python -m screener.sync export                  write dashboard.json
     python -m screener.sync quotes                  refresh every dashboard quote
     python -m screener.sync dera --from 2021q1      dimensioned + extension facts
@@ -21,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import hashlib
 import io
 import json
 import os
@@ -39,7 +41,7 @@ from . import normalize
 from .normalize import PendingFilingFactsError, UnsupportedFilerError, build_snapshot
 from .screens.enterprising import (PE_MAX, PRICE_TO_TBV_MAX, STALE_FOR_PRICING_DAYS,
                                    YIELD_IMPLAUSIBLE, evaluate, settled_debt)
-from .sources import cover, dera, indexes, ifrs_workbook, jpx
+from .sources import cover, dera, indexes, ifrs_workbook, inline_xbrl, jpx
 from .sources.edinet import EdinetClient, annual_filings
 from .sources.edinet_mapper import ADAPTER_KIND as EDINET_ADAPTER, build_edinet_companyfacts
 from .sources.edgar import EdgarClient, EdgarError, NoXbrlDataError
@@ -81,12 +83,16 @@ def _derive_cached_worker(task: tuple):
     fp = cache / f"companyfacts_{cik}.json"
     if not fp.exists():
         return cik, None
+    facts, supplement_state = inline_xbrl.load_retained_supplement(
+        cache, cik, json.loads(fp.read_text()),
+    )
     bundle = evidence.EvidenceBundle(
         cik=cik,
         ticker=ticker,
-        facts=json.loads(fp.read_text()),
+        facts=facts,
         dimensioned=dera.load_sidecar(cache, cik),
         receipt=receipt,
+        supplement_state=supplement_state,
     )
     return cik, _derive_evidence(
         bundle, assume_absent_zero=assume_absent_zero)
@@ -1729,6 +1735,221 @@ def _retain_source_bytes(path: Path, raw: bytes) -> None:
             temporary_path.unlink(missing_ok=True)
 
 
+_DIRECT_ANNUAL_FORMS = frozenset({"20-F", "20-F/A", "40-F", "40-F/A"})
+
+
+def _latest_direct_annual(submissions: dict) -> dict:
+    recent = (submissions.get("filings") or {}).get("recent") or {}
+    accessions = recent.get("accessionNumber") or []
+
+    def at(field: str, position: int, default=None):
+        values = recent.get(field) or []
+        return values[position] if position < len(values) else default
+
+    candidates = []
+    for position, accession in enumerate(accessions):
+        form = at("form", position, "")
+        if form not in _DIRECT_ANNUAL_FORMS:
+            continue
+        candidates.append({
+            "accession": accession,
+            "form": form,
+            "filed": at("filingDate", position, ""),
+            "report_date": at("reportDate", position, ""),
+            "document": at("primaryDocument", position, ""),
+        })
+    if not candidates:
+        raise ValueError("no current direct 20-F/40-F filing")
+    selected = max(candidates, key=lambda row: (row["filed"], row["accession"]))
+    if not all(selected.values()):
+        raise ValueError("current annual SEC metadata is incomplete")
+    return selected
+
+
+def _one_index_document(names: set[str], suffix: str, label: str) -> str:
+    matches = sorted(name for name in names if name.casefold().endswith(suffix.casefold()))
+    if len(matches) != 1:
+        raise ValueError(f"current annual has {len(matches)} {label} files")
+    return matches[0]
+
+
+def _safe_archive_document(document: str) -> str:
+    # The manifest reader applies the same allowlist. Reject before a path is built.
+    return inline_xbrl.safe_document_name(document)
+
+
+def _direct_annual_documents(index: dict, primary_document: str) -> dict[str, str]:
+    items = ((index.get("directory") or {}).get("item") or [])
+    names = {
+        _safe_archive_document(str(item.get("name") or ""))
+        for item in items if item.get("name")
+    }
+    primary_document = _safe_archive_document(primary_document)
+    if primary_document not in names:
+        raise ValueError("current annual primary document is absent from SEC index")
+    try:
+        instance = _one_index_document(names, "_htm.xml", "extracted instance")
+    except ValueError as exc:
+        raise inline_xbrl.UnsupportedInlineXbrlRelationship(
+            "incorporated_filing_relationship"
+        ) from exc
+    summary = "FilingSummary.xml"
+    if summary not in names:
+        raise ValueError("current annual FilingSummary.xml is absent from SEC index")
+    schema = _one_index_document(names, ".xsd", "issuer schema")
+    presentations = sorted(name for name in names if name.casefold().endswith("_pre.xml"))
+    if len(presentations) > 1:
+        raise ValueError("current annual has ambiguous presentation linkbases")
+    return {
+        "primary_document": primary_document,
+        "instance": instance,
+        "filing_summary": summary,
+        "schema": schema,
+        # Some SEC-generated filings have no separate presentation linkbase. The
+        # parser accepts the verified schema as an empty-role document in that case.
+        "presentation": presentations[0] if presentations else schema,
+    }
+
+
+def _archive_base(cik: str, accession: str) -> str:
+    if not cik.isdigit() or not accession.replace("-", "").isdigit():
+        raise ValueError("invalid SEC filing identity")
+    return (
+        "https://www.sec.gov/Archives/edgar/data/"
+        f"{int(cik)}/{accession.replace('-', '')}/"
+    )
+
+
+def _retained_record(document: str, url: str, raw: bytes) -> dict:
+    return {
+        "document": document,
+        "url": url,
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "size": len(raw),
+    }
+
+
+def _verified_previous_bytes(path: Path, record: dict | None) -> bytes | None:
+    if not record or not path.exists():
+        return None
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return None
+    if (record.get("size") == len(raw)
+            and record.get("sha256") == hashlib.sha256(raw).hexdigest()):
+        return raw
+    return None
+
+
+def _retain_direct_inline_annual(edgar: EdgarClient, cik: str) -> tuple[str, str]:
+    cik = str(int(cik)).zfill(10) if cik.isdigit() else cik
+    if not (len(cik) == 10 and cik.isdigit()):
+        raise ValueError("SEC issuer identifier must be a numeric CIK")
+    submissions = edgar.submissions(cik)
+    annual = _latest_direct_annual(submissions)
+    accession = annual["accession"]
+    base = _archive_base(cik, accession)
+    try:
+        previous = inline_xbrl.read_current_manifest(edgar.cache_dir, cik)
+    except ValueError:
+        previous = None
+    if (previous and (previous.get("annual") or {}).get("accession") == accession):
+        try:
+            inline_xbrl.verify_current_manifest(edgar.cache_dir, cik)
+        except ValueError:
+            pass
+        else:
+            return "reused", accession
+
+    previous_files = (
+        previous.get("files") or {}
+        if previous and (previous.get("annual") or {}).get("accession") == accession
+        else {}
+    )
+    directory = inline_xbrl.accession_directory(edgar.cache_dir, accession)
+    index_path = directory / "index.json"
+    index_record = previous_files.get("index")
+    index_raw = _verified_previous_bytes(index_path, index_record)
+    if index_raw is None:
+        index_raw = edgar._request(base + "index.json").content
+        _retain_source_bytes(index_path, index_raw)
+    try:
+        index = json.loads(index_raw)
+    except ValueError as exc:
+        raise ValueError("invalid SEC filing index") from exc
+    documents = _direct_annual_documents(index, annual["document"])
+
+    records = {"index": _retained_record("index.json", base + "index.json", index_raw)}
+    document_payloads: dict[str, bytes] = {}
+    for role, document in documents.items():
+        path = directory / document
+        raw = document_payloads.get(document)
+        if raw is None:
+            raw = _verified_previous_bytes(path, previous_files.get(role))
+            if raw is None:
+                raw = edgar._request(base + document).content
+                _retain_source_bytes(path, raw)
+            document_payloads[document] = raw
+        records[role] = _retained_record(document, base + document, raw)
+
+    manifest = {
+        "schema": inline_xbrl.MANIFEST_SCHEMA,
+        "parser_contract_revision": inline_xbrl.PARSER_CONTRACT_REVISION,
+        "relationship": "direct_annual",
+        "cik": cik,
+        "entity_name": str(submissions.get("name") or ""),
+        "annual": annual,
+        "source": {
+            "accession": accession,
+            "form": annual["form"],
+            "filed": annual["filed"],
+            "document": annual["document"],
+        },
+        "files": records,
+    }
+    # Parsing all verified retained inputs is the publication gate. A partial or
+    # unsupported filing remains only an inactive accession directory.
+    inline_xbrl.verify_manifest(manifest, edgar.cache_dir, cik)
+    encoded = inline_xbrl.manifest_bytes(manifest)
+    manifest_path = inline_xbrl.current_manifest_path(edgar.cache_dir, cik)
+    changed = not manifest_path.exists() or manifest_path.read_bytes() != encoded
+    if changed:
+        _retain_source_bytes(manifest_path, encoded)
+    return ("activated" if changed else "reused"), accession
+
+
+def retain_inline_statements(
+    conn,
+    ciks: set[str],
+    progress=_print_progress,
+    *,
+    edgar: EdgarClient | None = None,
+) -> dict[str, dict]:
+    """Retain verified direct annual statements for an explicit bounded CIK set."""
+    if not ciks:
+        raise ValueError("inline statement acquisition requires an explicit CIK set")
+    edgar = edgar or EdgarClient()
+    results = {}
+    for done, requested in enumerate(sorted(ciks), 1):
+        cik = str(int(requested)).zfill(10) if requested.isdigit() else requested
+        try:
+            state, accession = _retain_direct_inline_annual(edgar, cik)
+        except inline_xbrl.UnsupportedInlineXbrlRelationship as exc:
+            results[cik] = {"state": "unsupported_relationship", "relationship": str(exc)}
+        except Exception as exc:
+            results[cik] = {"state": "error", "error": str(exc)}
+        else:
+            results[cik] = {"state": state, "accession": accession}
+            if state == "activated":
+                store.mark_snapshot_dirty(
+                    conn, cik, f"retained Inline-XBRL statement activated: {accession}"
+                )
+        progress(f"retaining Inline-XBRL statements: {results[cik]['state']}", done, len(ciks))
+    conn.commit()
+    return results
+
+
 _TICKER_CONTINUITY_FORMS = frozenset({
     "6-K", "6-K/A", "8-K", "8-K/A", "8-A12B", "8-A12B/A",
     "F-3", "F-3/A", "S-3", "S-3/A",
@@ -3034,7 +3255,8 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("command", choices=["bootstrap", "bulk", "metadata", "daily",
                                         "derive", "export", "quotes", "listing-age", "events",
-                                        "cover", "dera", "ifrs-import", "edinet-import", "status"])
+                                        "cover", "inline", "dera", "ifrs-import", "edinet-import",
+                                        "status"])
     ap.add_argument("--limit", type=int)
     ap.add_argument("--days", type=int, default=7)
     ap.add_argument("--no-prices", action="store_true")
@@ -3046,7 +3268,11 @@ def main(argv=None) -> int:
     ap.add_argument("--edinet-code", help="one Japanese four-character security code")
     ap.add_argument("--ticker", default=ifrs_workbook.DEFAULT_TICKER)
     ap.add_argument("--entity-id", default=ifrs_workbook.DEFAULT_ENTITY_ID)
+    ap.add_argument("--cik", action="append", dest="ciks",
+                    help="explicit SEC CIK; repeat for multiple issuers")
     args = ap.parse_args(argv)
+    if args.command == "inline" and not args.ciks:
+        ap.error("inline requires at least one --cik")
     conn = store.connect()
     if args.command == "bootstrap":
         bootstrap(conn, args.limit)
@@ -3064,6 +3290,8 @@ def main(argv=None) -> int:
         events(conn)
     elif args.command == "cover":
         cover_pages(conn)
+    elif args.command == "inline":
+        retain_inline_statements(conn, set(args.ciks))
     elif args.command == "dera":
         dera_sync(conn, args.start)
     elif args.command == "ifrs-import":

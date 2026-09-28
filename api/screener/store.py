@@ -17,7 +17,7 @@ from .sources import cover
 
 # Bump when normalisation changes meaning; snapshots below this are recomputed
 # from stored raw facts, with no refetching.
-ENGINE_VERSION = 185  # accept exact later-SEC same-class ticker continuity
+ENGINE_VERSION = 186  # merge verified retained current annual statement facts
 
 DEFAULT_DB = Path.home() / ".cache" / "graham-screener" / "screener.db"
 _WRITE_ATTEMPTS = 5   # a recompute must not fail because the site was being read

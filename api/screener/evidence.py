@@ -10,7 +10,7 @@ import json
 from dataclasses import dataclass
 
 from . import store
-from .sources import cover, dera
+from .sources import cover, dera, inline_xbrl
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,7 @@ class EvidenceBundle:
     facts: dict
     dimensioned: dict | None
     receipt: dict | None
+    supplement_state: str | None = None
 
 
 def continuity_security(
@@ -69,8 +70,10 @@ def continuity_security(
 class EvidenceLoader:
     """One evidence policy shared by every snapshot-producing workflow."""
 
-    def __init__(self, conn, edgar):
+    def __init__(self, conn, edgar, *, inline_cache_dir=None, inline_retained_root=None):
         self.edgar = edgar
+        self._inline_cache_dir = inline_cache_dir or edgar.cache_dir
+        self._inline_retained_root = inline_retained_root
         # SEC's current ticker file intentionally omits a delisted security, but
         # its cached facts and cover still belong to the last symbol this database
         # knew.  A caller with no current mapping must not replace that security
@@ -129,6 +132,10 @@ class EvidenceLoader:
         if facts is None:
             path = self.edgar.cache_dir / f"companyfacts_{cik}.json"
             facts = json.loads(path.read_text()) if path.exists() else self.edgar.company_facts(cik)
+        facts, supplement_state = inline_xbrl.load_retained_supplement(
+            self._inline_cache_dir, cik, facts,
+            retained_root=self._inline_retained_root,
+        )
         ticker, receipt = self.identity(cik, ticker)
         return EvidenceBundle(
             cik=cik,
@@ -136,4 +143,5 @@ class EvidenceLoader:
             facts=facts,
             dimensioned=dera.load_sidecar(self.edgar.cache_dir, cik),
             receipt=receipt,
+            supplement_state=supplement_state,
         )

@@ -10,7 +10,7 @@ import pytest
 
 from screener import store, sync
 from screener.models import PriceHistory, Quote
-from screener.sources import cover
+from screener.sources import cover, inline_xbrl
 from screener.sources.prices import YahooPriceProvider
 from screener.sync import (apply_price, material_events, _restate_historical_ratios,
                            _statement_source_namespace, _validated_price_history)
@@ -2066,3 +2066,162 @@ def test_a_declared_scale_the_statement_contradicts_is_not_a_wrong_figure():
     assert _only_the_scale_differs(19_400_715, 19_400_715_000_000) is True
     assert _only_the_scale_differs(24_246_000, 24_049_000) is False    # a real difference
     assert _only_the_scale_differs(0, 5) is False
+
+
+class _InlineEdgar:
+    def __init__(self, cache_dir, *, include_instance=True, unsafe=False, fail=None):
+        self.cache_dir = cache_dir
+        self.calls = []
+        self.fail = fail
+        names = [
+            "annual.htm", "FilingSummary.xml", "issuer.xsd", "issuer_pre.xml",
+        ]
+        if include_instance:
+            names.append("annual_htm.xml")
+        if unsafe:
+            names.append("../escape.xml")
+        self.index = json.dumps({
+            "directory": {"item": [{"name": name} for name in names]},
+        }).encode()
+
+    def submissions(self, cik):
+        return {
+            "name": "Example PLC",
+            "filings": {"recent": {
+                "accessionNumber": ["0000000001-26-000001"],
+                "form": ["20-F"],
+                "filingDate": ["2026-03-01"],
+                "reportDate": ["2025-12-31"],
+                "primaryDocument": ["annual.htm"],
+            }},
+        }
+
+    def _request(self, url):
+        self.calls.append(url)
+        if self.fail and url.endswith(self.fail):
+            raise RuntimeError("fetch failed")
+        return SimpleNamespace(
+            content=(self.index if url.endswith("index.json") else url.encode()),
+        )
+
+
+def test_inline_acquisition_requires_explicit_bounded_ciks(tmp_path):
+    conn = store.connect(tmp_path / "store.db")
+
+    with pytest.raises(ValueError, match="explicit CIK set"):
+        sync.retain_inline_statements(conn, set(), edgar=_InlineEdgar(tmp_path))
+
+
+def test_inline_acquisition_publishes_after_all_bytes_and_is_idempotent(
+    tmp_path, monkeypatch,
+):
+    conn = store.connect(tmp_path / "store.db")
+    edgar = _InlineEdgar(tmp_path)
+    verified = []
+
+    def verify(manifest, cache_dir, cik, **kwargs):
+        if not verified:
+            assert not inline_xbrl.current_manifest_path(cache_dir, cik).exists()
+        directory = inline_xbrl.accession_directory(
+            cache_dir, manifest["annual"]["accession"]
+        )
+        assert all((directory / record["document"]).exists()
+                   for record in manifest["files"].values())
+        verified.append(cik)
+        return {}
+
+    monkeypatch.setattr(inline_xbrl, "verify_manifest", verify)
+    first = sync.retain_inline_statements(
+        conn, {"1"}, progress=lambda *args: None, edgar=edgar,
+    )
+
+    assert first["0000000001"]["state"] == "activated"
+    assert verified == ["0000000001"]
+    assert conn.execute("SELECT reason FROM snapshot_dirty").fetchone()["reason"].endswith(
+        "0000000001-26-000001"
+    )
+    assert all(url.startswith("https://www.sec.gov/Archives/edgar/data/1/")
+               for url in edgar.calls)
+
+    conn.execute("DELETE FROM snapshot_dirty")
+    conn.commit()
+    second = sync.retain_inline_statements(
+        conn, {"0000000001"}, progress=lambda *args: None, edgar=edgar,
+    )
+    assert second["0000000001"]["state"] == "reused"
+    assert conn.execute("SELECT * FROM snapshot_dirty").fetchone() is None
+
+
+def test_partial_inline_fetch_never_publishes_a_manifest(tmp_path, monkeypatch):
+    conn = store.connect(tmp_path / "store.db")
+    edgar = _InlineEdgar(tmp_path, fail="issuer.xsd")
+    monkeypatch.setattr(
+        inline_xbrl, "verify_manifest",
+        lambda *args, **kwargs: pytest.fail("partial source must not parse"),
+    )
+
+    result = sync.retain_inline_statements(
+        conn, {"0000000001"}, progress=lambda *args: None, edgar=edgar,
+    )
+
+    assert result["0000000001"]["state"] == "error"
+    assert not inline_xbrl.current_manifest_path(tmp_path, "0000000001").exists()
+    assert conn.execute("SELECT * FROM snapshot_dirty").fetchone() is None
+
+
+def test_direct_inline_job_names_incorporated_relationship_as_unsupported(
+    tmp_path, monkeypatch,
+):
+    conn = store.connect(tmp_path / "store.db")
+    edgar = _InlineEdgar(tmp_path, include_instance=False)
+    monkeypatch.setattr(
+        inline_xbrl, "verify_manifest",
+        lambda *args, **kwargs: pytest.fail("unsupported source must not parse"),
+    )
+
+    result = sync.retain_inline_statements(
+        conn, {"0000000001"}, progress=lambda *args: None, edgar=edgar,
+    )
+
+    assert result["0000000001"] == {
+        "state": "unsupported_relationship",
+        "relationship": "incorporated_filing_relationship",
+    }
+    assert not inline_xbrl.current_manifest_path(tmp_path, "0000000001").exists()
+
+
+def test_inline_index_rejects_unsafe_archive_paths(tmp_path, monkeypatch):
+    conn = store.connect(tmp_path / "store.db")
+    edgar = _InlineEdgar(tmp_path, unsafe=True)
+    monkeypatch.setattr(
+        inline_xbrl, "verify_manifest",
+        lambda *args, **kwargs: pytest.fail("unsafe source must not parse"),
+    )
+
+    result = sync.retain_inline_statements(
+        conn, {"0000000001"}, progress=lambda *args: None, edgar=edgar,
+    )
+
+    assert result["0000000001"]["state"] == "error"
+    assert "unsafe SEC filing document name" in result["0000000001"]["error"]
+    assert not (tmp_path / "escape.xml").exists()
+
+
+def test_process_worker_uses_the_same_retained_supplement_loader(tmp_path, monkeypatch):
+    cik = "0000000001"
+    (tmp_path / f"companyfacts_{cik}.json").write_text(json.dumps({"facts": {}}))
+    monkeypatch.setattr(
+        inline_xbrl, "load_retained_supplement",
+        lambda cache, requested, facts: ({"facts": {}, "supplement": requested}, "applied"),
+    )
+    monkeypatch.setattr(
+        sync, "_derive_evidence",
+        lambda bundle, assume_absent_zero=False: (
+            "ok", {"supplement": bundle.facts["supplement"],
+                   "state": bundle.supplement_state},
+        ),
+    )
+
+    assert sync._derive_cached_worker((cik, "TEST", None, str(tmp_path))) == (
+        cik, ("ok", {"supplement": cik, "state": "applied"}),
+    )

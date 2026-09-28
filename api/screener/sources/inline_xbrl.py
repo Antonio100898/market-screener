@@ -1,7 +1,9 @@
 """Parse retained SEC Inline-XBRL into the existing Company Facts shape."""
 from __future__ import annotations
 
+import copy
 import hashlib
+import json
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -18,9 +20,17 @@ LINK = "http://www.xbrl.org/2003/linkbase"
 XLINK = "http://www.w3.org/1999/xlink"
 XSI = "http://www.w3.org/2001/XMLSchema-instance"
 
-_FILE_FIELDS = (
+FILE_ROLES = (
     "instance", "filing_summary", "presentation", "schema", "primary_document",
 )
+_FILE_FIELDS = FILE_ROLES
+MANIFEST_SCHEMA = "sec_inline_supplement_v1"
+PARSER_CONTRACT_REVISION = 1
+_CACHE_DIRECTORY = "sec-inline"
+
+
+class UnsupportedInlineXbrlRelationship(ValueError):
+    """The annual filing points outside the direct-filing contract."""
 
 
 @dataclass(frozen=True)
@@ -140,6 +150,256 @@ def parse_inline_xbrl(
             "standard_fact_count": len(facts),
         },
     }
+
+
+def current_manifest_path(cache_dir: str | Path, cik: str) -> Path:
+    return Path(cache_dir) / _CACHE_DIRECTORY / "current" / f"{_cik(cik)}.json"
+
+
+def accession_directory(cache_dir: str | Path, accession: str) -> Path:
+    accession_digits = _accession_digits(accession)
+    return Path(cache_dir) / _CACHE_DIRECTORY / "accessions" / accession_digits
+
+
+def read_current_manifest(cache_dir: str | Path, cik: str) -> dict | None:
+    path = current_manifest_path(cache_dir, cik)
+    if not path.exists():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ValueError("invalid retained Inline-XBRL manifest") from exc
+    if not isinstance(value, dict):
+        raise ValueError("invalid retained Inline-XBRL manifest")
+    return value
+
+
+def manifest_bytes(manifest: Mapping) -> bytes:
+    return (json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+
+def load_retained_supplement(
+    cache_dir: str | Path,
+    cik: str,
+    companyfacts: dict,
+    *,
+    retained_root: str | Path | None = None,
+) -> tuple[dict, str]:
+    """Verify and merge one active direct-annual supplement.
+
+    ``retained_root`` is an explicit verifier override. It is never serialized in
+    the manifest, so production manifests remain portable between machines.
+    """
+    if not str(cik).isdigit():
+        return companyfacts, "not_sec"
+    manifest = read_current_manifest(cache_dir, cik)
+    if manifest is None:
+        return companyfacts, "missing"
+    metadata, paths, hashes = _manifest_contract(
+        manifest, cik, cache_dir, retained_root=retained_root,
+    )
+    current = _current_foreign_annual(companyfacts)
+    expected = (metadata.annual_filed, metadata.annual_accession)
+    if current is None:
+        return companyfacts, "current_annual_unknown"
+    if current != expected:
+        return companyfacts, "stale"
+    supplement = parse_inline_xbrl(metadata, paths, hashes)
+    merged = merge_missing_facts(companyfacts, supplement)
+    return merged, ("verified_no_change" if merged is companyfacts else "applied")
+
+
+def verify_current_manifest(
+    cache_dir: str | Path,
+    cik: str,
+    *,
+    retained_root: str | Path | None = None,
+) -> dict | None:
+    manifest = read_current_manifest(cache_dir, cik)
+    if manifest is None:
+        return None
+    return verify_manifest(
+        manifest, cache_dir, cik, retained_root=retained_root,
+    )
+
+
+def verify_manifest(
+    manifest: dict,
+    cache_dir: str | Path,
+    cik: str,
+    *,
+    retained_root: str | Path | None = None,
+) -> dict:
+    metadata, paths, hashes = _manifest_contract(
+        manifest, cik, cache_dir, retained_root=retained_root,
+    )
+    return parse_inline_xbrl(metadata, paths, hashes)
+
+
+def merge_missing_facts(companyfacts: dict, supplement: dict) -> dict:
+    """Append only facts absent from Company Facts; never replace source facts."""
+    if str(companyfacts.get("cik") or "").lstrip("0") != str(
+        supplement.get("cik") or ""
+    ).lstrip("0"):
+        raise ValueError("Inline-XBRL supplement issuer mismatch")
+
+    additions: list[tuple[str, str, str, dict]] = []
+    base_facts = companyfacts.get("facts") or {}
+    for namespace, taxonomy in (supplement.get("facts") or {}).items():
+        for concept, tagdata in taxonomy.items():
+            for unit, entries in (tagdata.get("units") or {}).items():
+                existing = list(
+                    (((base_facts.get(namespace) or {}).get(concept) or {})
+                     .get("units") or {}).get(unit) or []
+                )
+                accepted: list[dict] = []
+                for entry in entries:
+                    matches = [
+                        other for other in (*existing, *accepted)
+                        if _same_filing_context(other, entry)
+                    ]
+                    if matches:
+                        if any(not _same_value(other.get("val"), entry.get("val"))
+                               for other in matches):
+                            raise ValueError(
+                                "conflicting retained Inline-XBRL supplement: "
+                                f"{namespace}:{concept} {unit}"
+                            )
+                        continue
+                    accepted.append(entry)
+                    additions.append((namespace, concept, unit, entry))
+
+    if not additions:
+        return companyfacts
+    merged = copy.deepcopy(companyfacts)
+    output = merged.setdefault("facts", {})
+    for namespace, concept, unit, entry in additions:
+        units = (output.setdefault(namespace, {})
+                 .setdefault(concept, {"units": {}})
+                 .setdefault("units", {}))
+        units.setdefault(unit, []).append(copy.deepcopy(entry))
+    merged["_inline_xbrl_supplement"] = copy.deepcopy(supplement["_inline_xbrl"])
+    return merged
+
+
+def _same_filing_context(left: dict, right: dict) -> bool:
+    if left.get("accn") != right.get("accn"):
+        return False
+    if (left.get("start"), left.get("end"), left.get("segments") or "") != (
+        right.get("start"), right.get("end"), right.get("segments") or "",
+    ):
+        return False
+    left_context = left.get("_source_context_id")
+    right_context = right.get("_source_context_id")
+    return not (left_context and right_context) or left_context == right_context
+
+
+def _same_value(left, right) -> bool:
+    try:
+        return Decimal(str(left)) == Decimal(str(right))
+    except (InvalidOperation, TypeError):
+        return left == right
+
+
+def _current_foreign_annual(companyfacts: dict) -> tuple[str, str] | None:
+    found: set[tuple[str, str]] = set()
+    for taxonomy in (companyfacts.get("facts") or {}).values():
+        for tagdata in taxonomy.values():
+            for entries in (tagdata.get("units") or {}).values():
+                for entry in entries:
+                    if str(entry.get("form") or "").startswith(("20-F", "40-F")):
+                        filed, accession = entry.get("filed"), entry.get("accn")
+                        if filed and accession:
+                            found.add((filed, accession))
+    return max(found, default=None)
+
+
+def _manifest_contract(
+    manifest: dict,
+    cik: str,
+    cache_dir: str | Path,
+    *,
+    retained_root: str | Path | None,
+) -> tuple[InlineXbrlMetadata, InlineXbrlPaths, dict[str, str]]:
+    normalized_cik = _cik(cik)
+    if manifest.get("schema") != MANIFEST_SCHEMA:
+        raise ValueError("unsupported retained Inline-XBRL manifest schema")
+    if manifest.get("parser_contract_revision") != PARSER_CONTRACT_REVISION:
+        raise ValueError("unsupported retained Inline-XBRL parser contract")
+    if manifest.get("cik") != normalized_cik:
+        raise ValueError("retained Inline-XBRL manifest issuer mismatch")
+    if manifest.get("relationship") != "direct_annual":
+        raise UnsupportedInlineXbrlRelationship(
+            str(manifest.get("relationship") or "unknown_relationship")
+        )
+    annual = manifest.get("annual") or {}
+    source = manifest.get("source") or {}
+    if source.get("accession") != annual.get("accession"):
+        raise UnsupportedInlineXbrlRelationship("incorporated_filing_relationship")
+
+    accession = str(annual.get("accession") or "")
+    accession_digits = _accession_digits(accession)
+    root = (Path(retained_root) if retained_root is not None
+            else accession_directory(cache_dir, accession).parent)
+    directory = root / accession_digits
+    records = manifest.get("files") or {}
+    required = {"index", *FILE_ROLES}
+    if set(records) != required:
+        raise ValueError("retained Inline-XBRL manifest must name every required file")
+    expected_base = (
+        "https://www.sec.gov/Archives/edgar/data/"
+        f"{int(normalized_cik)}/{accession_digits}/"
+    )
+    paths: dict[str, Path] = {}
+    hashes: dict[str, str] = {}
+    for role, record in records.items():
+        if not isinstance(record, dict):
+            raise ValueError(f"invalid retained Inline-XBRL file record: {role}")
+        document = safe_document_name(str(record.get("document") or ""))
+        if record.get("url") != expected_base + document:
+            raise ValueError(f"invalid retained Inline-XBRL source URL: {role}")
+        expected_hash = str(record.get("sha256") or "").casefold()
+        if not re.fullmatch(r"[0-9a-f]{64}", expected_hash):
+            raise ValueError(f"invalid retained Inline-XBRL SHA-256: {role}")
+        expected_size = record.get("size")
+        if not isinstance(expected_size, int) or expected_size < 0:
+            raise ValueError(f"invalid retained Inline-XBRL size: {role}")
+        path = directory / document
+        try:
+            payload = path.read_bytes()
+        except OSError as exc:
+            raise ValueError(f"missing retained Inline-XBRL file: {role}") from exc
+        if len(payload) != expected_size or hashlib.sha256(payload).hexdigest() != expected_hash:
+            raise ValueError(f"retained Inline-XBRL file verification failed: {role}")
+        paths[role] = path
+        hashes[role] = expected_hash
+
+    metadata = InlineXbrlMetadata(
+        cik=normalized_cik,
+        entity_name=str(manifest.get("entity_name") or ""),
+        source_accession=str(source.get("accession") or ""),
+        source_form=str(source.get("form") or ""),
+        source_filed=str(source.get("filed") or ""),
+        source_document=str(source.get("document") or ""),
+        report_date=str(annual.get("report_date") or ""),
+        annual_accession=accession,
+        annual_form=str(annual.get("form") or ""),
+        annual_filed=str(annual.get("filed") or ""),
+    )
+    parser_paths = InlineXbrlPaths(**{role: paths[role] for role in FILE_ROLES})
+    return metadata, parser_paths, {role: hashes[role] for role in FILE_ROLES}
+
+
+def _accession_digits(accession: str) -> str:
+    if not re.fullmatch(r"\d{10}-\d{2}-\d{6}", accession):
+        raise ValueError("invalid SEC accession")
+    return accession.replace("-", "")
+
+
+def safe_document_name(document: str) -> str:
+    if not document or not re.fullmatch(r"[A-Za-z0-9_.-]+", document):
+        raise ValueError("unsafe SEC filing document name")
+    return document
 
 
 def _validate_metadata(metadata: InlineXbrlMetadata, paths: InlineXbrlPaths) -> str:

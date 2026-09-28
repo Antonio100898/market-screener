@@ -76,6 +76,7 @@ Affected decisions: P-02, P-03, P-04, and P-09. Existing SEC/IFRS invariants rem
 | 3B-S. Four-provider connectivity screen | accepted | evaluation developer | stopped safely after 19 definitive attempts; USD 5.08612760; exact causes recorded; no retry or publication |
 | 3B-D. Raw SEC inline-XBRL/exhibit recovery audit | accepted | extraction investigator | 17 standard inline-XBRL plus CNI incorporated exhibit; 18/18 reconcile; zero current LLM candidates |
 | 3B-X1. Generic SEC Inline-XBRL supplement parser | accepted | extraction developer | 14 focused; 811 full Python; 17 real filings, 18,775 facts, 124 audited anchors reproduced |
+| 3B-X2. Retained statement acquisition and evidence merge | accepted | evidence developer | engine 186; 139 focused, 824 full Python; 17 manifests applied; 13 `ok`, four cover-only failures |
 | 3C. LLM shadow pilot for incomplete statements | queued after 3B | extraction developer | retained real filings; candidates stored but dashboard unchanged; failures named |
 | 4. Full derive/export/regression/audit | committed (records commit) | manager | engine 184; 6,979 rows; 112 intended disclosure changes; audits zero wrong |
 

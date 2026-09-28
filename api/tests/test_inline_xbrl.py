@@ -9,6 +9,7 @@ import pytest
 from screener.sources.inline_xbrl import (
     InlineXbrlMetadata,
     InlineXbrlPaths,
+    merge_missing_facts,
     parse_inline_xbrl,
 )
 
@@ -237,3 +238,67 @@ def test_every_retained_file_is_required(tmp_path, field):
 
     with pytest.raises(ValueError, match=f"missing retained Inline-XBRL file: {field}"):
         parse_inline_xbrl(metadata, paths, hashes)
+
+
+def _companyfacts(entry: dict) -> dict:
+    return {
+        "cik": "0000000123",
+        "entityName": "Example PLC",
+        "facts": {"ifrs-full": {"Assets": {"label": "Assets", "units": {
+            "USD": [entry],
+        }}}},
+    }
+
+
+def test_missing_only_merge_keeps_existing_entry_and_preserves_source_fields(tmp_path):
+    metadata, paths, hashes = _fixture(tmp_path)
+    supplement = parse_inline_xbrl(metadata, paths, hashes)
+    existing = {
+        "val": 1000,
+        "end": "2025-12-31",
+        "accn": metadata.annual_accession,
+        "form": "20-F",
+        "filed": metadata.annual_filed,
+    }
+    companyfacts = _companyfacts(existing)
+
+    merged = merge_missing_facts(companyfacts, supplement)
+
+    assets = merged["facts"]["ifrs-full"]["Assets"]
+    assert assets["label"] == "Assets"
+    assert assets["units"]["USD"] == [existing]
+    cash = merged["facts"]["ifrs-full"]["CashFlowsFromUsedInOperatingActivities"] \
+        ["units"]["USD"][0]
+    assert cash["_source_fact_id"] == "cash"
+    assert cash["_source_statement_roles"] == []
+    eps = merged["facts"]["ifrs-full"]["EarningsPerShareBasic"] \
+        ["units"]["USD/shares"][0]
+    assert eps["_source_dimensions"][0]["axis"].endswith("ClassesOfShareCapitalAxis")
+    assert companyfacts.get("_inline_xbrl_supplement") is None
+
+
+def test_missing_only_merge_fails_on_same_filing_context_conflict(tmp_path):
+    metadata, paths, hashes = _fixture(tmp_path)
+    supplement = parse_inline_xbrl(metadata, paths, hashes)
+    companyfacts = _companyfacts({
+        "val": 999,
+        "end": "2025-12-31",
+        "accn": metadata.annual_accession,
+        "form": "20-F",
+        "filed": metadata.annual_filed,
+    })
+
+    with pytest.raises(ValueError, match="conflicting retained Inline-XBRL supplement"):
+        merge_missing_facts(companyfacts, supplement)
+
+
+def test_exact_supplement_duplicates_are_deduplicated(tmp_path):
+    metadata, paths, hashes = _fixture(tmp_path)
+    supplement = parse_inline_xbrl(metadata, paths, hashes)
+    entries = supplement["facts"]["ifrs-full"]["Assets"]["units"]["USD"]
+    entries.append(dict(entries[0]))
+    companyfacts = {"cik": "0000000123", "facts": {}}
+
+    merged = merge_missing_facts(companyfacts, supplement)
+
+    assert len(merged["facts"]["ifrs-full"]["Assets"]["units"]["USD"]) == 1

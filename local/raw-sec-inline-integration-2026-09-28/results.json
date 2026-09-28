@@ -1,0 +1,383 @@
+{
+  "companies": [
+    {
+      "after": {
+        "balance_sheet_date": "2025-12-31",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001193125-26-197494",
+        "status": "ok"
+      },
+      "annual_accession": "0001193125-26-197494",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0001561861",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "AERO"
+    },
+    {
+      "after": {
+        "balance_sheet_date": "2025-12-31",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001104659-26-047872",
+        "status": "ok"
+      },
+      "annual_accession": "0001104659-26-047872",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0002020932",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "AGMB"
+    },
+    {
+      "after": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "annual_accession": "0001683168-26-002801",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": false,
+      "cik": "0001304409",
+      "remaining_failure": "UnsupportedFilerError: foreign filer has no exact filing-cover security title for this ticker",
+      "supplement_state": "applied",
+      "ticker": "AHNRF"
+    },
+    {
+      "after": {
+        "balance_sheet_date": "2026-03-31",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001493152-26-036364",
+        "status": "ok"
+      },
+      "annual_accession": "0001493152-26-036364",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0002025774",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "ALPS"
+    },
+    {
+      "after": {
+        "balance_sheet_date": "2025-12-31",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001171843-26-002783",
+        "status": "ok"
+      },
+      "annual_accession": "0001171843-26-002783",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0001468642",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "AUGO"
+    },
+    {
+      "after": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "annual_accession": "0001213900-26-050426",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": false,
+      "cik": "0002058601",
+      "remaining_failure": "UnsupportedFilerError: foreign filer has no exact filing-cover security title for this ticker",
+      "supplement_state": "applied",
+      "ticker": "BRBI"
+    },
+    {
+      "after": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "annual_accession": "0002058897-26-000125",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": false,
+      "cik": "0002058897",
+      "remaining_failure": "UnsupportedFilerError: foreign depositary security has no resolved positive cover-page ratio",
+      "supplement_state": "applied",
+      "ticker": "CIB"
+    },
+    {
+      "after": {
+        "balance_sheet_date": "2025-12-31",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001683168-26-003530",
+        "status": "ok"
+      },
+      "annual_accession": "0001683168-26-003530",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0002039072",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "DAVI"
+    },
+    {
+      "after": {
+        "balance_sheet_date": "2026-03-31",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001493152-26-038530",
+        "status": "ok"
+      },
+      "annual_accession": "0001493152-26-038530",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0001926293",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "GCDT"
+    },
+    {
+      "after": {
+        "balance_sheet_date": "2026-06-30",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001104659-26-108373",
+        "status": "ok"
+      },
+      "annual_accession": "0001104659-26-108373",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0002039972",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "GMTL"
+    },
+    {
+      "after": {
+        "balance_sheet_date": "2025-12-31",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001213900-26-049771",
+        "status": "ok"
+      },
+      "annual_accession": "0001213900-26-049771",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0002054507",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "HBNB"
+    },
+    {
+      "after": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "annual_accession": "0001829126-26-005357",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": false,
+      "cik": "0002000756",
+      "remaining_failure": "UnsupportedFilerError: foreign filer has no exact filing-cover security title for this ticker",
+      "supplement_state": "applied",
+      "ticker": "NXAT"
+    },
+    {
+      "after": {
+        "balance_sheet_date": "2026-03-31",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001193125-26-289382",
+        "status": "ok"
+      },
+      "annual_accession": "0001193125-26-289382",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0002080845",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "PAYP"
+    },
+    {
+      "after": {
+        "balance_sheet_date": "2025-12-31",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001213900-26-049950",
+        "status": "ok"
+      },
+      "annual_accession": "0001213900-26-049950",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0001841644",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "PICS"
+    },
+    {
+      "after": {
+        "balance_sheet_date": "2025-12-31",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001104659-26-049527",
+        "status": "ok"
+      },
+      "annual_accession": "0001104659-26-049527",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0002087398",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "TMCR"
+    },
+    {
+      "after": {
+        "balance_sheet_date": "2025-12-31",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001104659-26-052847",
+        "status": "ok"
+      },
+      "annual_accession": "0001104659-26-052847",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0002080073",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "VMET"
+    },
+    {
+      "after": {
+        "balance_sheet_date": "2025-12-31",
+        "error": null,
+        "pending": null,
+        "source_accession": "0001493152-26-019802",
+        "status": "ok"
+      },
+      "annual_accession": "0001493152-26-019802",
+      "before": {
+        "balance_sheet_date": null,
+        "error": null,
+        "pending": null,
+        "source_accession": null,
+        "status": "foreign"
+      },
+      "changed": true,
+      "cik": "0001875016",
+      "remaining_failure": null,
+      "supplement_state": "applied",
+      "ticker": "YMAT"
+    }
+  ],
+  "company_count": 17,
+  "engine_version": 186,
+  "ok_after": 13,
+  "remaining_failures": 4,
+  "schema": "sec_inline_integration_verification_v1"
+}
