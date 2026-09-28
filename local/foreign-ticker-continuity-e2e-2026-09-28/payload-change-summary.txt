@@ -1,0 +1,69 @@
+common_rows=6979
+added=[('BRNX', '0001901215'), ('ZTG', '0002011458')]
+removed=[]
+changed_top_level_counts:
+  market_state_asof=6610
+  price_asof=3263
+  price=2985
+  price_stats=2974
+  criteria=1530
+  price_session=969
+  price_reporting_currency=228
+  fx=228
+  asset_quality=164
+  alignment=3
+  price_history_warning=2
+changed_nested_quote_fields:
+  price_stats.pct_below_52w_high=2900
+  price_stats.pct_vs_3y_average=2892
+  price_stats.pct_above_52w_low=2796
+  price_stats.pct_below_3y_high=2787
+  price_stats.pct_below_5y_high=2690
+  price_stats.price_to_3y_median=1858
+  fx.asof=228
+  fx.rate=227
+  asset_quality.market_cap_to_net_cash=164
+  price_stats.high_52w=64
+  price_stats.drawdown_weeks=10
+  price_stats.history_weeks=1
+  price_stats.average_3y=1
+unchanged_product_fields:
+  verdict=0
+  n_pass=0
+  ttm_eps=0
+  ttm_net_income=0
+  ttm_revenue=0
+  annual_eps=0
+  annual_net_income=0
+  annual_revenue=0
+  annual_ratios=0
+  graham_profile=0
+  graham_profile_meta=0
+  context_notes=0
+  sources=0
+criteria_changes:
+  criterion_1: rows=1225 value=1220 status=0 note=5
+  criterion_5: rows=329 value=327 status=0 note=2
+  criterion_7: rows=754 value=749 status=0 note=5
+  status_transitions=0
+criteria_note_changes:
+  RYAAY C1: 'newest earnings are 18 months older than this price, though it filed on 2026-09-21 — the earnings element it uses has gone stale, not the company' -> 'newest earnings are 1.5 years older than this price, though it filed on 2026-09-21 — the earnings element it uses has gone stale, not the company'
+  RYAAY C7: 'balance sheet is 18 months older than this price' -> 'balance sheet is 1.5 years older than this price'
+  ASH C5: 'yield of 240.37% is not meaningful against this price' -> 'yield of 241.98% is not meaningful against this price'
+  BUR C5: 'yield of 652.74% is not meaningful against this price' -> 'yield of 647.67% is not meaningful against this price'
+  LSPD C1: 'newest earnings are 18 months older than this price, though it filed on 2026-09-21 — the earnings element it uses has gone stale, not the company' -> 'newest earnings are 1.5 years older than this price, though it filed on 2026-09-21 — the earnings element it uses has gone stale, not the company'
+  LSPD C7: 'balance sheet is 18 months older than this price' -> 'balance sheet is 1.5 years older than this price'
+  RNW C1: 'newest earnings are 18 months older than this price, though it filed on 2026-09-23 — the earnings element it uses has gone stale, not the company' -> 'newest earnings are 1.5 years older than this price, though it filed on 2026-09-23 — the earnings element it uses has gone stale, not the company'
+  RNW C7: 'balance sheet is 18 months older than this price' -> 'balance sheet is 1.5 years older than this price'
+  PMEC C1: 'newest earnings are 18 months older than this price, though it filed on 2026-09-24 — the earnings element it uses has gone stale, not the company' -> 'newest earnings are 1.5 years older than this price, though it filed on 2026-09-24 — the earnings element it uses has gone stale, not the company'
+  PMEC C7: 'balance sheet is 18 months older than this price' -> 'balance sheet is 1.5 years older than this price'
+  BRIA C1: 'newest earnings are 18 months older than this price, though it filed on 2026-07-31 — the earnings element it uses has gone stale, not the company' -> 'newest earnings are 1.5 years older than this price, though it filed on 2026-07-31 — the earnings element it uses has gone stale, not the company'
+  BRIA C7: 'balance sheet is 18 months older than this price' -> 'balance sheet is 1.5 years older than this price'
+price_session_transitions={('REGULAR', 'PRE'): 969}
+alignment_changes:
+  PNRG: defensive valuation PASS->FAIL; passed 3->2; verdict BLOCKED->BLOCKED
+  EEFT: defensive valuation PASS->FAIL; passed 2->1; verdict OUT_OF_SCOPE->OUT_OF_SCOPE
+  AFCG: defensive valuation PASS->FAIL; passed 2->1; verdict OUT_OF_SCOPE->OUT_OF_SCOPE
+price_history_warning_changes:
+  IDXG: {'kind': 'HISTORY_REJECTED', 'note': 'the refreshed history lost its oldest coverage; the previously validated history remains in use'} -> None
+  TANH: {'kind': 'HISTORY_REJECTED', 'note': 'the provider declared a split that the filing-derived per-share history does not yet reflect; contemporaneous historical closes remain in use'} -> {'kind': 'HISTORY_REJECTED', 'note': 'historical closes were rescaled without matching split evidence; the previously validated history remains in use'}

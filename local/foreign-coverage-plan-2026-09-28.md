@@ -69,7 +69,8 @@ Affected decisions: P-02, P-03, P-04, and P-09. Existing SEC/IFRS invariants rem
 | 2A. Retain exact cover bytes and support bounded reparse | committed (`44aed77`) | evidence developer | 116 focused; real S3 readback; 100-CIK reparse retained 226 reports and recovered 30 rows |
 | 2B. Direct scalar depositary ratio fixes | committed (`44aed77`) | extraction developer | 19 official recoveries, 9 exclusions; 150 focused; real S3 primary readback; engine 183 |
 | 2C. Attached-rights regression fix | committed (`44aed77`) | bug-fix developer | exact three restored; adverse classes rejected; 49 focused and 780 full Python tests; engine 184 |
-| 3A. Later-SEC same-class ticker continuity | accepted, pending full payload gate | identity developer | 219 focused; 797 full Python; BRNX/ZTG real `ok` snapshots; offline restart-safe; ambiguous classes and OTC aliases excluded |
+| 3A. Later-SEC same-class ticker continuity | committed (`7570d8b`), gate passed | identity developer | 219 focused; 797 full Python; BRNX/ZTG real `ok` snapshots; offline restart-safe; ambiguous classes and OTC aliases excluded |
+| 3A-G. Engine-185 full payload and filing gate | accepted | verification developer | 6,981 unique rows; +BRNX/+ZTG only; 6,979-row regression clean; 279/3,411/378 audits zero wrong |
 | 3B. LLM shadow extraction contract and exact prompt | queued after 3A | extraction developer | owner-approved prompt; strict schema; deterministic citation checks; 5–10 baseline/candidate runs on frozen cases |
 | 3C. LLM shadow pilot for incomplete statements | queued after 3B | extraction developer | retained real filings; candidates stored but dashboard unchanged; failures named |
 | 4. Full derive/export/regression/audit | committed (records commit) | manager | engine 184; 6,979 rows; 112 intended disclosure changes; audits zero wrong |

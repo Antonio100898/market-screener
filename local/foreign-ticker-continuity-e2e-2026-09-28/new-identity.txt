@@ -1,0 +1,9 @@
+path=/Users/antonmishanin/Dev/Screener/api/screener/static/dashboard.json
+engine_version=185
+sha256=d45bfb04044b42fa8221742873be1b4c688d4b722981987052c92f356ab5ce4b
+bytes=220362103
+rows=6981
+unique_tickers=6981
+unique_ciks=6981
+duplicate_tickers=0
+duplicate_ciks=0

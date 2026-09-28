@@ -1,0 +1,4 @@
+aa6d62420ae10fdcdb55437e6b006dfb500203ac95dcf1957e61e5d51d8a5f82  /Users/antonmishanin/.cache/graham-screener/covers/000121390026034046/R1.htm
+185733796ecabfdfc216e8dc1f04026b43b65e61ae016f04fd299a2bb9bb83cc  /Users/antonmishanin/.cache/graham-screener/covers/000121390026103505/primary/ea0306419-f3_brenx.htm
+ec64b4b58aefd766adf8d6ccb48a0d0900062584858d6b78dfd5f77b0449faec  /Users/antonmishanin/.cache/graham-screener/covers/000149315226002776/R1.htm
+5fd7e852e48e02a7a4a86442a67391eb734892d2a0c85eaf7fc89e2013c7813c  /Users/antonmishanin/.cache/graham-screener/covers/000149315226043703/primary/formf-3.htm

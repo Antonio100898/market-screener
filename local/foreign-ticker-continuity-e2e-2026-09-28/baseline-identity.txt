@@ -1,0 +1,9 @@
+path=/tmp/market-screener-dev15.AV9tDr/dashboard-engine184.json
+engine_version=184
+sha256=be40ae5261bc4827aeac4685879685e3a5a0950763543d2da62072a70587cce6
+bytes=220328826
+rows=6979
+unique_tickers=6979
+unique_ciks=6979
+duplicate_tickers=0
+duplicate_ciks=0

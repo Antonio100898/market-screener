@@ -1,0 +1,12 @@
+BRNX: ticker_count=1 cik_count=1
+  receipt={"accn": "0001213900-26-103505", "basis_accn": "0001213900-26-034046", "cik": "0001901215", "exchange": "Nasdaq", "filed": "2026-09-25", "ratio": null, "symbol": "BRNX", "title": "Ordinary Shares, no par value per share"}
+  basis_source_accessions=['0001213900-25-093469', '0001213900-26-034046']
+  balance_sheet_date=2025-12-31 ttm_eps=-57.14 ttm_net_income=-13905000.0 assets=12495000.0 liabilities=9001000.0 shares=715852.0 verdict=FAIL
+ZTG: ticker_count=1 cik_count=1
+  receipt={"accn": "0001493152-26-043703", "basis_accn": "0001493152-26-002776", "cik": "0002011458", "exchange": "Nasdaq", "filed": "2026-09-22", "ratio": null, "symbol": "ZTG", "title": "Class A Ordinary Shares, par value US$0.001 per share"}
+  basis_source_accessions=['0001493152-26-002776']
+  balance_sheet_date=2025-09-30 ttm_eps=0.1 ttm_net_income=1001335.0 assets=7324715.0 liabilities=429970.0 shares=11583839.0 verdict=FAIL
+alias BNRG: count=0
+alias ZGM: count=0
+alias ABLZF: count=0
+unsupported OTC rows sharing target CIK: []

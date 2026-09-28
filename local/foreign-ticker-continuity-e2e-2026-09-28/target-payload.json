@@ -1,0 +1,364 @@
+[
+  {
+    "cik": "0001901215",
+    "ticker": "BRNX",
+    "name": "BRENX LTD.",
+    "exchange": "Nasdaq",
+    "balance_sheet_date": "2025-12-31",
+    "ttm_basis": "fiscal year to 2025-12-31",
+    "ttm_eps": -57.14,
+    "ttm_net_income": -13905000.0,
+    "current_assets": 6962000.0,
+    "current_liabilities": 5224000.0,
+    "total_assets": 12495000.0,
+    "total_liabilities": 9001000.0,
+    "shares": 715852.0,
+    "receipt": {
+      "cik": "0001901215",
+      "symbol": "BRNX",
+      "accn": "0001213900-26-103505",
+      "title": "Ordinary Shares, no par value per share",
+      "ratio": null,
+      "exchange": "Nasdaq",
+      "filed": "2026-09-25",
+      "basis_accn": "0001213900-26-034046"
+    },
+    "sources": {
+      "net_income": {
+        "tag": "us-gaap:NetIncomeLoss",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "revenue": {
+        "tag": "us-gaap:Revenues",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "operating_income": {
+        "tag": "us-gaap:OperatingIncomeLoss",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "total_assets": {
+        "tag": "us-gaap:Assets",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "total_liabilities": {
+        "tag": "us-gaap:Liabilities",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "current_assets": {
+        "tag": "us-gaap:AssetsCurrent",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "current_liabilities": {
+        "tag": "us-gaap:LiabilitiesCurrent",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "long_term_debt": {
+        "tag": "us-gaap:LongTermDebt",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "operating_lease_liability": {
+        "tag": "us-gaap:OperatingLeaseLiability",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "lease_cost": {
+        "tag": "us-gaap:OperatingLeaseExpense",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25",
+        "start": "2025-01-01",
+        "unit": "USD"
+      },
+      "fixed_charge_coverage": {
+        "tag": "(us-gaap:OperatingIncomeLoss + us-gaap:OperatingLeaseExpense) / (us-gaap:InterestExpenseNonoperating + us-gaap:OperatingLeaseExpense)",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25",
+        "concept": "Fixed-charge coverage proxy (operating income plus lease cost / interest plus lease cost)",
+        "components": [
+          {
+            "tag": "us-gaap:OperatingIncomeLoss",
+            "form": "20-F",
+            "accn": "0001213900-26-034046",
+            "end": "2025-12-31",
+            "filed": "2026-03-25"
+          },
+          {
+            "tag": "us-gaap:InterestExpenseNonoperating",
+            "form": "20-F",
+            "accn": "0001213900-26-034046",
+            "end": "2025-12-31",
+            "filed": "2026-03-25"
+          },
+          {
+            "tag": "us-gaap:OperatingLeaseExpense",
+            "form": "20-F",
+            "accn": "0001213900-26-034046",
+            "end": "2025-12-31",
+            "filed": "2026-03-25"
+          }
+        ]
+      },
+      "inventory": {
+        "tag": "us-gaap:InventoryNet",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "cash": {
+        "tag": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "options": {
+        "tag": "us-gaap:ShareBasedCompensationArrangementByShareBasedPaymentAwardOptionsOutstandingNumber",
+        "form": "6-K",
+        "accn": "0001213900-25-093469",
+        "end": "2025-06-30",
+        "filed": "2025-09-30"
+      },
+      "shares": {
+        "tag": "us-gaap:CommonStockSharesOutstanding",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "weighted_shares": {
+        "tag": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      },
+      "eps": {
+        "tag": "us-gaap:EarningsPerShareDiluted",
+        "form": "20-F",
+        "accn": "0001213900-26-034046",
+        "end": "2025-12-31",
+        "filed": "2026-03-25"
+      }
+    },
+    "verdict": "FAIL",
+    "criteria": [
+      {
+        "n": 1,
+        "status": "INSUFFICIENT_DATA",
+        "value": null,
+        "note": "FY2025 earnings per share of -57.14 on 0.4M weighted shares comes to -23M against the -14M of net income the same filing reports: the two do not describe one security"
+      },
+      {
+        "n": 2,
+        "status": "FAIL",
+        "value": 1.33,
+        "note": null
+      },
+      {
+        "n": 3,
+        "status": "INSUFFICIENT_DATA",
+        "value": null,
+        "note": "missing: short-term debt"
+      },
+      {
+        "n": 4,
+        "status": "FAIL",
+        "value": -174.63,
+        "note": "negative EPS in FY 2021, 2022, 2023, 2024, 2025"
+      },
+      {
+        "n": 5,
+        "status": "FAIL",
+        "value": null,
+        "note": "no dividend payments found in recent filings"
+      },
+      {
+        "n": 7,
+        "status": "INSUFFICIENT_DATA",
+        "value": null,
+        "note": "missing: goodwill, intangibles, price quote"
+      }
+    ]
+  },
+  {
+    "cik": "0002011458",
+    "ticker": "ZTG",
+    "name": "Zenta Group Co Ltd",
+    "exchange": "Nasdaq",
+    "balance_sheet_date": "2025-09-30",
+    "ttm_basis": "fiscal year to 2025-09-30",
+    "ttm_eps": 0.1,
+    "ttm_net_income": 1001335.0,
+    "current_assets": 3456937.0,
+    "current_liabilities": 424262.0,
+    "total_assets": 7324715.0,
+    "total_liabilities": 429970.0,
+    "shares": 11583839.0,
+    "receipt": {
+      "cik": "0002011458",
+      "symbol": "ZTG",
+      "accn": "0001493152-26-043703",
+      "title": "Class A Ordinary Shares, par value US$0.001 per share",
+      "ratio": null,
+      "exchange": "Nasdaq",
+      "filed": "2026-09-22",
+      "basis_accn": "0001493152-26-002776"
+    },
+    "sources": {
+      "net_income": {
+        "tag": "us-gaap:NetIncomeLoss",
+        "form": "20-F",
+        "accn": "0001493152-26-002776",
+        "end": "2025-09-30",
+        "filed": "2026-01-20"
+      },
+      "revenue": {
+        "tag": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+        "form": "20-F",
+        "accn": "0001493152-26-002776",
+        "end": "2025-09-30",
+        "filed": "2026-01-20"
+      },
+      "total_assets": {
+        "tag": "us-gaap:Assets",
+        "form": "20-F",
+        "accn": "0001493152-26-002776",
+        "end": "2025-09-30",
+        "filed": "2026-01-20"
+      },
+      "total_liabilities": {
+        "tag": "us-gaap:Liabilities",
+        "form": "20-F",
+        "accn": "0001493152-26-002776",
+        "end": "2025-09-30",
+        "filed": "2026-01-20"
+      },
+      "current_assets": {
+        "tag": "us-gaap:AssetsCurrent",
+        "form": "20-F",
+        "accn": "0001493152-26-002776",
+        "end": "2025-09-30",
+        "filed": "2026-01-20"
+      },
+      "current_liabilities": {
+        "tag": "us-gaap:LiabilitiesCurrent",
+        "form": "20-F",
+        "accn": "0001493152-26-002776",
+        "end": "2025-09-30",
+        "filed": "2026-01-20"
+      },
+      "operating_lease_liability": {
+        "tag": "us-gaap:OperatingLeaseLiability",
+        "form": "20-F",
+        "accn": "0001493152-26-002776",
+        "end": "2025-09-30",
+        "filed": "2026-01-20"
+      },
+      "receivables": {
+        "tag": "us-gaap:AccountsReceivableNetCurrent",
+        "form": "20-F",
+        "accn": "0001493152-26-002776",
+        "end": "2025-09-30",
+        "filed": "2026-01-20"
+      },
+      "intangibles": {
+        "tag": "us-gaap:FiniteLivedIntangibleAssetsNet",
+        "form": "20-F",
+        "accn": "0001493152-26-002776",
+        "end": "2025-09-30",
+        "filed": "2026-01-20",
+        "concept": "Intangibles (finite-lived)"
+      },
+      "shares": {
+        "tag": "us-gaap:CommonStockSharesOutstanding",
+        "form": "20-F",
+        "accn": "0001493152-26-002776",
+        "end": "2025-09-30",
+        "filed": "2026-01-20"
+      },
+      "weighted_shares": {
+        "tag": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+        "form": "20-F",
+        "accn": "0001493152-26-002776",
+        "end": "2025-09-30",
+        "filed": "2026-01-20"
+      },
+      "eps": {
+        "tag": "us-gaap:EarningsPerShareDiluted",
+        "form": "20-F",
+        "accn": "0001493152-26-002776",
+        "end": "2025-09-30",
+        "filed": "2026-01-20"
+      }
+    },
+    "verdict": "FAIL",
+    "criteria": [
+      {
+        "n": 1,
+        "status": "FAIL",
+        "value": 13.1,
+        "note": null
+      },
+      {
+        "n": 2,
+        "status": "PASS",
+        "value": 8.15,
+        "note": null
+      },
+      {
+        "n": 3,
+        "status": "INSUFFICIENT_DATA",
+        "value": null,
+        "note": "missing: long-term debt, short-term debt"
+      },
+      {
+        "n": 4,
+        "status": "INSUFFICIENT_DATA",
+        "value": null,
+        "note": "profitable in every year on file, but missing annual EPS for FY 2021, 2022"
+      },
+      {
+        "n": 5,
+        "status": "FAIL",
+        "value": null,
+        "note": "no dividend payments found in recent filings"
+      },
+      {
+        "n": 7,
+        "status": "INSUFFICIENT_DATA",
+        "value": null,
+        "note": "missing: goodwill"
+      }
+    ]
+  }
+]

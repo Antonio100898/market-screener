@@ -1,0 +1,36 @@
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   407Gi   8.4Gi    98%    9.8M   88M   10%   /System/Volumes/Data
+Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free:                                    20885.
+Pages active:                                 208638.
+Pages inactive:                               193697.
+Pages speculative:                             14127.
+Pages throttled:                                   0.
+Pages wired down:                             214379.
+Pages purgeable:                                 791.
+"Translation faults":                    35215661696.
+Pages copy-on-write:                       663775859.
+Pages zero filled:                       12920660660.
+Pages reactivated:                       11519764138.
+Pages purged:                              574653285.
+File-backed pages:                            137079.
+Anonymous pages:                              279383.
+Pages stored in compressor:                  1419708.
+Pages occupied by compressor:                 355229.
+Decompressions:                          11783434275.
+Compressions:                            13295430599.
+Pageins:                                  1109007257.
+Pageouts:                                    9862271.
+Swapins:                                   288537053.
+Swapouts:                                  318897649.
+Pages tagged:                                 134827.
+Pages tagged resident:                        107920.
+Pages tagged compressed:                       26907.
+Pages tag-storage:                             32768.
+Pages tag-storage holding tags:                 4750.
+Pages tag-storage free:                          240.
+Pages tag-storage non-tag pageable:            27745.
+Pages tag-storage non-tag wired:                  33.
+Bytes of compressed tags:                    4409344.
+Tagged compressions:                       217513633.
+Tagged decompressions:                     210963183.

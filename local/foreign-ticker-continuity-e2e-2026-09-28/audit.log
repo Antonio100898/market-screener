@@ -1,0 +1,31 @@
+cd api && .venv/bin/python -m screener.audit
+auditing 22 companies
+
+  KO       ok
+  MSFT     ok
+  JPM      ok
+  O        ok
+  ZLAB     ok
+  GOOGL    ok
+  RIVN     ok
+  ET       ok
+  EML      ok
+  AAPL     ok
+  JNJ      ok
+  FUSB     ok
+  BRK-B    ok
+  PG       ok
+  XOM      ok
+  UNH      ok
+  T        ok
+  F        ok
+  PLTR     ok
+  MKL      ok
+  NKE      ok
+  ORCL     ok
+
+  values matching the filing they name : 279 ok, 0 wrong
+  figures matching their own arithmetic: 3411 ok, 0 wrong
+  components superseded by a newer filing: 0
+  matching the published statement     : 0 ok, 0 wrong (0 lines not printed)
+  not checkable from the payload       : 0
