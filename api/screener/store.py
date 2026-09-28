@@ -17,7 +17,7 @@ from .sources import cover
 
 # Bump when normalisation changes meaning; snapshots below this are recomputed
 # from stored raw facts, with no refetching.
-ENGINE_VERSION = 181  # recognize repo debt, continuing-operations OCF, and oil/gas cash CapEx
+ENGINE_VERSION = 184  # restore common classes with attached purchase rights
 
 DEFAULT_DB = Path.home() / ".cache" / "graham-screener" / "screener.db"
 _WRITE_ATTEMPTS = 5   # a recompute must not fail because the site was being read

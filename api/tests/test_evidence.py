@@ -92,6 +92,39 @@ def test_store_prefers_the_priced_equity_when_cover_rows_share_a_symbol(tmp_path
     assert saved["title"].startswith("American Depositary")
 
 
+def test_loader_selects_exact_ticker_from_a_filed_compound_symbol(tmp_path):
+    cik, ticker = "0000000001", "SUZ"
+    page = """
+      <table>
+        <tr><td>Title of 12(b) Security</td><td>American Depositary Shares</td></tr>
+        <tr><td>Trading Symbol</td><td>SUZB3/SUZ</td></tr>
+        <tr><td>Title of 12(b) Security</td><td>6.000% Notes due 2029</td></tr>
+        <tr><td>Trading Symbol</td><td>SUZ/29</td></tr>
+      </table>
+    """
+    conn = store.connect(tmp_path / "store.db")
+    from screener.sources import cover
+
+    store.set_cover(conn, cik, cover.securities(page), "accn-1")
+
+    _, receipt = evidence.EvidenceLoader(conn, EdgarStub(tmp_path)).identity(cik, ticker)
+    assert receipt["symbol"] == "SUZB3/SUZ"
+    assert receipt["title"] == "American Depositary Shares"
+
+
+def test_loader_rejects_ambiguous_compound_symbol_components(tmp_path):
+    conn = store.connect(tmp_path / "store.db")
+    store.set_cover(conn, "0000000001", [
+        {"symbol": "LOCAL1/ADS", "title": "American Depositary Shares", "ratio": 1},
+        {"symbol": "LOCAL2/ADS", "title": "Class A Common Shares", "ratio": None},
+    ], "accn-1")
+
+    _, receipt = evidence.EvidenceLoader(conn, EdgarStub(tmp_path)).identity(
+        "0000000001", "ADS"
+    )
+    assert receipt is None
+
+
 def test_loader_rejects_stale_noncommon_or_unlisted_cover_collisions(tmp_path):
     conn = store.connect(tmp_path / "store.db")
     # Insert directly to reproduce rows damaged by the pre-fix parser; the fixed

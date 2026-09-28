@@ -25,6 +25,7 @@ import io
 import json
 import os
 import sys
+import tempfile
 import zipfile
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
@@ -1713,8 +1714,23 @@ def _submissions_identity(d: dict) -> tuple[str | None, str | None, str | None, 
             min(first) if first else None, max(recent) if recent else None)
 
 
+def _retain_source_bytes(path: Path, raw: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            dir=path.parent, prefix=f".{path.name}.", delete=False
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            temporary.write(raw)
+        os.replace(temporary_path, path)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+
 def cover_pages(conn, progress=_print_progress, *, foreign_only: bool = False,
-                ciks: set[str] | None = None) -> None:
+                ciks: set[str] | None = None, reparse: bool = False) -> None:
     """Read the cover of each company's newest annual filing.
 
     Two facts there decide what every per-share figure on this dashboard means,
@@ -1727,6 +1743,9 @@ def cover_pages(conn, progress=_print_progress, *, foreign_only: bool = False,
     filer with one class of common has nothing here that the statements do not
     already say.
     """
+    if reparse and ciks is None:
+        raise ValueError("cover reparse requires an explicit CIK set")
+
     edgar = EdgarClient()
     store.migrate(conn)
     # Every company, not only the ones whose data betrays a question. Onconova is
@@ -1774,24 +1793,32 @@ def cover_pages(conn, progress=_print_progress, *, foreign_only: bool = False,
     # An unchanged cover is immutable. Do not make another SEC request merely
     # because the derivation engine changed; parser improvements are applied to
     # the preserved title by EvidenceLoader.
+    stored_covers = store.covers_by_cik(conn)
     covered = {
-        (cik, security["symbol"], security["accn"])
-        for cik, securities in store.covers_by_cik(conn).items()
+        (cik, security["accn"])
+        for cik, securities in stored_covers.items()
         for security in securities
     }
     todo = list({
         (cik, ticker, accn): (cik, ticker, accn, foreign)
         for cik, ticker, accn, foreign in todo if accn
     }.values())
-    todo = [(cik, ticker, accn, foreign) for cik, ticker, accn, foreign in todo
-            if (cik, ticker, accn) not in covered]
+    if not reparse:
+        todo = [(cik, ticker, accn, foreign) for cik, ticker, accn, foreign in todo
+                if (cik, accn) not in covered]
     progress(f"reading cover pages for {len(todo)} companies", 0, len(todo))
 
     def read(item):
         cik, ticker, accn, foreign = item
         identity = (None, None, None, None)
         primary_document = None
-        if foreign:
+        identity_loaded = False
+
+        def load_identity():
+            nonlocal identity, primary_document, identity_loaded
+            if not foreign or identity_loaded:
+                return
+            identity_loaded = True
             try:
                 submissions = edgar.submissions(cik)
                 identity = _submissions_identity(submissions)
@@ -1803,35 +1830,103 @@ def cover_pages(conn, progress=_print_progress, *, foreign_only: bool = False,
                     primary_document = primary[position] if position < len(primary) else None
             except Exception:
                 pass
-        for n in cover.COVER_REPORTS:
+
+        def primary_document_bytes() -> bytes | None:
+            primary_dir = cover.primary_document_cache_dir(edgar.cache_dir, accn)
+            cached = sorted(path for path in primary_dir.glob("*") if path.is_file())
+            if len(cached) == 1:
+                return cached[0].read_bytes()
+            load_identity()
+            if not primary_document:
+                return None
             try:
-                url = cover.R_URL.format(cik=int(cik), accn=accn.replace("-", ""), n=n)
-                found = cover.securities(edgar._get_text(url))
+                path = cover.primary_document_cache_path(
+                    edgar.cache_dir, accn, primary_document
+                )
+            except ValueError:
+                return None
+            if path.exists():
+                return path.read_bytes()
+            try:
+                url = (
+                    "https://www.sec.gov/Archives/edgar/data/"
+                    f"{int(cik)}/{accn.replace('-', '')}/{primary_document}"
+                )
+                raw = edgar._request(url).content
+                _retain_source_bytes(path, raw)
+                return path.read_bytes()
+            except Exception:
+                return None
+
+        def parsed_result(found, report_raw):
+            for security in found:
+                security["ratio"] = cover.depositary_ratio(security["title"])
+                if security["ratio"] is None:
+                    previous = next((
+                        row for row in stored_covers.get(cik, ())
+                        if row["accn"] == accn
+                        and row["symbol"] == security["symbol"]
+                        and row.get("ratio") is not None
+                    ), None)
+                    if previous is not None:
+                        security["ratio"] = Decimal(str(previous["ratio"]))
+            unresolved = [
+                security
+                for security in found
+                if cover.symbol_matches(
+                    str(security.get("symbol") or ""),
+                    str(security.get("title") or ""),
+                    ticker,
+                )
+                and cover.is_depositary_security(security["title"])
+                and not security.get("ratio")
+            ]
+            if foreign and len(unresolved) == 1:
+                report_ratio = cover.depositary_ratio(
+                    cover.text_of(report_raw.decode("utf-8", errors="replace"))
+                )
+                if report_ratio is not None:
+                    unresolved[0]["ratio"] = report_ratio
+            if foreign and len(unresolved) == 1 and not unresolved[0].get("ratio"):
+                primary_raw = primary_document_bytes()
+                if primary_raw is not None:
+                    filing_ratio = cover.depositary_ratio(
+                        cover.text_of(primary_raw.decode("utf-8", errors="replace"))
+                    )
+                    if filing_ratio is not None:
+                        unresolved[0]["ratio"] = filing_ratio
+            return cik, accn, found, identity
+
+        paths = [
+            cover.report_cache_path(edgar.cache_dir, accn, n)
+            for n in cover.COVER_REPORTS
+        ]
+        for path in paths:
+            if not path.exists():
+                continue
+            try:
+                raw = path.read_bytes()
+                found = cover.securities(raw.decode("utf-8", errors="replace"))
             except Exception:
                 continue
             if found:
-                for security in found:
-                    security["ratio"] = cover.depositary_ratio(security["title"])
-                unresolved = [security for security in found
-                              if cover.is_depositary_security(security["title"])
-                              and not security.get("ratio")]
-                if foreign and primary_document and len(unresolved) == 1:
-                    # Toyota puts the 10:1 ratio in a starred cover footnote, not
-                    # inside dei:Security12bTitle. It is still filing-cover
-                    # evidence; read the primary cover only when the rendered
-                    # title proves exactly which one depositary class needs it.
-                    try:
-                        primary_url = (
-                            "https://www.sec.gov/Archives/edgar/data/"
-                            f"{int(cik)}/{accn.replace('-', '')}/{primary_document}"
-                        )
-                        filing_ratio = cover.depositary_ratio(
-                            cover.text_of(edgar._get_text(primary_url)))
-                    except Exception:
-                        filing_ratio = None
-                    if filing_ratio is not None:
-                        unresolved[0]["ratio"] = filing_ratio
-                return cik, accn, found, identity
+                return parsed_result(found, raw)
+
+        for n, path in zip(cover.COVER_REPORTS, paths):
+            if path.exists():
+                continue
+            try:
+                load_identity()
+                url = cover.R_URL.format(
+                    cik=int(cik), accn=accn.replace("-", ""), n=n
+                )
+                raw = edgar._request(url).content
+                _retain_source_bytes(path, raw)
+                found = cover.securities(raw.decode("utf-8", errors="replace"))
+            except Exception:
+                continue
+            if found:
+                return parsed_result(found, raw)
         return cik, accn, [], identity
 
     done = ratios = 0

@@ -3,12 +3,14 @@ from dataclasses import replace
 import json
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from screener import store, sync
 from screener.models import PriceHistory, Quote
+from screener.sources import cover
 from screener.sources.prices import YahooPriceProvider
 from screener.sync import (apply_price, material_events, _restate_historical_ratios,
                            _statement_source_namespace, _validated_price_history)
@@ -1205,6 +1207,322 @@ def test_pending_foreign_annual_owns_the_cover_accession():
 
     del row["data_pending"]
     assert sync._cover_accession(row) == "old20f"
+
+
+def _cover_sync_company(tmp_path, *, stored=False):
+    cik = "0000001800"
+    accession = "0001104659-26-043468"
+    conn = store.connect(tmp_path / "cover.db")
+    store.upsert_company(conn, cik, "ABT", "Abbott Laboratories")
+    store.put_snapshot(conn, cik, "ok", {
+        "cik": cik,
+        "ticker": "ABT",
+        "sources": {"assets": {"filed": "2026-02-20", "accn": accession}},
+    })
+    if stored:
+        store.set_cover(conn, cik, [{
+            "symbol": "ABT",
+            "title": "Old parsed cover",
+            "ratio": None,
+        }], accession)
+    conn.commit()
+    return conn, cik, accession
+
+
+class _CoverEdgar:
+    def __init__(self, cache_dir, raw, *, fail=False):
+        self.cache_dir = Path(cache_dir)
+        self.raw = raw
+        self.fail = fail
+        self.requests = []
+        self.submission_requests = []
+
+    def _request(self, url):
+        self.requests.append(url)
+        if self.fail:
+            raise RuntimeError("source unavailable")
+        return SimpleNamespace(content=self.raw)
+
+    def submissions(self, cik):
+        self.submission_requests.append(cik)
+        raise RuntimeError("submissions should not be needed")
+
+
+def test_cover_reparse_requires_an_explicit_cik_set(tmp_path):
+    conn, _, _ = _cover_sync_company(tmp_path)
+
+    with pytest.raises(ValueError, match="explicit CIK set"):
+        sync.cover_pages(conn, reparse=True)
+
+
+def test_default_cover_sync_skips_a_covered_immutable_accession(
+    tmp_path, monkeypatch
+):
+    conn, _, _ = _cover_sync_company(tmp_path, stored=True)
+    conn.execute("UPDATE security_cover SET symbol = 'ABT/ALT'")
+    conn.commit()
+    edgar = _CoverEdgar(tmp_path / "cache", b"unused")
+    monkeypatch.setattr(sync, "EdgarClient", lambda: edgar)
+
+    sync.cover_pages(conn, progress=lambda *_args: None)
+
+    assert edgar.requests == []
+
+
+def test_cover_reparse_atomically_caches_exact_bytes_and_reuses_them(
+    tmp_path, monkeypatch
+):
+    conn, cik, accession = _cover_sync_company(tmp_path, stored=True)
+    raw = (
+        b"Title of 12(b) Security Common Shares, Without Par Value "
+        b"Trading Symbol ABT Security Exchange Name NYSE"
+    )
+    edgar = _CoverEdgar(tmp_path / "cache", raw)
+    monkeypatch.setattr(sync, "EdgarClient", lambda: edgar)
+    path = cover.report_cache_path(edgar.cache_dir, accession, 1)
+    parse = cover.securities
+
+    def parse_after_retention(document):
+        assert path.read_bytes() == raw
+        return parse(document)
+
+    monkeypatch.setattr(cover, "securities", parse_after_retention)
+
+    sync.cover_pages(
+        conn, progress=lambda *_args: None, ciks={cik}, reparse=True
+    )
+
+    assert len(edgar.requests) == 1
+    assert store.cover_for(conn, cik, "ABT")["title"] == (
+        "Common Shares, Without Par Value"
+    )
+
+    edgar.fail = True
+    store.set_cover(conn, cik, [{
+        "symbol": "ABT",
+        "title": "Stale parsed cover",
+        "ratio": None,
+    }], accession)
+    sync.cover_pages(
+        conn, progress=lambda *_args: None, ciks={cik}, reparse=True
+    )
+
+    assert len(edgar.requests) == 1
+    assert store.cover_for(conn, cik, "ABT")["title"] == (
+        "Common Shares, Without Par Value"
+    )
+
+
+def test_failed_cover_fetch_keeps_existing_parse_and_creates_no_cache(
+    tmp_path, monkeypatch
+):
+    conn, cik, accession = _cover_sync_company(tmp_path, stored=True)
+    edgar = _CoverEdgar(tmp_path / "cache", b"", fail=True)
+    monkeypatch.setattr(sync, "EdgarClient", lambda: edgar)
+
+    sync.cover_pages(
+        conn, progress=lambda *_args: None, ciks={cik}, reparse=True
+    )
+
+    assert len(edgar.requests) == len(cover.COVER_REPORTS)
+    assert store.cover_for(conn, cik, "ABT")["title"] == "Old parsed cover"
+    assert not any(
+        cover.report_cache_path(edgar.cache_dir, accession, report).exists()
+        for report in cover.COVER_REPORTS
+    )
+
+
+def test_cached_foreign_reparse_makes_no_request_and_keeps_stored_ratio(
+    tmp_path, monkeypatch
+):
+    cik = "0001110646"
+    accession = "0001104659-26-043468"
+    conn = store.connect(tmp_path / "foreign-cover.db")
+    store.upsert_company(conn, cik, "NTES", "NetEase")
+    conn.execute("UPDATE company SET listed = 'y' WHERE cik = ?", (cik,))
+    store.put_snapshot(conn, cik, "foreign", None)
+    store.set_cover(conn, cik, [{
+        "symbol": "NTES",
+        "title": "American Depositary Shares",
+        "ratio": Decimal("5"),
+    }], accession)
+    conn.commit()
+
+    raw = (
+        b"Title of 12(b) Security American Depositary Shares "
+        b"Trading Symbol NTES Security Exchange Name NASDAQ"
+    )
+    edgar = _CoverEdgar(tmp_path / "cache", raw)
+    facts = edgar.cache_dir / f"companyfacts_{cik}.json"
+    facts.parent.mkdir(parents=True)
+    facts.write_text("{}")
+    path = cover.report_cache_path(edgar.cache_dir, accession, 2)
+    path.parent.mkdir(parents=True)
+    path.write_bytes(raw)
+    monkeypatch.setattr(sync, "EdgarClient", lambda: edgar)
+    monkeypatch.setattr(
+        sync,
+        "_current_supported_annual",
+        lambda _facts: (accession, "2026-02-20"),
+    )
+
+    sync.cover_pages(
+        conn,
+        progress=lambda *_args: None,
+        foreign_only=True,
+        ciks={cik},
+        reparse=True,
+    )
+
+    assert edgar.requests == []
+    assert edgar.submission_requests == []
+    assert store.cover_for(conn, cik, "NTES")["ratio"] == "5"
+
+
+def _foreign_cover_reparse(tmp_path, monkeypatch, raw_report, raw_primary=b""):
+    cik = "0001333141"
+    ticker = "FMS"
+    accession = "0001104659-26-019005"
+    primary_document = "fms-20251231x20f.htm"
+    conn = store.connect(tmp_path / "foreign-ratio.db")
+    store.upsert_company(conn, cik, ticker, "Fresenius Medical Care")
+    conn.execute("UPDATE company SET listed = 'y' WHERE cik = ?", (cik,))
+    store.put_snapshot(conn, cik, "foreign", None)
+    conn.commit()
+
+    class Edgar(_CoverEdgar):
+        def submissions(self, requested_cik):
+            self.submission_requests.append(requested_cik)
+            return {
+                "filings": {
+                    "recent": {
+                        "accessionNumber": [accession],
+                        "primaryDocument": [primary_document],
+                        "filingDate": ["2026-02-24"],
+                    }
+                }
+            }
+
+    edgar = Edgar(tmp_path / "cache", raw_primary)
+    facts = edgar.cache_dir / f"companyfacts_{cik}.json"
+    facts.parent.mkdir(parents=True)
+    facts.write_text("{}")
+    report_path = cover.report_cache_path(edgar.cache_dir, accession, 1)
+    report_path.parent.mkdir(parents=True)
+    report_path.write_bytes(raw_report)
+    monkeypatch.setattr(sync, "EdgarClient", lambda: edgar)
+    monkeypatch.setattr(
+        sync,
+        "_current_supported_annual",
+        lambda _facts: (accession, "2026-02-24"),
+    )
+    return conn, edgar, cik, ticker, accession, primary_document
+
+
+def test_retained_r_report_can_supply_one_exact_unresolved_class(
+    tmp_path, monkeypatch
+):
+    raw = (
+        b"<table><tr><td>Title of 12(b) Security</td><td>American Depositary "
+        b"Shares</td></tr><tr><td>Trading Symbol</td><td>FMS</td></tr></table>"
+        b" Where ADSs are held, two ADSs represent one ordinary share."
+    )
+    conn, edgar, cik, ticker, _, _ = _foreign_cover_reparse(
+        tmp_path, monkeypatch, raw
+    )
+
+    sync.cover_pages(
+        conn,
+        progress=lambda *_args: None,
+        foreign_only=True,
+        ciks={cik},
+        reparse=True,
+    )
+
+    assert edgar.requests == []
+    assert edgar.submission_requests == []
+    assert store.cover_for(conn, cik, ticker)["ratio"] == "0.5"
+
+
+def test_primary_document_is_retained_before_ratio_parse_and_reused(
+    tmp_path, monkeypatch
+):
+    raw_report = (
+        b"<table><tr><td>Title of 12(b) Security</td><td>American Depositary "
+        b"Shares</td></tr><tr><td>Trading Symbol</td><td>FMS</td></tr></table>"
+    )
+    raw_primary = b"Where ADSs are held, two ADSs represent one ordinary share."
+    conn, edgar, cik, ticker, accession, primary_document = _foreign_cover_reparse(
+        tmp_path, monkeypatch, raw_report, raw_primary
+    )
+    primary_path = cover.primary_document_cache_path(
+        edgar.cache_dir, accession, primary_document
+    )
+    parse = cover.depositary_ratio
+
+    def parse_after_retention(text):
+        if "two ADSs represent" in text:
+            assert primary_path.read_bytes() == raw_primary
+        return parse(text)
+
+    monkeypatch.setattr(cover, "depositary_ratio", parse_after_retention)
+
+    sync.cover_pages(
+        conn,
+        progress=lambda *_args: None,
+        foreign_only=True,
+        ciks={cik},
+        reparse=True,
+    )
+
+    assert len(edgar.requests) == 1
+    assert store.cover_for(conn, cik, ticker)["ratio"] == "0.5"
+
+    conn.execute(
+        "UPDATE security_cover SET ratio = NULL WHERE cik = ? AND symbol = ?",
+        (cik, ticker),
+    )
+    conn.commit()
+    edgar.fail = True
+    edgar.requests.clear()
+    edgar.submission_requests.clear()
+    sync.cover_pages(
+        conn,
+        progress=lambda *_args: None,
+        foreign_only=True,
+        ciks={cik},
+        reparse=True,
+    )
+
+    assert edgar.requests == []
+    assert edgar.submission_requests == []
+    assert store.cover_for(conn, cik, ticker)["ratio"] == "0.5"
+
+
+def test_conflicting_primary_document_relations_remain_unresolved(
+    tmp_path, monkeypatch
+):
+    raw_report = (
+        b"<table><tr><td>Title of 12(b) Security</td><td>American Depositary "
+        b"Shares</td></tr><tr><td>Trading Symbol</td><td>FMS</td></tr></table>"
+    )
+    raw_primary = (
+        b"Each ADS represents eight common shares. Historical ADSs each "
+        b"represented one common share."
+    )
+    conn, _, cik, ticker, _, _ = _foreign_cover_reparse(
+        tmp_path, monkeypatch, raw_report, raw_primary
+    )
+
+    sync.cover_pages(
+        conn,
+        progress=lambda *_args: None,
+        foreign_only=True,
+        ciks={cik},
+        reparse=True,
+    )
+
+    assert store.cover_for(conn, cik, ticker)["ratio"] is None
 
 
 def test_an_award_total_says_which_kinds_it_contains():

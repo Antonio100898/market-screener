@@ -38,9 +38,11 @@ class EvidenceLoader:
                 "SELECT cik, ticker FROM company WHERE ticker IS NOT NULL"
             )
         }
+        covers = store.covers_by_cik(conn)
+        self._covers_by_cik = covers
         self._covers = {
             (cik, security["symbol"]): security
-            for cik, securities in store.covers_by_cik(conn).items()
+            for cik, securities in covers.items()
             for security in securities
         }
 
@@ -52,6 +54,14 @@ class EvidenceLoader:
         """
         ticker = ticker or self._stored_tickers.get(cik) or cik
         receipt = self._covers.get((cik, ticker))
+        if receipt is None:
+            matches = [
+                security for security in self._covers_by_cik.get(cik, ())
+                if cover.symbol_matches(
+                    security.get("symbol") or "", security.get("title") or "", ticker
+                )
+            ]
+            receipt = matches[0] if len(matches) == 1 else None
         title = (receipt or {}).get("title") or ""
         # Parser bugs used to let a note/debt row overwrite the common cover
         # (HON/PPG), or an unlisted starred ordinary row overwrite the ADS (LX).
