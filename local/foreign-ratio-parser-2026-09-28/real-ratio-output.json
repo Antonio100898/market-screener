@@ -1,0 +1,282 @@
+[
+  {
+    "ticker": "CDLR",
+    "cik": "0001978867",
+    "accession": "0001978867-26-000022",
+    "source": "https://www.sec.gov/Archives/edgar/data/1978867/000197886726000022/R1.htm",
+    "byte_size": 70783,
+    "sha256": "62543f335c3c639cc4d447b43b581fbce1db9c635c5cd31bc96391b7ad4aff95",
+    "title": "American Depositary Shares, each representing four (4) ordinary shares",
+    "ratio": "4"
+  },
+  {
+    "ticker": "ERIC",
+    "cik": "0000717826",
+    "accession": "0001193125-26-104149",
+    "source": "https://www.sec.gov/Archives/edgar/data/717826/000119312526104149/R1.htm",
+    "byte_size": 76222,
+    "sha256": "4b226898056adf036ad0ae732c53fe0e9a6990363e640ea86d6f27afd7208742",
+    "title": "American Depositary Shares (each representing one B share)",
+    "ratio": "1"
+  },
+  {
+    "ticker": "GMAB",
+    "cik": "0001434265",
+    "accession": "0001434265-26-000014",
+    "source": "https://www.sec.gov/Archives/edgar/data/1434265/000143426526000014/R1.htm",
+    "byte_size": 68268,
+    "sha256": "74223dc84bbd39378c162e52bad0c24f301b86486c0aad23f64199031c7251ff",
+    "title": "American Depositary Shares, each representing one-tenth of one ordinary share",
+    "ratio": "0.1"
+  },
+  {
+    "ticker": "GOTU",
+    "cik": "0001768259",
+    "accession": "0001193125-26-168211",
+    "source": "https://www.sec.gov/Archives/edgar/data/1768259/000119312526168211/R1.htm",
+    "byte_size": 84359,
+    "sha256": "d173abe8e668f9a72ed952b8e07402aa3eb49a7a4d59bbdd010e9815b5520b73",
+    "title": "American Depositary Shares, every threerepresenting two Class A ordinary shares, par value US$0.0001 per share",
+    "ratio": "0.6666666666666666666666666667"
+  },
+  {
+    "ticker": "HDB",
+    "cik": "0001144967",
+    "accession": "0001193125-25-158722",
+    "source": "https://www.sec.gov/Archives/edgar/data/1144967/000119312525158722/R1.htm",
+    "byte_size": 74326,
+    "sha256": "9136ed3b5042d4e4c941199324786bf78e85445e399420da36a3e0f96a1e86d2",
+    "title": "American Depositary Shares, each representing three Equity Shares, Par value Rs. 1.0 per share",
+    "ratio": "3"
+  },
+  {
+    "ticker": "JG",
+    "cik": "0001737339",
+    "accession": "0001104659-26-035657",
+    "source": "https://www.sec.gov/Archives/edgar/data/1737339/000110465926035657/R1.htm",
+    "byte_size": 77834,
+    "sha256": "79c47f5d6e695d0e1b38d4172409297c9d7c41f21530d5a8fc86b6a03291f2e2",
+    "title": "American depositary shares, every 3 of which represent 40 Class A common shares",
+    "ratio": "13.33333333333333333333333333"
+  },
+  {
+    "ticker": "NCNA",
+    "cik": "0001709626",
+    "accession": "0001193125-26-116030",
+    "source": "https://www.sec.gov/Archives/edgar/data/1709626/000119312526116030/R1.htm",
+    "byte_size": 74619,
+    "sha256": "7110689ebb5c56aecbbfd97e68c2c49f4f1fe5893980f081dd4812f5e1704ac1",
+    "title": "American Depositary Shares, each representing five thousand Ordinary Shares, nominal value £0.0004 per share",
+    "ratio": "5000"
+  },
+  {
+    "ticker": "NVO",
+    "cik": "0000353278",
+    "accession": "0000353278-26-000012",
+    "source": "https://www.sec.gov/Archives/edgar/data/353278/000035327826000012/R1.htm",
+    "byte_size": 72648,
+    "sha256": "1fecab9c4c9c2b73a01439f92a07f7344ef0eab222f58d1fd55435607ab5f661",
+    "title": "American Depositary Receipts, each representing one B Share",
+    "ratio": "1"
+  },
+  {
+    "ticker": "POM",
+    "cik": "0001877971",
+    "accession": "0001213900-26-056576",
+    "source": "https://www.sec.gov/Archives/edgar/data/1877971/000121390026056576/R1.htm",
+    "byte_size": 88122,
+    "sha256": "d0eba1e2d569a87871695990ceff6b555199f93de30160cf7856a90aad2aaad2",
+    "title": "American depositary shares, each six (6) ADSs representing one (1) Class A ordinary share, par value US$0.0001 per share",
+    "ratio": "0.1666666666666666666666666667"
+  },
+  {
+    "ticker": "RELX",
+    "cik": "0000929869",
+    "accession": "0001104659-26-017277",
+    "source": "https://www.sec.gov/Archives/edgar/data/929869/000110465926017277/R1.htm",
+    "byte_size": 89975,
+    "sha256": "a1a138b9772ff255cf3a54ee991f17e3cb8b246b4c2d299041bf1f826bc176a6",
+    "title": "American Depositary Shares(each representing one RELX PLC ordinary share)",
+    "ratio": "1"
+  },
+  {
+    "ticker": "RERE",
+    "cik": "0001838957",
+    "accession": "0001193125-26-146260",
+    "source": "https://www.sec.gov/Archives/edgar/data/1838957/000119312526146260/R1.htm",
+    "byte_size": 85896,
+    "sha256": "775660fac4e0f9291e121b84f5ef2e7e207e7bb539bd2bb9c51df4a33e8c6733",
+    "title": "American depositary shares (every three ADSs represent two Class A ordinary shares, par value US$0.001 per share)",
+    "ratio": "0.6666666666666666666666666667"
+  },
+  {
+    "ticker": "SNY",
+    "cik": "0001121404",
+    "accession": "0001628280-26-008403",
+    "source": "https://www.sec.gov/Archives/edgar/data/1121404/000162828026008403/R1.htm",
+    "byte_size": 68132,
+    "sha256": "98c09e28003712e31769a873d443b008c87111c205b897f19d449d58296e0d55",
+    "title": "American Depositary Shares, each representing one half of one ordinary share, par value €2 per share",
+    "ratio": "0.5"
+  },
+  {
+    "ticker": "SOGP",
+    "cik": "0001783407",
+    "accession": "0001493152-26-019716",
+    "source": "https://www.sec.gov/Archives/edgar/data/1783407/000149315226019716/R1.htm",
+    "byte_size": 83294,
+    "sha256": "a1b41ca98ec915639be36d16e429e00e2d841e28566e5cb0c36a3c4f1ede64fe",
+    "title": "American depositary shares, each ADS represents two hundred (200) Class A ordinary shares, par value US$0.0001 per share",
+    "ratio": "200"
+  },
+  {
+    "ticker": "SUZ",
+    "cik": "0000909327",
+    "accession": "0000909327-26-000045",
+    "source": "https://www.sec.gov/Archives/edgar/data/909327/000090932726000045/R1.htm",
+    "byte_size": 92732,
+    "sha256": "630c96a8f6637bf27a52e9230907eb26845e5ac98f09dd453da284f5b7c7f010",
+    "title": "American Depositary Shares, or ADSs,** each representing one of our common shares",
+    "ratio": "1"
+  },
+  {
+    "ticker": "WKEY",
+    "cik": "0001738699",
+    "accession": "0001104659-26-053033",
+    "source": "https://www.sec.gov/Archives/edgar/data/1738699/000110465926053033/R1.htm",
+    "byte_size": 75882,
+    "sha256": "d197de07a3f5c343ee6e80fee768bcbf14099b4e88126a6b9d343222bce3f34a",
+    "title": "American Depositary Shares, each representing half a Class B Share, par value CHF 0.10 per share",
+    "ratio": "0.5"
+  },
+  {
+    "ticker": "ADAG",
+    "cik": "0001818838",
+    "accession": "0001104659-26-038612",
+    "source": "https://www.sec.gov/Archives/edgar/data/1818838/000110465926038612/adag-20251231x20f.htm",
+    "byte_size": 3994755,
+    "sha256": "b43ac0b2167226a47dbb7c28459f7b1b0a2280a475ae511470828c1ace4af272",
+    "title": null,
+    "ratio": null
+  },
+  {
+    "ticker": "BBD",
+    "cik": "0001160330",
+    "accession": "0001292814-26-001753",
+    "source": "https://www.sec.gov/Archives/edgar/data/1160330/000129281426001753/bbdform20f_2025.htm",
+    "byte_size": 9451118,
+    "sha256": "4b56251afc052dd211171cd52633a34ff9fd26159aa941df9ee4a589aaa91d4d",
+    "title": null,
+    "ratio": null
+  },
+  {
+    "ticker": "BMA",
+    "cik": "0001347426",
+    "accession": "0001193125-25-087225",
+    "source": "https://www.sec.gov/Archives/edgar/data/1347426/000119312525087225/d865064d20f.htm",
+    "byte_size": 11063156,
+    "sha256": "78b025805d433da30af7ac4e5a595cf29770778484031f1b95d82018fa7687e8",
+    "title": null,
+    "ratio": null
+  },
+  {
+    "ticker": "FMS",
+    "cik": "0001333141",
+    "accession": "0001104659-26-019005",
+    "source": "https://www.sec.gov/Archives/edgar/data/1333141/000110465926019005/fms-20251231x20f.htm",
+    "byte_size": 12135161,
+    "sha256": "eb9578d8ecb782c3b76c7c045d365f7f03eb51ad952349e3d51fd0fa5b81dc9b",
+    "title": null,
+    "ratio": null
+  },
+  {
+    "ticker": "FMX",
+    "cik": "0001061736",
+    "accession": "0001628280-25-019714",
+    "source": "https://www.sec.gov/Archives/edgar/data/1061736/000162828025019714/fmx-20241231.htm",
+    "byte_size": 10511751,
+    "sha256": "9f46d2dab2c85289a81d8758824bd4bd2944ce7646143dae35c8aef6524bd78e",
+    "title": null,
+    "ratio": null
+  },
+  {
+    "ticker": "ING",
+    "cik": "0001039765",
+    "accession": "0001628280-26-011979",
+    "source": "https://www.sec.gov/Archives/edgar/data/1039765/000162828026011979/ing-20251231.htm",
+    "byte_size": 26484326,
+    "sha256": "7affeb9e8ec34387ed1d95d305949efb677e7d19478515e5517efd18e9293344",
+    "title": null,
+    "ratio": "1"
+  },
+  {
+    "ticker": "KOF",
+    "cik": "0000910631",
+    "accession": "0001628280-25-017225",
+    "source": "https://www.sec.gov/Archives/edgar/data/910631/000162828025017225/kof-20241231.htm",
+    "byte_size": 5345208,
+    "sha256": "96d5d9ba5c34a4261cad1a90d2c4ab8fe3a304a86baa0096e208db1aa8f82030",
+    "title": null,
+    "ratio": null
+  },
+  {
+    "ticker": "PSNY",
+    "cik": "0001884082",
+    "accession": "0001884082-25-000012",
+    "source": "https://www.sec.gov/Archives/edgar/data/1884082/000188408225000012/psny-20241231.htm",
+    "byte_size": 5038583,
+    "sha256": "1649a208ee102e985f34970142c9b0504cedd89326a6f4b256e093aa721fa7f3",
+    "title": null,
+    "ratio": "1"
+  },
+  {
+    "ticker": "SSL",
+    "cik": "0000314590",
+    "accession": "0001410578-25-001910",
+    "source": "https://www.sec.gov/Archives/edgar/data/314590/000141057825001910/ssl-20250630x20f.htm",
+    "byte_size": 3639104,
+    "sha256": "88d479e3a55bd0df537b47f67f26ca8057881738bdcdba65f855627dcda8ad11",
+    "title": null,
+    "ratio": "1"
+  },
+  {
+    "ticker": "SY",
+    "cik": "0001758530",
+    "accession": "0001104659-26-047129",
+    "source": "https://www.sec.gov/Archives/edgar/data/1758530/000110465926047129/sy-20251231x20f.htm",
+    "byte_size": 5987584,
+    "sha256": "4e0f879fe42390fa8e3dfb2f742c32c219224843272188830c9b5a520e039d69",
+    "title": null,
+    "ratio": "0.7692307692307692307692307692"
+  },
+  {
+    "ticker": "VLRS",
+    "cik": "0001520504",
+    "accession": "0001292814-25-001765",
+    "source": "https://www.sec.gov/Archives/edgar/data/1520504/000129281425001765/vlrsform20f_2024.htm",
+    "byte_size": 5214513,
+    "sha256": "c52d54b9c82fbb6a9df9924e0115a3c8c18e11807354dab150ba836b4a1a3b1c",
+    "title": null,
+    "ratio": null
+  },
+  {
+    "ticker": "WAVE",
+    "cik": "0001846715",
+    "accession": "0001213900-26-026655",
+    "source": "https://www.sec.gov/Archives/edgar/data/1846715/000121390026026655/ea0280691-20f_ecowave.htm",
+    "byte_size": 2151374,
+    "sha256": "52edb0fbadeba2b6989cb8ece89e8021584026f412fa4ff1ea8f17cf315af716",
+    "title": null,
+    "ratio": null
+  },
+  {
+    "ticker": "WDS",
+    "cik": "0000844551",
+    "accession": "0001628280-26-010858",
+    "source": "https://www.sec.gov/Archives/edgar/data/844551/000162828026010858/wds-20251231.htm",
+    "byte_size": 8512422,
+    "sha256": "7f51852721f293c5da63c1b9137ee3c97ded7d79d1941cfc816f9514f611897f",
+    "title": null,
+    "ratio": null
+  }
+]

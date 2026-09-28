@@ -1,0 +1,365 @@
+[
+  {
+    "ticker": "BBVA",
+    "cik": "0000842180",
+    "accession": "0001628280-26-010001",
+    "source": "https://www.sec.gov/Archives/edgar/data/842180/000162828026010001/R1.htm",
+    "rows": [
+      {
+        "title": "American Depositary Shares, each representing the right to receive one ordinary share, par value €0.49 per share",
+        "symbol": "BBVA"
+      },
+      {
+        "title": "6.138% Fixed Rate Senior Non-Preferred Notes due 2028",
+        "symbol": "BBVA28"
+      },
+      {
+        "title": "5.381% Fixed Rate Senior Preferred Notes due 2029",
+        "symbol": "BBVA29"
+      },
+      {
+        "title": "Tier 2 Subordinated Callable Fixed-to-Fixed Rate Notes due 2034",
+        "symbol": "BBVA34"
+      },
+      {
+        "title": "Senior Non-Preferred Callable Fixed-to-Fixed Rate Notes due 2035",
+        "symbol": "BBVA35"
+      },
+      {
+        "title": "Series 12 Non-Step-Up Non-Cumulative Contingent Convertible Perpetual Preferred Tier 1 Securities",
+        "symbol": "BBVAP1"
+      },
+      {
+        "title": "Series 14 Non-Step-Up Non-Cumulative Contingent Convertible Perpetual Preferred Tier 1 Securities",
+        "symbol": "BBVAP2"
+      }
+    ],
+    "exact": {
+      "title": "American Depositary Shares, each representing the right to receive one ordinary share, par value €0.49 per share",
+      "symbol": "BBVA"
+    },
+    "exact_is_common_equity": true,
+    "exact_ratio": "1"
+  },
+  {
+    "ticker": "BEP",
+    "cik": "0001533232",
+    "accession": "0001533232-26-000011",
+    "source": "https://www.sec.gov/Archives/edgar/data/1533232/000153323226000011/R1.htm",
+    "rows": [
+      {
+        "title": "Limited Partnership Units",
+        "symbol": "BEP"
+      },
+      {
+        "title": "Class A Preferred Limited Partnership Units, Series 17",
+        "symbol": "BEP PR A"
+      },
+      {
+        "title": "4.625% Perpetual Subordinated Notes",
+        "symbol": "BEPH"
+      },
+      {
+        "title": "4.875% Perpetual Subordinated Notes",
+        "symbol": "BEPI"
+      },
+      {
+        "title": "7.250% Perpetual Subordinated Notes",
+        "symbol": "BEPJ"
+      }
+    ],
+    "exact": {
+      "title": "Limited Partnership Units",
+      "symbol": "BEP"
+    },
+    "exact_is_common_equity": true,
+    "exact_ratio": null
+  },
+  {
+    "ticker": "AZN",
+    "cik": "0000901832",
+    "accession": "0001104659-26-019130",
+    "source": "https://www.sec.gov/Archives/edgar/data/901832/000110465926019130/R1.htm",
+    "rows": [
+      {
+        "title": "0.700% Notes due 2026",
+        "symbol": "AZN 26"
+      },
+      {
+        "title": "1.200% Notes due 2026",
+        "symbol": "AZN 26A"
+      },
+      {
+        "title": "3.125% Notes due 2027",
+        "symbol": "AZN 27A"
+      },
+      {
+        "title": "4.800% Notes due 2027",
+        "symbol": "AZN 27B"
+      },
+      {
+        "title": "1.750% Notes due 2028",
+        "symbol": "AZN 28"
+      },
+      {
+        "title": "4.875% Notes due 2028",
+        "symbol": "AZN 28A"
+      },
+      {
+        "title": "4.000% Notes due 2029",
+        "symbol": "AZN 29"
+      },
+      {
+        "title": "4.850% Notes due 2029",
+        "symbol": "AZN 29A"
+      },
+      {
+        "title": "1.375% Notes due 2030",
+        "symbol": "AZN 30"
+      },
+      {
+        "title": "4.900% Notes due 2030",
+        "symbol": "AZN 30A"
+      },
+      {
+        "title": "2.250% Notes due 2031",
+        "symbol": "AZN 31"
+      },
+      {
+        "title": "4.900% Notes due 2031",
+        "symbol": "AZN 31A"
+      },
+      {
+        "title": "4.875% Notes due 2033",
+        "symbol": "AZN 33"
+      },
+      {
+        "title": "5.000% Notes due 2034",
+        "symbol": "AZN 34"
+      },
+      {
+        "title": "6.450% Notes due 2037",
+        "symbol": "AZN 37"
+      },
+      {
+        "title": "4.000% Notes due 2042",
+        "symbol": "AZN 42"
+      },
+      {
+        "title": "4.375% Notes due 2045",
+        "symbol": "AZN 45"
+      },
+      {
+        "title": "4.375% Notes due 2048",
+        "symbol": "AZN 48"
+      },
+      {
+        "title": "2.125% Notes due 2050",
+        "symbol": "AZN 50"
+      },
+      {
+        "title": "3.000% Notes due 2051",
+        "symbol": "AZN 51"
+      }
+    ],
+    "exact": null,
+    "exact_is_common_equity": false,
+    "exact_ratio": null
+  },
+  {
+    "ticker": "SUZ",
+    "cik": "0000909327",
+    "accession": "0000909327-26-000045",
+    "source": "https://www.sec.gov/Archives/edgar/data/909327/000090932726000045/R1.htm",
+    "rows": [
+      {
+        "title": "American Depositary Shares, or ADSs,** each representing one of our common shares",
+        "symbol": "SUZB3/SUZ"
+      },
+      {
+        "title": "6.000% Notes due 2029, issued by Suzano Austria GmbH",
+        "symbol": "SUZ/29"
+      },
+      {
+        "title": "5.000% Notes due 2030, issued by Suzano Austria GmbH",
+        "symbol": "SUZ/30"
+      },
+      {
+        "title": "3.750% Notes due 2031, issued by Suzano Austria GmbH",
+        "symbol": "SUZ/31"
+      },
+      {
+        "title": "2.500% Notes due 2028, issued by Suzano Austria GmbH",
+        "symbol": "SUZ/28"
+      },
+      {
+        "title": "3.125% Notes due 2032, issued by Suzano Austria GmbH",
+        "symbol": "SUZ/32"
+      },
+      {
+        "title": "5.500 % Notes due 2036, issued by Suzano Netherlands B.V.",
+        "symbol": "SUZ/36"
+      }
+    ],
+    "exact": {
+      "title": "American Depositary Shares, or ADSs,** each representing one of our common shares",
+      "symbol": "SUZB3/SUZ"
+    },
+    "exact_is_common_equity": true,
+    "exact_ratio": null
+  },
+  {
+    "ticker": "AURE",
+    "cik": "0001765850",
+    "accession": "0001213900-25-013536",
+    "source": null,
+    "rows": [],
+    "exact": null,
+    "exact_is_common_equity": false,
+    "exact_ratio": null
+  },
+  {
+    "ticker": "ADAG",
+    "cik": "0001818838",
+    "accession": "0001104659-26-038612",
+    "source": "https://www.sec.gov/Archives/edgar/data/1818838/000110465926038612/R1.htm",
+    "rows": [
+      {
+        "title": "American depositary shares",
+        "symbol": "ADAG"
+      }
+    ],
+    "exact": {
+      "title": "American depositary shares",
+      "symbol": "ADAG"
+    },
+    "exact_is_common_equity": true,
+    "exact_ratio": null
+  },
+  {
+    "ticker": "HON",
+    "cik": "0000773840",
+    "accession": "0000773840-26-000124",
+    "source": "https://www.sec.gov/Archives/edgar/data/773840/000077384026000124/R1.htm",
+    "rows": [
+      {
+        "title": "Common Stock, par value $1 per share",
+        "symbol": "HON"
+      },
+      {
+        "title": "3.375% Senior Notes due 2030",
+        "symbol": "HON 30"
+      },
+      {
+        "title": "0.750% Senior Notes due 2032",
+        "symbol": "HON 32"
+      },
+      {
+        "title": "3.750% Senior Notes due 2032",
+        "symbol": "HON 32A"
+      },
+      {
+        "title": "4.125% Senior Notes due 2034",
+        "symbol": "HON 34"
+      },
+      {
+        "title": "3.750% Senior Notes due 2036",
+        "symbol": "HON 36"
+      }
+    ],
+    "exact": {
+      "title": "Common Stock, par value $1 per share",
+      "symbol": "HON"
+    },
+    "exact_is_common_equity": true,
+    "exact_ratio": null
+  },
+  {
+    "ticker": "PPG",
+    "cik": "0000079879",
+    "accession": "0000079879-26-000170",
+    "source": "https://www.sec.gov/Archives/edgar/data/79879/000007987926000170/R1.htm",
+    "rows": [
+      {
+        "title": "Common Stock, par value $1.66 2/3",
+        "symbol": "PPG"
+      },
+      {
+        "title": "1.400% Notes due 2027",
+        "symbol": "PPG 27"
+      },
+      {
+        "title": "2.750% Notes due 2029",
+        "symbol": "PPG 29A"
+      },
+      {
+        "title": "3.250% Notes due 2032",
+        "symbol": "PPG 32"
+      }
+    ],
+    "exact": {
+      "title": "Common Stock, par value $1.66 2/3",
+      "symbol": "PPG"
+    },
+    "exact_is_common_equity": true,
+    "exact_ratio": null
+  },
+  {
+    "ticker": "GLP",
+    "cik": "0001323468",
+    "accession": "0001104659-26-092496",
+    "source": "https://www.sec.gov/Archives/edgar/data/1323468/000110465926092496/R1.htm",
+    "rows": [
+      {
+        "title": "Common Units representing limited partner interests",
+        "symbol": "GLP"
+      },
+      {
+        "title": "9.50% Series B Fixed Rate Cumulative Redeemable",
+        "symbol": "GLP pr B"
+      }
+    ],
+    "exact": {
+      "title": "Common Units representing limited partner interests",
+      "symbol": "GLP"
+    },
+    "exact_is_common_equity": true,
+    "exact_ratio": null
+  },
+  {
+    "ticker": "LX",
+    "cik": "0001708259",
+    "accession": "0001193125-26-189256",
+    "source": "https://www.sec.gov/Archives/edgar/data/1708259/000119312526189256/R1.htm",
+    "rows": [
+      {
+        "title": "American depositary shares (one American depositary share representing two Class A ordinary shares, par value US$0.0001 per share)",
+        "symbol": "LX"
+      }
+    ],
+    "exact": {
+      "title": "American depositary shares (one American depositary share representing two Class A ordinary shares, par value US$0.0001 per share)",
+      "symbol": "LX"
+    },
+    "exact_is_common_equity": true,
+    "exact_ratio": "2"
+  },
+  {
+    "ticker": "TM",
+    "cik": "0001094517",
+    "accession": "0001193125-26-264811",
+    "source": "https://www.sec.gov/Archives/edgar/data/1094517/000119312526264811/R1.htm",
+    "rows": [
+      {
+        "title": "American Depositary Shares",
+        "symbol": "TM"
+      }
+    ],
+    "exact": {
+      "title": "American Depositary Shares",
+      "symbol": "TM"
+    },
+    "exact_is_common_equity": true,
+    "exact_ratio": null
+  }
+]
