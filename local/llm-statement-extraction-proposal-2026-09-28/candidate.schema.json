@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "statement_candidate_v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "request_id", "results"],
+  "properties": {
+    "schema": {"const": "statement_candidate_v1"},
+    "request_id": {"type": "string", "minLength": 1},
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/found"},
+          {"$ref": "#/$defs/not_found"},
+          {"$ref": "#/$defs/ambiguous"}
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "requested_field": {
+      "type": "string",
+      "minLength": 1
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accession",
+        "document",
+        "document_sha256",
+        "table",
+        "row",
+        "column"
+      ],
+      "properties": {
+        "accession": {"type": "string", "minLength": 1},
+        "document": {"type": "string", "minLength": 1},
+        "document_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "html_anchor": {"type": ["string", "null"]},
+        "page": {"type": ["integer", "null"], "minimum": 1},
+        "table": {"type": "string", "minLength": 1},
+        "row": {"type": "string", "minLength": 1},
+        "column": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "properties": {"html_anchor": {"type": "string", "minLength": 1}},
+              "required": ["html_anchor"]
+            },
+            {
+              "properties": {"page": {"type": "integer", "minimum": 1}},
+              "required": ["page"]
+            }
+          ]
+        }
+      ]
+    },
+    "period": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "start", "end"],
+      "properties": {
+        "kind": {"enum": ["instant", "duration"]},
+        "start": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "end": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        }
+      }
+    },
+    "checked_location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accession", "document", "document_sha256", "locator"],
+      "properties": {
+        "accession": {"type": "string", "minLength": 1},
+        "document": {"type": "string", "minLength": 1},
+        "document_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "locator": {"type": "string", "minLength": 1}
+      }
+    },
+    "found": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested_field",
+        "outcome",
+        "value",
+        "scale",
+        "source_label",
+        "unit",
+        "currency",
+        "period",
+        "accounting_basis",
+        "consolidation_scope",
+        "location",
+        "evidence_quote"
+      ],
+      "properties": {
+        "requested_field": {"$ref": "#/$defs/requested_field"},
+        "outcome": {"const": "found"},
+        "value": {
+          "type": "string",
+          "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]+)?$"
+        },
+        "scale": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "source_label": {"type": "string", "minLength": 1},
+        "unit": {
+          "type": "string",
+          "pattern": "^(?:[A-Z]{3}|[A-Z]{3}/shares|shares|pure)$"
+        },
+        "currency": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Z]{3}$"
+        },
+        "period": {"$ref": "#/$defs/period"},
+        "accounting_basis": {"enum": ["US-GAAP", "IFRS"]},
+        "consolidation_scope": {
+          "enum": ["consolidated", "parent_only", "segment"]
+        },
+        "location": {"$ref": "#/$defs/location"},
+        "evidence_quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        }
+      }
+    },
+    "not_found": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested_field", "outcome", "reason", "checked_locations"],
+      "properties": {
+        "requested_field": {"$ref": "#/$defs/requested_field"},
+        "outcome": {"const": "not_found"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 400},
+        "checked_locations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/checked_location"}
+        }
+      }
+    },
+    "ambiguous": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested_field", "outcome", "reason", "checked_locations"],
+      "properties": {
+        "requested_field": {"$ref": "#/$defs/requested_field"},
+        "outcome": {"const": "ambiguous"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 400},
+        "checked_locations": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"$ref": "#/$defs/checked_location"}
+        }
+      }
+    }
+  }
+}
