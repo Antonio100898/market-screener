@@ -17,11 +17,18 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 
 from . import auth, evidence, jobs, portfolio, pricestats, profiles, store, sync
 from .models import CriterionResult, Fact, FinancialSnapshot, ScreenResult
 from .normalize import UnsupportedFilerError, build_snapshot
+from .postgres import create_postgres_engine
 from .screens.enterprising import evaluate
+from .shared_companies import (
+    AmbiguousCurrentTicker,
+    SelectedCompany,
+    SharedCompanyRepository,
+)
 from .sources.edgar import EdgarClient, EdgarError, NoXbrlDataError, UnknownTickerError
 from .sources.crypto import CoinbaseCryptoProvider
 from .sources.prices import YahooPriceProvider
@@ -186,6 +193,24 @@ def screen_enterprising_batch(req: BatchRequest):
 @app.get("/fundamentals/{ticker}")
 def fundamentals(ticker: str, assume_absent_zero: bool = False):
     return _snapshot_dict(_snapshot_for(ticker, assume_absent_zero))
+
+
+@lru_cache(maxsize=1)
+def _shared_company_repository() -> SharedCompanyRepository:
+    return SharedCompanyRepository(create_postgres_engine())
+
+
+@app.get("/companies/{ticker}")
+def shared_company(ticker: str):
+    try:
+        company = _shared_company_repository().current_by_ticker(ticker)
+    except AmbiguousCurrentTicker as exc:
+        raise HTTPException(500, str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise HTTPException(503, "PostgreSQL company store unavailable") from exc
+    if company is None:
+        raise HTTPException(404, f"current company {ticker.upper()} not found")
+    return _selected_company_dict(company)
 
 
 STATIC = Path(__file__).parent / "static"
@@ -1017,6 +1042,45 @@ def _snapshot_dict(s: FinancialSnapshot) -> dict:
         "recurring_dividend_per_share": opt(s.recurring_dividend_per_share),
         "assumed_zero": sorted(s.assumed_zero),
         "earnings_quality": list(s.earnings_quality),
+    }
+
+
+def _selected_company_dict(company: SelectedCompany) -> dict:
+    snapshot = company.snapshot
+    return {
+        "canonical_payload": snapshot.canonical_payload,
+        "revision": {
+            "snapshot_id": snapshot.snapshot_id,
+            "engine_revision": snapshot.engine_revision,
+            "payload_sha256": snapshot.payload_sha256,
+            "snapshot_sha256": snapshot.snapshot_sha256,
+            "created_at": snapshot.created_at.isoformat(),
+        },
+        "issuer": {
+            "source_system": company.issuer_source,
+            "source_identifier": company.issuer_identifier,
+        },
+        "security": {
+            "security_identifier": company.security_identifier,
+            "ticker": snapshot.ticker,
+            "exchange_code": snapshot.exchange_code,
+            "quote_currency": snapshot.quote_currency,
+            "security_title": snapshot.security_title,
+            "source_accession": snapshot.source_accession,
+            "security_basis": snapshot.security_basis,
+            "receipt_ratio": (
+                format(snapshot.receipt_ratio.normalize(), "f")
+                if snapshot.receipt_ratio is not None
+                else None
+            ),
+        },
+        "artifacts": [
+            {
+                "role": artifact.role,
+                "content_sha256": artifact.content_sha256,
+            }
+            for artifact in company.artifacts
+        ],
     }
 
 
