@@ -1,0 +1,44 @@
+utc=2026-09-28T17:19:18Z
+branch=codex/company-import
+head=07fa0e551d1d7eeeaee4605f2619d6e62103b77f
+baseline_path=/tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json
+d45bfb04044b42fa8221742873be1b4c688d4b722981987052c92f356ab5ce4b  /tmp/market-screener-engine187.zVa9RR/dashboard-engine185.json
+bytes=220362103
+{"generated":"2026-09-28T12:50:49+00:00","engine_version":185,"row_count":6981,"unique_tickers":6981,"unique_ciks":6981}
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   384Gi    30Gi    93%    8.7M  318M    3%   /System/Volumes/Data
+/dev/disk3s5   460Gi   384Gi    30Gi    93%    8.7M  318M    3%   /System/Volumes/Data
+Mach Virtual Memory Statistics: (page size of 16384 bytes)
+Pages free:                                    70534.
+Pages active:                                 146686.
+Pages inactive:                               211756.
+Pages speculative:                              1958.
+Pages throttled:                                   0.
+Pages wired down:                             201072.
+Pages purgeable:                                1836.
+"Translation faults":                    35598150560.
+Pages copy-on-write:                       682631119.
+Pages zero filled:                       13054478500.
+Pages reactivated:                       11623819579.
+Pages purged:                              580743992.
+File-backed pages:                            138150.
+Anonymous pages:                              222250.
+Pages stored in compressor:                  1638194.
+Pages occupied by compressor:                 373138.
+Decompressions:                          11874927501.
+Compressions:                            13395108162.
+Pageins:                                  1126344909.
+Pageouts:                                    9949148.
+Swapins:                                   288833888.
+Swapouts:                                  319356404.
+Pages tagged:                                 129358.
+Pages tagged resident:                         99177.
+Pages tagged compressed:                       30181.
+Pages tag-storage:                             32768.
+Pages tag-storage holding tags:                 4698.
+Pages tag-storage free:                         2043.
+Pages tag-storage non-tag pageable:            25993.
+Pages tag-storage non-tag wired:                  34.
+Bytes of compressed tags:                    5151104.
+Tagged compressions:                       219306493.
+Tagged decompressions:                     212692077.

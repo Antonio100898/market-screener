@@ -1,0 +1,6 @@
+utc=2026-09-28T17:22:18Z
+Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s5   460Gi   385Gi    31Gi    93%    8.7M  320M    3%   /System/Volumes/Data
+/dev/disk3s5   460Gi   385Gi    31Gi    93%    8.7M  320M    3%   /System/Volumes/Data
+active_manifests=14
+cni_manifest=absent
