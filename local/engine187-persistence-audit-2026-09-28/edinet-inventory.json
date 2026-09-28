@@ -1,0 +1,74 @@
+[
+  {
+    "archives": [
+      {
+        "document": "S100YETA",
+        "fiscal_year": 2026,
+        "mapped_facts": 61,
+        "period_end": "2026-03-31",
+        "period_start": "2025-04-01",
+        "published": "2026-06-19",
+        "sha256": "95cc16e5afa261db468633743e8e46cf0be0b827b6fee5c4d625d87327cbc35f",
+        "size": 1312414
+      }
+    ],
+    "canonical_facts_sha256": "c3aa914176544f50d19f3c0ffb16fab67f6e6170d9735939ddd9af3622e11ac4",
+    "canonical_facts_size": 28114,
+    "cik": "E01772",
+    "dashboard_present": true,
+    "exchange": "TSE",
+    "import_artifact_roles": [
+      "canonical_edinet_facts",
+      "raw_filing"
+    ],
+    "import_error": null,
+    "import_payload_matches_sqlite": true,
+    "import_status": "ok",
+    "listed": "external",
+    "name": "Panasonic Holdings Corporation",
+    "quote_currency": "JPY",
+    "reporting_currency": "JPY",
+    "security_basis": "PRIMARY_ORDINARY_SHARE",
+    "security_code": "67520",
+    "source_accession": "S100YETA",
+    "sqlite_engine": 187,
+    "sqlite_status": "ok",
+    "ticker": "6752.T"
+  },
+  {
+    "archives": [
+      {
+        "document": "S100Y9NX",
+        "fiscal_year": 2026,
+        "mapped_facts": 46,
+        "period_end": "2026-03-31",
+        "period_start": "2025-04-01",
+        "published": "2026-06-25",
+        "sha256": "a9eb08b6687ec604fddcf997ffb8c97867084e4353d372afeb7637456981e73d",
+        "size": 598257
+      }
+    ],
+    "canonical_facts_sha256": "536edbf2940db01a3d98e1fbaaba9bcc74e2f5f4656675e6d618de3031540c12",
+    "canonical_facts_size": 20999,
+    "cik": "E02367",
+    "dashboard_present": true,
+    "exchange": "TSE",
+    "import_artifact_roles": [
+      "canonical_edinet_facts",
+      "raw_filing"
+    ],
+    "import_error": null,
+    "import_payload_matches_sqlite": true,
+    "import_status": "ok",
+    "listed": "external",
+    "name": "Nintendo Co.,Ltd.",
+    "quote_currency": "JPY",
+    "reporting_currency": "JPY",
+    "security_basis": "PRIMARY_ORDINARY_SHARE",
+    "security_code": "79740",
+    "source_accession": "S100Y9NX",
+    "sqlite_engine": 187,
+    "sqlite_status": "ok",
+    "ticker": "7974.T"
+  }
+]

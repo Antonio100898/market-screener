@@ -1,0 +1,44 @@
+{
+  "dashboard": {
+    "identities_equal": true,
+    "json_rows": 6995,
+    "sqlite_eligible": 6995
+  },
+  "engine": 187,
+  "edinet": {
+    "canonical_fact_bytes": 49113,
+    "canonical_fact_files": 2,
+    "companies": 2,
+    "raw_archive_bytes": 1910671,
+    "raw_archives": 2,
+    "unique_hashes": 4
+  },
+  "import_reconciliation": {
+    "failed": 288,
+    "failure_classes": {
+      "current_sec_ticker_mapping_mismatch": 147,
+      "inline_supplement_not_applied_by_importer": 14,
+      "missing_depositary_ratio": 10,
+      "pending_structured_facts": 117
+    },
+    "payload_matches": 6707,
+    "payload_mismatches": 0,
+    "selected": 6707
+  },
+  "runtime": {
+    "current_postgres_s3_state": "unavailable",
+    "postgres_port_55432_checked_separately": "closed",
+    "s3_port_8333_checked_separately": "closed"
+  },
+  "sec": {
+    "file_role_references": 110,
+    "manifest_bytes": 33425,
+    "manifest_count": 18,
+    "relationship_counts": {
+      "direct_annual": 17,
+      "incorporated_annual_exhibit": 1
+    },
+    "unique_source_bytes": 199958932,
+    "unique_source_hashes": 108
+  }
+}

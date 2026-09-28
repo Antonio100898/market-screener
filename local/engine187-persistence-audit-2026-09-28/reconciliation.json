@@ -1,0 +1,33 @@
+{
+  "engine": 187,
+  "dashboard_eligible": 6995,
+  "dashboard_json_rows": 6995,
+  "dashboard_identity_match": true,
+  "would_select": 6707,
+  "selected_payload_matches": 6707,
+  "selected_payload_mismatches": 0,
+  "withheld": {
+    "current_sec_ticker_mapping_mismatch": 147,
+    "pending_structured_facts": 117,
+    "missing_depositary_ratio": 10,
+    "inline_supplement_not_applied_by_importer": 14
+  },
+  "engine187_inline_tickers_withheld_by_importer": [
+    "AERO",
+    "AGMB",
+    "ALPS",
+    "AUGO",
+    "CNI",
+    "DAVI",
+    "GCDT",
+    "GMTL",
+    "HBNB",
+    "PAYP",
+    "PICS",
+    "TMCR",
+    "VMET",
+    "YMAT"
+  ],
+  "stale_engine_snapshots": 0,
+  "current_postgres_s3_state": "unavailable_services_stopped"
+}

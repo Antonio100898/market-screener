@@ -61,6 +61,9 @@ Affected decisions: P-02, P-03, P-04, P-09, and P-17.
 | 4. End-to-end review | committed (records commit) | manager | live Uvicorn 3 x 200; exact SQLite/dashboard parity; service restart retained IDs and hashes |
 | 5. Full-universe import contract | committed (`f068de6`) | migration developer | Review 3: incomplete receipt preserved; 29 focused and 4 real migration/import tests |
 | 6. Full retained-universe import and reconciliation | committed (records commit) | manager | 6,655 exact payload matches; 270 named evidence/pending failures; restart and HTTP sample passed |
+| 7. Engine-187 SEC/EDINET artifact persistence audit | accepted | migration investigator | 18 SEC manifests/110 role links; 14 importer omissions; 6,707 exact current matches; Panasonic/Nintendo exact; no migration needed |
+| 8. Retain/apply engine-187 SEC evidence in importer | queued | migration developer | 128 artifact links, 14 exact payloads, four unchanged exclusions, idempotent retry |
+| 9. Real EDINET pair and full engine-187 reconciliation | queued | verification developer | Panasonic/Nintendo S3/PostgreSQL/API restart; 6,721 exact current selections, 274 named exclusions |
 
 The owner authorized local commits. Push and merge remain unauthorized.
 
