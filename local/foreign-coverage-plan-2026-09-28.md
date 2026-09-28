@@ -72,6 +72,7 @@ Affected decisions: P-02, P-03, P-04, and P-09. Existing SEC/IFRS invariants rem
 | 3A. Later-SEC same-class ticker continuity | committed (`7570d8b`), gate passed | identity developer | 219 focused; 797 full Python; BRNX/ZTG real `ok` snapshots; offline restart-safe; ambiguous classes and OTC aliases excluded |
 | 3A-G. Engine-185 full payload and filing gate | accepted | verification developer | 6,981 unique rows; +BRNX/+ZTG only; 6,979-row regression clean; 279/3,411/378 audits zero wrong |
 | 3B. LLM shadow extraction contract and exact prompt | prompt approved; four-model pilot decision pending | extraction developer | provider research recommends Luna, GLM-5.3 Flash, Gemini 3.5 Flash-Lite, and Sonnet 5; no model called |
+| 3B-H. Audited pilot request harness and cost bound | accepted; spend approval pending | evaluation developer | 48 exact screen requests; provider configs documented; all local checks pass; no model called; conservative ceiling $16 |
 | 3C. LLM shadow pilot for incomplete statements | queued after 3B | extraction developer | retained real filings; candidates stored but dashboard unchanged; failures named |
 | 4. Full derive/export/regression/audit | committed (records commit) | manager | engine 184; 6,979 rows; 112 intended disclosure changes; audits zero wrong |
 
