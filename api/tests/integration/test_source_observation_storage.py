@@ -436,6 +436,240 @@ def test_parent_must_belong_to_same_source_system(repositories):
         ) == 0
 
 
+def _insert_artifact(engine, digest):
+    with engine.begin() as connection:
+        connection.execute(
+            evidence_artifact.insert().values(
+                content_sha256=digest,
+                object_key=f"raw/sha256/{digest}",
+                byte_size=1,
+                media_type="text/plain",
+                verified_at=NOW,
+            )
+        )
+
+
+def _sec_filing_metadata(accession, *, company="COMPANY", quarter="2026Q3"):
+    cik = accession[:10]
+    return {
+        "form": "10-K",
+        "company_name": company,
+        "cik": cik,
+        "filing_date": "2026-09-28",
+        "archive_filename": f"edgar/data/{int(cik)}/{accession}.txt",
+        "accession": accession,
+        "quarter": quarter,
+    }
+
+
+def test_latest_quarter_query_and_witnessed_removal_are_exact(repositories):
+    engine, jobs, observations = repositories
+    lease = _claim(jobs, "quarter-exact")
+    filing_artifact = "a" * 64
+    inventory_artifact = "b" * 64
+    _insert_artifact(engine, filing_artifact)
+    _insert_artifact(engine, inventory_artifact)
+    inventory = observations.record(
+        lease,
+        item=SourceItemIdentity("SEC", "inventory", "quarterly-index/2026Q3"),
+        item_outcome_key="inventory",
+        state="present",
+        metadata={"quarter": "2026Q3"},
+        artifact_sha256=inventory_artifact,
+        source_url=(
+            "https://www.sec.gov/Archives/edgar/full-index/2026/QTR3/form.idx"
+        ),
+        detected_at=NOW,
+    )
+    changed_accession = "0000000001-26-000001"
+    old = observations.record(
+        lease,
+        item=SourceItemIdentity(
+            "SEC", "filing", changed_accession, issuer_source_identifier="0000000001"
+        ),
+        item_outcome_key="old",
+        state="present",
+        metadata=_sec_filing_metadata(changed_accession, company="OLD"),
+        artifact_sha256=filing_artifact,
+        source_url="https://www.sec.gov/Archives/old.idx",
+        detected_at=NOW + timedelta(seconds=1),
+    )
+    changed = observations.record(
+        lease,
+        item=SourceItemIdentity(
+            "SEC", "filing", changed_accession, issuer_source_identifier="0000000001"
+        ),
+        item_outcome_key="changed",
+        state="present",
+        metadata=_sec_filing_metadata(changed_accession, company="CHANGED"),
+        artifact_sha256=filing_artifact,
+        source_url="https://www.sec.gov/Archives/changed.idx",
+        detected_at=NOW + timedelta(seconds=2),
+    )
+    removed_accession = "0000000002-26-000002"
+    to_remove = observations.record(
+        lease,
+        item=SourceItemIdentity(
+            "SEC", "filing", removed_accession, issuer_source_identifier="0000000002"
+        ),
+        item_outcome_key="to-remove",
+        state="present",
+        metadata=_sec_filing_metadata(removed_accession),
+        artifact_sha256=filing_artifact,
+        source_url="https://www.sec.gov/Archives/present.idx",
+        detected_at=NOW + timedelta(seconds=3),
+    )
+    other_accession = "0000000003-26-000003"
+    observations.record(
+        lease,
+        item=SourceItemIdentity(
+            "SEC", "filing", other_accession, issuer_source_identifier="0000000003"
+        ),
+        item_outcome_key="other-quarter",
+        state="present",
+        metadata=_sec_filing_metadata(other_accession, quarter="2026Q4"),
+        artifact_sha256=filing_artifact,
+        source_url="https://www.sec.gov/Archives/q4.idx",
+        detected_at=NOW + timedelta(seconds=4),
+    )
+
+    latest = observations.latest_sec_financial_filings("2026Q3")
+    assert [row.source_observation_id for row in latest] == [
+        changed.observation.source_observation_id,
+        to_remove.observation.source_observation_id,
+    ]
+
+    removal = observations.record_witnessed_sec_removal(
+        lease,
+        prior_observation_id=to_remove.observation.source_observation_id,
+        item_outcome_key="removed",
+        quarter="2026Q3",
+        inventory_source_item_id=inventory.item.source_item_id,
+        inventory_observation_id=inventory.observation.source_observation_id,
+        inventory_observation_sha256=inventory.observation.observation_sha256,
+        inventory_artifact_sha256=inventory_artifact,
+        detected_at=NOW + timedelta(seconds=5),
+    )
+
+    assert removal.observation.state == "removed"
+    assert removal.observation.artifact_sha256 is None
+    assert removal.observation.canonical_metadata == {
+        **_sec_filing_metadata(removed_accession),
+        "reason": "absent_from_rebuilt_quarter",
+        "inventory_source_item_id": inventory.item.source_item_id,
+        "inventory_observation_id": inventory.observation.source_observation_id,
+        "inventory_observation_sha256": inventory.observation.observation_sha256,
+        "inventory_artifact_sha256": inventory_artifact,
+    }
+    assert observations.latest_sec_financial_filings("2026Q3")[-1].state == "removed"
+    assert observations.latest_sec_financial_filings("2026Q4")[0].canonical_metadata[
+        "accession"
+    ] == other_accession
+
+
+def test_witnessed_removal_rejects_bad_witness_and_nonlatest_prior(repositories):
+    engine, jobs, observations = repositories
+    lease = _claim(jobs, "quarter-invalid")
+    filing_artifact = "c" * 64
+    inventory_artifact = "d" * 64
+    _insert_artifact(engine, filing_artifact)
+    _insert_artifact(engine, inventory_artifact)
+    inventory = observations.record(
+        lease,
+        item=SourceItemIdentity("SEC", "inventory", "quarterly-index/2026Q3"),
+        item_outcome_key="inventory",
+        state="present",
+        metadata={"quarter": "2026Q3"},
+        artifact_sha256=inventory_artifact,
+        source_url=(
+            "https://www.sec.gov/Archives/edgar/full-index/2026/QTR3/form.idx"
+        ),
+        detected_at=NOW,
+    )
+    accession = "0000000004-26-000004"
+    identity = SourceItemIdentity(
+        "SEC", "filing", accession, issuer_source_identifier="0000000004"
+    )
+    prior = observations.record(
+        lease,
+        item=identity,
+        item_outcome_key="prior",
+        state="present",
+        metadata=_sec_filing_metadata(accession, company="OLD"),
+        artifact_sha256=filing_artifact,
+        source_url="https://www.sec.gov/Archives/old.idx",
+        detected_at=NOW + timedelta(seconds=1),
+    )
+
+    base = {
+        "lease": lease,
+        "prior_observation_id": prior.observation.source_observation_id,
+        "item_outcome_key": "invalid-removal",
+        "quarter": "2026Q3",
+        "inventory_source_item_id": inventory.item.source_item_id,
+        "inventory_observation_id": inventory.observation.source_observation_id,
+        "inventory_observation_sha256": inventory.observation.observation_sha256,
+        "inventory_artifact_sha256": inventory_artifact,
+        "detected_at": NOW + timedelta(seconds=2),
+    }
+    invalid = (
+        {**base, "inventory_observation_id": 999999},
+        {**base, "inventory_observation_sha256": "e" * 64},
+        {**base, "inventory_artifact_sha256": "f" * 64},
+        {**base, "quarter": "2026Q4"},
+    )
+    for values in invalid:
+        with pytest.raises(ValueError, match="inventory witness is invalid"):
+            observations.record_witnessed_sec_removal(**values)
+
+    unavailable = observations.record(
+        lease,
+        item=SourceItemIdentity("SEC", "inventory", "quarterly-index/2026Q2"),
+        item_outcome_key="unavailable-inventory",
+        state="unavailable",
+        metadata={"quarter": "2026Q2", "reason": "not_found"},
+        source_url=(
+            "https://www.sec.gov/Archives/edgar/full-index/2026/QTR2/form.idx"
+        ),
+        detected_at=NOW,
+    )
+    with pytest.raises(ValueError, match="inventory witness is invalid"):
+        observations.record_witnessed_sec_removal(
+            **{
+                **base,
+                "quarter": "2026Q2",
+                "inventory_source_item_id": unavailable.item.source_item_id,
+                "inventory_observation_id": (
+                    unavailable.observation.source_observation_id
+                ),
+                "inventory_observation_sha256": (
+                    unavailable.observation.observation_sha256
+                ),
+            }
+        )
+
+    newer = observations.record(
+        lease,
+        item=identity,
+        item_outcome_key="newer",
+        state="present",
+        metadata=_sec_filing_metadata(accession, company="NEW"),
+        artifact_sha256=filing_artifact,
+        source_url="https://www.sec.gov/Archives/new.idx",
+        detected_at=NOW + timedelta(seconds=3),
+    )
+    with pytest.raises(ValueError, match="not latest"):
+        observations.record_witnessed_sec_removal(**base)
+
+    assert observations.history(prior.item.source_item_id)[-1] == newer.observation
+    with engine.connect() as connection:
+        assert connection.scalar(
+            select(func.count())
+            .select_from(durable_job_item)
+            .where(durable_job_item.c.item_key == "invalid-removal")
+        ) == 0
+
+
 class FailingObjectStore:
     def put_verified(self, data, media_type):
         del data, media_type

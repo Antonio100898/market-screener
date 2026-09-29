@@ -11,9 +11,11 @@ from screener.job_runtime import JobContext
 from screener.object_store import VerifiedObject
 from screener.sec_ingestion import (
     SecDiscoveryStopped,
+    SecQuarterlyReconciliationHandler,
     SecRecentDiscoveryHandler,
     parse_form_index,
 )
+from screener.source_observations import SourceItemIdentityConflict
 from screener.sources.edgar import (
     EdgarClient,
     EdgarError,
@@ -188,10 +190,13 @@ class FakeArtifacts:
 
 
 class FakeObservations:
-    def __init__(self, events):
+    def __init__(self, events, latest=()):
         self.events = events
         self.calls = []
         self.identities = {}
+        self.latest = tuple(latest)
+        self.latest_quarters = []
+        self.removals = []
 
     def record(self, lease, **values):
         assert lease == LeaseToken(1, "worker", 1)
@@ -211,11 +216,24 @@ class FakeObservations:
             )
         observation_id, digest = self.identities[identity]
         return SimpleNamespace(
+            item=SimpleNamespace(source_item_id=observation_id),
             observation=SimpleNamespace(
                 source_observation_id=observation_id,
                 observation_sha256=digest,
+                artifact_sha256=values.get("artifact_sha256"),
+                detecting_job_id=1,
             )
         )
+
+    def latest_sec_financial_filings(self, quarter):
+        self.latest_quarters.append(quarter)
+        return self.latest
+
+    def record_witnessed_sec_removal(self, lease, **values):
+        assert lease == LeaseToken(1, "worker", 1)
+        self.events.append(("removal", values["item_outcome_key"]))
+        self.removals.append(values)
+        return object()
 
 
 class FakeJobs:
@@ -238,22 +256,29 @@ class FakeContextRepository:
     def __init__(self, events, stop_after_checkpoint=None):
         self.events = events
         self.checkpoints = []
+        self.outcomes = []
         self.stop_after_checkpoint = stop_after_checkpoint
 
     def save_checkpoint(self, lease, checkpoint, *, now):
         assert lease == LeaseToken(1, "worker", 1)
-        self.events.append(("checkpoint", checkpoint["through_date"]))
+        self.events.append(("checkpoint", dict(checkpoint)))
         self.checkpoints.append(dict(checkpoint))
         if self.stop_after_checkpoint is not None:
             self.stop_after_checkpoint.set()
         return object()
 
+    def record_item_outcome(self, lease, **values):
+        assert lease == LeaseToken(1, "worker", 1)
+        self.events.append(("outcome", values["item_key"]))
+        self.outcomes.append(values)
+        return object()
 
-def _job(parameters, *, checkpoint=None):
+
+def _job(parameters, *, checkpoint=None, kind="sec-recent-discovery"):
     return DurableJobRecord(
         job_id=1,
         occurrence_id=1,
-        kind="sec-recent-discovery",
+        kind=kind,
         parameters=parameters,
         status="running",
         priority=30,
@@ -281,6 +306,7 @@ def _context(
     checkpoint=None,
     stopping=None,
     stop_after_checkpoint=False,
+    kind="sec-recent-discovery",
 ):
     stopping = stopping or threading.Event()
     repository = FakeContextRepository(
@@ -289,7 +315,7 @@ def _context(
     )
     return (
         JobContext(
-            job=_job(parameters, checkpoint=checkpoint),
+            job=_job(parameters, checkpoint=checkpoint, kind=kind),
             stopping=stopping,
             _repository=repository,
             _lease=LeaseToken(1, "worker", 1),
@@ -365,7 +391,14 @@ def test_discovery_records_index_filings_stable_children_then_checkpoint():
     }
     assert jobs.children[0]["priority"] == 30
     assert jobs.children[0]["child_key"].endswith("b" * 64)
-    assert events[-1] == ("checkpoint", day.isoformat())
+    assert events[-1] == (
+        "checkpoint",
+        {
+            "start_date": day.isoformat(),
+            "end_date": day.isoformat(),
+            "through_date": day.isoformat(),
+        },
+    )
     assert len(context_repository.checkpoints) == 1
 
 
@@ -486,3 +519,312 @@ def test_stop_after_completed_day_retries_without_fetching_next_day():
             "through_date": first.isoformat(),
         }
     ]
+
+
+def _quarterly_url(year=2026, quarter=3):
+    return (
+        "https://www.sec.gov/Archives/edgar/full-index/"
+        f"{year}/QTR{quarter}/form.idx"
+    )
+
+
+def _prior(
+    accession,
+    *,
+    company="OLD COMPANY",
+    state="present",
+    quarter="2026Q3",
+    observation_id=100,
+    detecting_job_id=99,
+):
+    cik = accession[:10]
+    return SimpleNamespace(
+        source_observation_id=observation_id,
+        source_item_id=observation_id,
+        observation_sha256=f"{observation_id % 10}" * 64,
+        state=state,
+        canonical_metadata={
+            "form": "10-K",
+            "company_name": company,
+            "cik": cik,
+            "filing_date": "2026-09-28",
+            "archive_filename": f"edgar/data/{int(cik)}/{accession}.txt",
+            "accession": accession,
+            "quarter": quarter,
+        },
+        artifact_sha256="f" * 64 if state == "present" else None,
+        detecting_job_id=detecting_job_id,
+    )
+
+
+def _quarterly_handler(edgar, events, *, observations=None, jobs=None):
+    observations = observations or FakeObservations(events)
+    jobs = jobs or FakeJobs(events)
+    return (
+        SecQuarterlyReconciliationHandler(
+            edgar=edgar,
+            object_store=FakeObjectStore(),
+            artifacts=FakeArtifacts(),
+            observations=observations,
+            jobs=jobs,
+            clock=lambda: NOW,
+        ),
+        observations,
+        jobs,
+    )
+
+
+def test_quarterly_reconciliation_handles_every_latest_state_then_checkpoints():
+    unchanged = "0000000001-26-000001"
+    changed = "0000000002-26-000002"
+    removed = "0000000003-26-000003"
+    already_removed = "0000000004-26-000004"
+    reappeared = "0000000005-26-000005"
+    new = "0000000006-26-000006"
+    payload = _index(
+        _row("10-K", "OLD COMPANY", "1", "2026-09-28", unchanged),
+        _row("10-K", "CHANGED COMPANY", "2", "2026-09-28", changed),
+        _row("10-K", "RETURNED COMPANY", "5", "2026-09-28", reappeared),
+        _row("10-K", "NEW COMPANY", "6", "2026-09-28", new),
+    )
+    result = EdgarTransportResult(
+        payload, _quarterly_url(), "text/plain", '"quarter"', None
+    )
+    events = []
+    latest = (
+        _prior(unchanged, observation_id=101),
+        _prior(changed, observation_id=102),
+        _prior(removed, observation_id=103),
+        _prior(already_removed, state="removed", observation_id=104),
+        _prior(reappeared, state="removed", observation_id=105),
+    )
+    observations = FakeObservations(events, latest)
+    handler, _, jobs = _quarterly_handler(
+        FakeEdgar({_quarterly_url(): result}),
+        events,
+        observations=observations,
+    )
+    context, repository = _context(
+        {"year": 2026, "quarter": 3}, events, kind="sec-index-reconciliation"
+    )
+
+    checkpoint = handler(context)
+
+    assert observations.latest_quarters == ["2026Q3"]
+    filing_calls = [
+        call for call in observations.calls if call["item"].item_kind == "filing"
+    ]
+    assert [call["item"].source_key for call in filing_calls] == [
+        changed,
+        reappeared,
+        new,
+    ]
+    assert [call["item"].issuer_source_identifier for call in filing_calls] == [
+        "0000000002",
+        "0000000005",
+        "0000000006",
+    ]
+    assert [child["parameters"]["accession"] for child in jobs.children] == [
+        changed,
+        reappeared,
+        new,
+    ]
+    assert [call["prior_observation_id"] for call in observations.removals] == [103]
+    assert {item["outcome"]["action"] for item in repository.outcomes} == {
+        "unchanged",
+        "already_removed",
+    }
+    assert checkpoint == {
+        "year": 2026,
+        "quarter": 3,
+        "inventory_observation_id": 1,
+        "inventory_observation_sha256": "a" * 64,
+    }
+    assert repository.checkpoints == [checkpoint]
+
+
+def test_quarterly_changed_cik_uses_rebuilt_identity_and_fails_closed():
+    accession = "0000000001-26-000001"
+    payload = _index(
+        _row("10-K", "MOVED COMPANY", "2", "2026-09-28", accession)
+    )
+    response = EdgarTransportResult(
+        payload, _quarterly_url(), "text/plain", None, None
+    )
+    events = []
+
+    class IdentityGuard(FakeObservations):
+        def record(self, lease, **values):
+            if values["item"].item_kind == "filing":
+                assert values["item"].issuer_source_identifier == "0000000002"
+                raise SourceItemIdentityConflict("different immutable content")
+            return super().record(lease, **values)
+
+    observations = IdentityGuard(
+        events, (_prior(accession, observation_id=101),)
+    )
+    handler, _, jobs = _quarterly_handler(
+        FakeEdgar({_quarterly_url(): response}),
+        events,
+        observations=observations,
+    )
+    context, repository = _context(
+        {"year": 2026, "quarter": 3}, events, kind="sec-index-reconciliation"
+    )
+
+    with pytest.raises(SourceItemIdentityConflict, match="immutable"):
+        handler(context)
+
+    assert jobs.children == []
+    assert repository.checkpoints == []
+
+
+@pytest.mark.parametrize(
+    ("parameters", "message"),
+    [
+        ({}, "requires only"),
+        ({"year": "2026", "quarter": 3}, "four-digit integer"),
+        ({"year": 2026, "quarter": True}, "integer from 1 through 4"),
+        ({"year": 2026, "quarter": 5}, "integer from 1 through 4"),
+    ],
+)
+def test_quarterly_reconciliation_validates_strict_parameters(parameters, message):
+    events = []
+    context, repository = _context(
+        parameters, events, kind="sec-index-reconciliation"
+    )
+    handler, observations, jobs = _quarterly_handler(FakeEdgar({}), events)
+
+    with pytest.raises(ValueError, match=message):
+        handler(context)
+
+    assert observations.calls == []
+    assert jobs.children == []
+    assert repository.checkpoints == []
+
+
+def test_quarterly_404_is_recorded_but_raised_without_checkpoint_or_removal():
+    events = []
+    url = _quarterly_url()
+    context, repository = _context(
+        {"year": 2026, "quarter": 3}, events, kind="sec-index-reconciliation"
+    )
+    handler, observations, jobs = _quarterly_handler(
+        FakeEdgar({url: NoXbrlDataError("not found")}), events
+    )
+
+    with pytest.raises(NoXbrlDataError, match="not found"):
+        handler(context)
+
+    assert observations.calls[0]["state"] == "unavailable"
+    assert observations.calls[0]["metadata"] == {
+        "quarter": "2026Q3",
+        "reason": "not_found",
+    }
+    assert observations.removals == []
+    assert jobs.children == []
+    assert repository.checkpoints == []
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        EdgarError("timeout"),
+        EdgarTransportResult(b"partial", _quarterly_url(), "text/plain", None, None),
+    ],
+)
+def test_quarterly_transport_or_parse_failure_cannot_remove_or_checkpoint(response):
+    events = []
+    context, repository = _context(
+        {"year": 2026, "quarter": 3}, events, kind="sec-index-reconciliation"
+    )
+    observations = FakeObservations(
+        events, (_prior("0000000003-26-000003", observation_id=103),)
+    )
+    handler, _, jobs = _quarterly_handler(
+        FakeEdgar({_quarterly_url(): response}),
+        events,
+        observations=observations,
+    )
+
+    with pytest.raises((EdgarError, ValueError)):
+        handler(context)
+
+    assert observations.calls == []
+    assert observations.removals == []
+    assert observations.latest_quarters == []
+    assert jobs.children == []
+    assert repository.checkpoints == []
+
+
+def test_quarterly_stop_and_completed_checkpoint_do_no_new_work():
+    parameters = {"year": 2026, "quarter": 3}
+    events = []
+    stopping = threading.Event()
+    stopping.set()
+    context, repository = _context(
+        parameters,
+        events,
+        stopping=stopping,
+        kind="sec-index-reconciliation",
+    )
+    edgar = FakeEdgar({})
+    handler, observations, jobs = _quarterly_handler(edgar, events)
+
+    with pytest.raises(SecDiscoveryStopped, match="before new work"):
+        handler(context)
+    assert edgar.urls == []
+    assert observations.calls == []
+    assert jobs.children == []
+    assert repository.checkpoints == []
+
+    checkpoint = {
+        "year": 2026,
+        "quarter": 3,
+        "inventory_observation_id": 9,
+        "inventory_observation_sha256": "9" * 64,
+    }
+    resumed, resumed_repository = _context(
+        parameters,
+        events,
+        checkpoint=checkpoint,
+        kind="sec-index-reconciliation",
+    )
+    assert handler(resumed) == checkpoint
+    assert resumed_repository.checkpoints == []
+    assert edgar.urls == []
+
+
+def test_quarterly_retry_keeps_child_identity_and_waits_to_checkpoint():
+    accession = "0000000006-26-000006"
+    payload = _index(
+        _row("10-K", "NEW COMPANY", "6", "2026-09-28", accession)
+    )
+    response = EdgarTransportResult(
+        payload, _quarterly_url(), "text/plain", None, None
+    )
+    events = []
+    observations = FakeObservations(events)
+    jobs = FakeJobs(events, fail_once=True)
+    handler, _, _ = _quarterly_handler(
+        FakeEdgar({_quarterly_url(): response}),
+        events,
+        observations=observations,
+        jobs=jobs,
+    )
+    parameters = {"year": 2026, "quarter": 3}
+    first, first_repository = _context(
+        parameters, events, kind="sec-index-reconciliation"
+    )
+
+    with pytest.raises(RuntimeError, match="interrupted"):
+        handler(first)
+    assert first_repository.checkpoints == []
+    failed_child_key = next(value for kind, value in events if kind == "child")
+
+    second, second_repository = _context(
+        parameters, events, kind="sec-index-reconciliation"
+    )
+    handler(second)
+    assert jobs.children[0]["child_key"] == failed_child_key
+    assert len(second_repository.checkpoints) == 1

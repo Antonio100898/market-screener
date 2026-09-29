@@ -34,7 +34,20 @@ _DAILY_INDEX_URL = (
     "https://www.sec.gov/Archives/edgar/daily-index/"
     "{year}/QTR{quarter}/form.{ymd}.idx"
 )
+_QUARTERLY_INDEX_URL = (
+    "https://www.sec.gov/Archives/edgar/full-index/"
+    "{year}/QTR{quarter}/form.idx"
+)
 _MAX_DAYS = 31
+_FILING_COMPARISON_FIELDS = (
+    "form",
+    "company_name",
+    "cik",
+    "filing_date",
+    "archive_filename",
+    "accession",
+    "quarter",
+)
 
 
 @dataclass(frozen=True)
@@ -252,6 +265,203 @@ class SecRecentDiscoveryHandler:
             )
 
 
+class SecQuarterlyReconciliationHandler:
+    def __init__(
+        self,
+        *,
+        edgar: EdgarClient,
+        object_store: ImmutableObjectStore,
+        artifacts: ArtifactRepository,
+        observations: SourceObservationRepository,
+        jobs: DurableJobRepository,
+        clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    ) -> None:
+        self._edgar = edgar
+        self._object_store = object_store
+        self._artifacts = artifacts
+        self._observations = observations
+        self._jobs = jobs
+        self._clock = clock
+
+    def __call__(self, context: JobContext) -> Mapping[str, Any]:
+        year, quarter = _year_quarter(context.job.parameters)
+        completed = _quarter_checkpoint(context.job.checkpoint, year, quarter)
+        if completed is not None:
+            return completed
+        self._check_stopping(context)
+        partition = f"{year}Q{quarter}"
+        url = _QUARTERLY_INDEX_URL.format(year=year, quarter=quarter)
+        inventory_key = f"quarterly-index/{partition}"
+        inventory_outcome_key = f"quarterly-index:{year}:Q{quarter}"
+        try:
+            result = self._edgar.fetch(url)
+        except NoXbrlDataError:
+            self._observations.record(
+                context.lease,
+                item=SourceItemIdentity("SEC", "inventory", inventory_key),
+                item_outcome_key=inventory_outcome_key,
+                state="unavailable",
+                metadata={"quarter": partition, "reason": "not_found"},
+                source_url=url,
+                detected_at=self._clock(),
+            )
+            raise
+
+        artifact = store_evidence(
+            result.data,
+            result.media_type or "application/octet-stream",
+            self._object_store,
+            self._artifacts,
+        )
+        filings = _filings_by_accession(parse_form_index(result.data))
+        self._check_stopping(context)
+        inventory = self._observations.record(
+            context.lease,
+            item=SourceItemIdentity("SEC", "inventory", inventory_key),
+            item_outcome_key=inventory_outcome_key,
+            state="present",
+            metadata={"quarter": partition},
+            source_url=result.url,
+            artifact_sha256=artifact.content_sha256,
+            etag=result.etag,
+            last_modified=result.last_modified,
+            detected_at=self._clock(),
+        )
+        latest = {
+            row.canonical_metadata["accession"]: row
+            for row in self._observations.latest_sec_financial_filings(partition)
+        }
+
+        for accession, filing in filings.items():
+            self._check_stopping(context)
+            prior = latest.get(accession)
+            comparison = _filing_comparison(filing, partition)
+            outcome_key = _quarterly_filing_outcome_key(
+                accession,
+                inventory.observation.observation_sha256,
+            )
+            if (
+                prior is not None
+                and prior.state == "present"
+                and _stored_comparison(prior.canonical_metadata) == comparison
+            ):
+                context.record_item_outcome(
+                    item_key=outcome_key,
+                    status="succeeded",
+                    outcome=_checked_outcome(
+                        action="unchanged",
+                        filing=prior,
+                        inventory=inventory,
+                    ),
+                )
+                if prior.detecting_job_id == context.job.job_id:
+                    self._enqueue_resource(context, filing, prior)
+                continue
+
+            stored = self._observations.record(
+                context.lease,
+                item=SourceItemIdentity(
+                    "SEC",
+                    "filing",
+                    filing.accession,
+                    issuer_source_identifier=filing.cik,
+                ),
+                item_outcome_key=outcome_key,
+                state="present",
+                metadata={**comparison, "source_row": filing.source_row},
+                source_url=result.url,
+                artifact_sha256=artifact.content_sha256,
+                etag=result.etag,
+                last_modified=result.last_modified,
+                detected_at=self._clock(),
+            )
+            self._enqueue_resource(context, filing, stored.observation)
+
+        for accession, prior in latest.items():
+            if accession in filings:
+                continue
+            self._check_stopping(context)
+            outcome_key = _quarterly_filing_outcome_key(
+                accession,
+                inventory.observation.observation_sha256,
+            )
+            if prior.state != "present":
+                context.record_item_outcome(
+                    item_key=outcome_key,
+                    status="succeeded",
+                    outcome=_checked_outcome(
+                        action=(
+                            "already_removed"
+                            if prior.state == "removed"
+                            else "not_present"
+                        ),
+                        filing=prior,
+                        inventory=inventory,
+                    ),
+                )
+                continue
+            self._observations.record_witnessed_sec_removal(
+                context.lease,
+                prior_observation_id=prior.source_observation_id,
+                item_outcome_key=outcome_key,
+                quarter=partition,
+                inventory_source_item_id=inventory.item.source_item_id,
+                inventory_observation_id=(
+                    inventory.observation.source_observation_id
+                ),
+                inventory_observation_sha256=(
+                    inventory.observation.observation_sha256
+                ),
+                inventory_artifact_sha256=artifact.content_sha256,
+                detected_at=self._clock(),
+            )
+
+        self._check_stopping(context)
+        checkpoint = {
+            "year": year,
+            "quarter": quarter,
+            "inventory_observation_id": (
+                inventory.observation.source_observation_id
+            ),
+            "inventory_observation_sha256": (
+                inventory.observation.observation_sha256
+            ),
+        }
+        context.save_checkpoint(checkpoint)
+        return checkpoint
+
+    def _enqueue_resource(self, context, filing, observation) -> None:
+        immediate = datetime.combine(
+            filing.filing_date,
+            time.min,
+            tzinfo=timezone.utc,
+        )
+        self._jobs.enqueue_child(
+            context.lease,
+            child_key=(
+                f"sec-resource-fetch:{filing.cik}:{filing.accession}:"
+                f"{observation.observation_sha256}"
+            ),
+            scheduled_for=immediate,
+            kind="sec-resource-fetch",
+            parameters={
+                "accession": filing.accession,
+                "cik": filing.cik,
+                "form": filing.form,
+                "filename": filing.archive_filename,
+                "observation_id": observation.source_observation_id,
+            },
+            due_at=immediate,
+            priority=context.job.priority,
+            now=self._clock(),
+        )
+
+    @staticmethod
+    def _check_stopping(context: JobContext) -> None:
+        if context.stopping.is_set():
+            raise SecDiscoveryStopped("SEC reconciliation stopped before new work")
+
+
 def _date_range(parameters: Mapping[str, Any]) -> tuple[date, date]:
     if not isinstance(parameters, Mapping):
         raise ValueError("SEC discovery parameters must be an object")
@@ -264,6 +474,93 @@ def _date_range(parameters: Mapping[str, Any]) -> tuple[date, date]:
     if (end - start).days >= _MAX_DAYS:
         raise ValueError("SEC discovery range must contain at most 31 dates")
     return start, end
+
+
+def _year_quarter(parameters: Mapping[str, Any]) -> tuple[int, int]:
+    if not isinstance(parameters, Mapping) or set(parameters) != {"year", "quarter"}:
+        raise ValueError("SEC reconciliation requires only year and quarter")
+    year = parameters["year"]
+    quarter = parameters["quarter"]
+    if isinstance(year, bool) or not isinstance(year, int) or not 1000 <= year <= 9999:
+        raise ValueError("year must be a four-digit integer")
+    if isinstance(quarter, bool) or not isinstance(quarter, int) or quarter not in range(1, 5):
+        raise ValueError("quarter must be an integer from 1 through 4")
+    return year, quarter
+
+
+def _quarter_checkpoint(
+    checkpoint: Mapping[str, Any] | None,
+    year: int,
+    quarter: int,
+) -> dict[str, Any] | None:
+    if checkpoint is None:
+        return None
+    if not isinstance(checkpoint, Mapping) or set(checkpoint) != {
+        "year",
+        "quarter",
+        "inventory_observation_id",
+        "inventory_observation_sha256",
+    }:
+        raise ValueError("SEC reconciliation checkpoint has an invalid shape")
+    if checkpoint["year"] != year or checkpoint["quarter"] != quarter:
+        raise ValueError("SEC reconciliation checkpoint does not match its quarter")
+    observation_id = checkpoint["inventory_observation_id"]
+    digest = checkpoint["inventory_observation_sha256"]
+    if (
+        isinstance(observation_id, bool)
+        or not isinstance(observation_id, int)
+        or observation_id <= 0
+        or not isinstance(digest, str)
+        or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+    ):
+        raise ValueError("SEC reconciliation checkpoint has invalid inventory identity")
+    return dict(checkpoint)
+
+
+def _filings_by_accession(
+    filings: tuple[SecIndexFiling, ...],
+) -> dict[str, SecIndexFiling]:
+    indexed: dict[str, SecIndexFiling] = {}
+    for filing in filings:
+        if filing.accession in indexed:
+            raise ValueError("SEC form index contains a duplicate accession")
+        indexed[filing.accession] = filing
+    return indexed
+
+
+def _filing_comparison(filing: SecIndexFiling, quarter: str) -> dict[str, Any]:
+    return {
+        "form": filing.form,
+        "company_name": filing.company_name,
+        "cik": filing.cik,
+        "filing_date": filing.filing_date.isoformat(),
+        "archive_filename": filing.archive_filename,
+        "accession": filing.accession,
+        "quarter": quarter,
+    }
+
+
+def _stored_comparison(metadata: Mapping[str, Any]) -> dict[str, Any]:
+    return {field: metadata.get(field) for field in _FILING_COMPARISON_FIELDS}
+
+
+def _quarterly_filing_outcome_key(accession: str, inventory_sha256: str) -> str:
+    return f"quarterly-filing:{accession}:{inventory_sha256}"
+
+
+def _checked_outcome(*, action: str, filing, inventory) -> dict[str, Any]:
+    return {
+        "action": action,
+        "source_item_id": filing.source_item_id,
+        "source_observation_id": filing.source_observation_id,
+        "observation_sha256": filing.observation_sha256,
+        "inventory_source_item_id": inventory.item.source_item_id,
+        "inventory_observation_id": inventory.observation.source_observation_id,
+        "inventory_observation_sha256": (
+            inventory.observation.observation_sha256
+        ),
+        "inventory_artifact_sha256": inventory.observation.artifact_sha256,
+    }
 
 
 def _iso_date(name: str, value: Any) -> date:
