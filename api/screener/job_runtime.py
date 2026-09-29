@@ -47,6 +47,10 @@ class JobContext:
     _lease: LeaseToken = field(repr=False)
     _clock: Clock = field(repr=False)
 
+    @property
+    def lease(self) -> LeaseToken:
+        return self._lease
+
     def save_checkpoint(self, checkpoint: Mapping[str, Any]) -> DurableJobRecord:
         return self._repository.save_checkpoint(
             self._lease,

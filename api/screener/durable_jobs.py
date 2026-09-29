@@ -164,52 +164,115 @@ class DurableJobRepository:
             "deadline_at": deadline,
         }
         with self.engine.begin() as connection:
-            occurrence_id = connection.scalar(
-                insert(job_schedule_occurrence)
-                .values(schedule_key=schedule, scheduled_for=scheduled)
-                .on_conflict_do_nothing(
-                    constraint="uq_job_schedule_occurrence_identity"
-                )
-                .returning(job_schedule_occurrence.c.occurrence_id)
+            row = self._enqueue_on_connection(
+                connection,
+                schedule_key=schedule,
+                scheduled_for=scheduled,
+                immutable=immutable,
             )
-            if occurrence_id is None:
-                occurrence_id = connection.scalar(
-                    select(job_schedule_occurrence.c.occurrence_id).where(
-                        job_schedule_occurrence.c.schedule_key == schedule,
-                        job_schedule_occurrence.c.scheduled_for == scheduled,
-                    )
-                )
-            statement = (
-                insert(durable_job)
-                .values(
-                    occurrence_id=occurrence_id,
-                    **immutable,
-                    status="pending",
-                    attempts=0,
-                    next_retry_at=None,
-                    owner=None,
-                    lease_expires_at=None,
-                    ownership_generation=0,
-                    heartbeat_at=None,
-                    checkpoint=None,
-                    error_summary=None,
-                    finished_at=None,
-                )
-                .on_conflict_do_nothing(constraint="uq_durable_job_occurrence")
-                .returning(*durable_job.c)
-            )
-            row = connection.execute(statement).mappings().one_or_none()
-            if row is None:
-                row = connection.execute(
-                    select(durable_job).where(
-                        durable_job.c.occurrence_id == occurrence_id
-                    )
-                ).mappings().one()
-                if any(row[field] != value for field, value in immutable.items()):
-                    raise JobIdentityConflict(
-                        "schedule occurrence already identifies different job content"
-                    )
         return _job_record(row)
+
+    def enqueue_child(
+        self,
+        lease: LeaseToken,
+        *,
+        child_key: str,
+        scheduled_for: datetime,
+        kind: str,
+        parameters: Mapping[str, Any],
+        due_at: datetime,
+        priority: int = 0,
+        max_attempts: int = 3,
+        deadline_at: datetime | None = None,
+        now: datetime | None = None,
+    ) -> DurableJobRecord:
+        schedule = _required_text("child key", child_key)
+        scheduled = _utc_datetime("scheduled_for", scheduled_for)
+        job_kind = _required_text("job kind", kind)
+        job_parameters = _json_object("parameters", parameters)
+        due = _utc_datetime("due_at", due_at)
+        deadline = (
+            _utc_datetime("deadline_at", deadline_at)
+            if deadline_at is not None
+            else None
+        )
+        job_priority = _integer("priority", priority)
+        attempt_limit = _positive_integer("max_attempts", max_attempts)
+        if deadline is not None and deadline <= due:
+            raise ValueError("deadline_at must be after due_at")
+        current = _utc_datetime("now", now or datetime.now(timezone.utc))
+        immutable = {
+            "kind": job_kind,
+            "parameters": job_parameters,
+            "priority": job_priority,
+            "due_at": due,
+            "max_attempts": attempt_limit,
+            "deadline_at": deadline,
+        }
+        with self.engine.begin() as connection:
+            self._lock_live_lease(connection, lease, current)
+            row = self._enqueue_on_connection(
+                connection,
+                schedule_key=schedule,
+                scheduled_for=scheduled,
+                immutable=immutable,
+            )
+        return _job_record(row)
+
+    @staticmethod
+    def _enqueue_on_connection(
+        connection: Connection,
+        *,
+        schedule_key: str,
+        scheduled_for: datetime,
+        immutable: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        occurrence_id = connection.scalar(
+            insert(job_schedule_occurrence)
+            .values(schedule_key=schedule_key, scheduled_for=scheduled_for)
+            .on_conflict_do_nothing(
+                constraint="uq_job_schedule_occurrence_identity"
+            )
+            .returning(job_schedule_occurrence.c.occurrence_id)
+        )
+        if occurrence_id is None:
+            occurrence_id = connection.scalar(
+                select(job_schedule_occurrence.c.occurrence_id).where(
+                    job_schedule_occurrence.c.schedule_key == schedule_key,
+                    job_schedule_occurrence.c.scheduled_for == scheduled_for,
+                )
+            )
+        statement = (
+            insert(durable_job)
+            .values(
+                occurrence_id=occurrence_id,
+                **immutable,
+                status="pending",
+                attempts=0,
+                next_retry_at=None,
+                owner=None,
+                lease_expires_at=None,
+                ownership_generation=0,
+                heartbeat_at=None,
+                checkpoint=None,
+                error_summary=None,
+                finished_at=None,
+            )
+            .on_conflict_do_nothing(constraint="uq_durable_job_occurrence")
+            .returning(*durable_job.c)
+        )
+        row = connection.execute(statement).mappings().one_or_none()
+        if row is None:
+            row = connection.execute(
+                select(durable_job).where(
+                    durable_job.c.occurrence_id == occurrence_id
+                )
+            ).mappings().one()
+            if any(row[field] != value for field, value in immutable.items()):
+                raise JobIdentityConflict(
+                    "schedule occurrence already identifies different job content"
+                )
+        return row
 
     def claim_next(
         self,

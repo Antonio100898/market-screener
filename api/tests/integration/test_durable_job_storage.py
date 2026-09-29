@@ -143,6 +143,42 @@ def test_claim_prefers_priority_then_due_time_then_stable_identity(repository):
     assert claimed_first.job.ownership_generation == 1
 
 
+def test_live_parent_lease_guards_stable_child_enqueue(repository):
+    _enqueue(repository, "parent", kind="sec-recent-discovery", priority=30)
+    parent = _claim(repository)
+    values = {
+        "child_key": "sec-resource-fetch:0000001234:accession:observation",
+        "scheduled_for": NOW - timedelta(days=1),
+        "kind": "sec-resource-fetch",
+        "parameters": {
+            "accession": "0000001234-26-000001",
+            "observation_id": 7,
+        },
+        "due_at": NOW - timedelta(days=1),
+        "priority": parent.job.priority,
+        "now": NOW,
+    }
+
+    first = repository.enqueue_child(parent.lease, **values)
+    second = repository.enqueue_child(parent.lease, **values)
+
+    assert first.job_id == second.job_id
+    assert first.priority == parent.job.priority
+    with pytest.raises(LeaseLost):
+        repository.enqueue_child(
+            parent.lease,
+            **{
+                **values,
+                "child_key": "sec-resource-fetch:late",
+                "now": NOW + LEASE,
+            },
+        )
+    with repository.engine.connect() as connection:
+        assert connection.scalar(
+            select(func.count()).select_from(durable_job)
+        ) == 2
+
+
 def test_two_workers_cannot_claim_the_same_job(repository):
     stored = _enqueue(repository, "single-claim")
     barrier = Barrier(2)

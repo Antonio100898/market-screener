@@ -5,6 +5,7 @@ import json
 import os
 import threading
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
@@ -26,6 +27,15 @@ class UnknownTickerError(EdgarError):
 class NoXbrlDataError(EdgarError):
     """Filer exists in EDGAR but has never submitted structured XBRL data.
     Common for ADR shells and pre-2009 registrants; not an outage."""
+
+
+@dataclass(frozen=True)
+class EdgarTransportResult:
+    data: bytes
+    url: str
+    media_type: str | None
+    etag: str | None
+    last_modified: str | None
 
 
 class EdgarClient:
@@ -65,6 +75,17 @@ class EdgarClient:
         """The filer's filing history header — the only source for how long the
         company has been an SEC filer at all, which XBRL facts cannot show."""
         return self._get(f"https://data.sec.gov/submissions/CIK{cik}.json")
+
+    def fetch(self, url: str) -> EdgarTransportResult:
+        """Fetch exact response bytes and source metadata through the SEC limiter."""
+        response = self._request(url)
+        return EdgarTransportResult(
+            data=bytes(response.content),
+            url=str(response.url),
+            media_type=response.headers.get("content-type"),
+            etag=response.headers.get("etag"),
+            last_modified=response.headers.get("last-modified"),
+        )
 
     def _cached(self, key: str, url: str) -> dict:
         # Filings are immutable once filed; a day-long TTL is the main performance lever.
