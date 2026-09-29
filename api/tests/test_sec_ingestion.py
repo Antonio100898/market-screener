@@ -1,3 +1,5 @@
+import hashlib
+import json
 from datetime import date, datetime, timezone
 from types import SimpleNamespace
 import threading
@@ -6,13 +8,15 @@ import httpx
 import pytest
 
 from screener.artifacts import EvidenceArtifact
-from screener.durable_jobs import DurableJobRecord, LeaseToken
+from screener.durable_jobs import DurableJobRecord, LeaseLost, LeaseToken
 from screener.job_runtime import JobContext
 from screener.object_store import VerifiedObject
 from screener.sec_ingestion import (
     SecDiscoveryStopped,
     SecQuarterlyReconciliationHandler,
     SecRecentDiscoveryHandler,
+    SecResourceFetchHandler,
+    SecResourcePending,
     parse_form_index,
 )
 from screener.source_observations import SourceItemIdentityConflict
@@ -828,3 +832,846 @@ def test_quarterly_retry_keeps_child_identity_and_waits_to_checkpoint():
     handler(second)
     assert jobs.children[0]["child_key"] == failed_child_key
     assert len(second_repository.checkpoints) == 1
+
+
+ROOT_ACCESSION = "0000001234-26-000001"
+ROOT_CIK = "0000001234"
+ROOT_FORM = "10-K"
+ROOT_FILENAME = "edgar/data/1234/0000001234-26-000001.txt"
+ROOT_PARAMETERS = {
+    "accession": ROOT_ACCESSION,
+    "cik": ROOT_CIK,
+    "form": ROOT_FORM,
+    "filename": ROOT_FILENAME,
+    "observation_id": 42,
+}
+
+
+def _root_parent(**overrides):
+    metadata = {
+        "accession": ROOT_ACCESSION,
+        "cik": ROOT_CIK,
+        "form": ROOT_FORM,
+        "archive_filename": ROOT_FILENAME,
+        "filing_date": "2026-09-28",
+    }
+    metadata.update(overrides.pop("metadata", {}))
+    item_values = {
+        "source_item_id": 41,
+        "source_system": "SEC",
+        "item_kind": "filing",
+        "source_key": ROOT_ACCESSION,
+        "issuer_source_identifier": ROOT_CIK,
+        "parent_source_item_id": None,
+    }
+    item_values.update(overrides.pop("item", {}))
+    observation_values = {
+        "source_observation_id": 42,
+        "observation_sha256": "f" * 64,
+        "state": "present",
+        "canonical_metadata": metadata,
+    }
+    observation_values.update(overrides.pop("observation", {}))
+    assert not overrides
+    return SimpleNamespace(
+        item=SimpleNamespace(**item_values),
+        observation=SimpleNamespace(**observation_values),
+    )
+
+
+def _root_urls():
+    return {
+        "complete_submission": (
+            "https://www.sec.gov/Archives/"
+            "edgar/data/1234/0000001234-26-000001.txt"
+        ),
+        "accession_inventory": (
+            "https://www.sec.gov/Archives/edgar/data/1234/"
+            "000000123426000001/index.json"
+        ),
+        "submissions": (
+            "https://data.sec.gov/submissions/CIK0000001234.json"
+        ),
+        "company_facts": (
+            "https://data.sec.gov/api/xbrl/companyfacts/"
+            "CIK0000001234.json"
+        ),
+    }
+
+
+def _root_payloads(*, fact_value=1):
+    return {
+        "complete_submission": b"<SEC-DOCUMENT>exact filing bytes</SEC-DOCUMENT>",
+        "accession_inventory": json.dumps(
+            {
+                "directory": {
+                    "name": (
+                        "/Archives/edgar/data/1234/000000123426000001"
+                    ),
+                    "item": [{"name": "annual.htm"}],
+                }
+            }
+        ).encode(),
+        "submissions": json.dumps(
+            {
+                "cik": "1234",
+                "filings": {
+                    "recent": {
+                        "accessionNumber": [ROOT_ACCESSION],
+                        "form": [ROOT_FORM],
+                    }
+                },
+            }
+        ).encode(),
+        "company_facts": json.dumps(
+            {
+                "cik": 1234,
+                "facts": {
+                    "us-gaap": {
+                        "Assets": {
+                            "units": {
+                                "USD": [
+                                    {
+                                        "accn": ROOT_ACCESSION,
+                                        "form": ROOT_FORM,
+                                        "val": fact_value,
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        ).encode(),
+    }
+
+
+def _root_responses(*, fact_value=1):
+    payloads = _root_payloads(fact_value=fact_value)
+    media_types = {
+        "complete_submission": "text/plain",
+        "accession_inventory": "application/json",
+        "submissions": "application/json; charset=utf-8",
+        "company_facts": "application/json",
+    }
+    return {
+        url: EdgarTransportResult(
+            payloads[role],
+            url,
+            media_types[role],
+            f'"{role}-{fact_value if role == "company_facts" else 1}"',
+            "Tue, 29 Sep 2026 12:00:00 GMT",
+        )
+        for role, url in _root_urls().items()
+    }
+
+
+class RootObjectStore:
+    def __init__(self):
+        self.puts = []
+
+    def put_verified(self, data, media_type):
+        digest = hashlib.sha256(data).hexdigest()
+        self.puts.append((bytes(data), media_type, digest))
+        return VerifiedObject(
+            digest,
+            f"raw/sha256/{digest}",
+            len(data),
+            NOW,
+        )
+
+
+class RootArtifacts:
+    def __init__(self):
+        self.calls = []
+
+    def add_verified(self, verified, media_type):
+        self.calls.append((verified, media_type))
+        return EvidenceArtifact(
+            verified.content_sha256,
+            verified.object_key,
+            verified.byte_size,
+            media_type,
+            NOW,
+            NOW,
+        )
+
+
+class RootObservations:
+    def __init__(self, parent=None, parent_error=None):
+        self.parent = parent or _root_parent()
+        self.parent_error = parent_error
+        self.parent_ids = []
+        self.calls = []
+        self.item_ids = {}
+        self.observation_ids = {}
+
+    def latest_sec_filing(self, observation_id):
+        self.parent_ids.append(observation_id)
+        if self.parent_error is not None:
+            raise self.parent_error
+        return self.parent
+
+    def record(self, lease, **values):
+        assert lease == LeaseToken(1, "worker", 1)
+        self.calls.append(values)
+        item = values["item"]
+        item_key = (
+            item.source_system,
+            item.item_kind,
+            item.source_key,
+            item.issuer_source_identifier,
+            item.parent_source_item_id,
+        )
+        item_id = self.item_ids.setdefault(item_key, 100 + len(self.item_ids))
+        observation_key = (
+            item_key,
+            values["state"],
+            values.get("artifact_sha256"),
+            values["source_url"],
+            values.get("etag"),
+            values.get("last_modified"),
+            json.dumps(values["metadata"], sort_keys=True),
+        )
+        if observation_key not in self.observation_ids:
+            digest = hashlib.sha256(repr(observation_key).encode()).hexdigest()
+            self.observation_ids[observation_key] = (
+                200 + len(self.observation_ids),
+                digest,
+            )
+        observation_id, digest = self.observation_ids[observation_key]
+        return SimpleNamespace(
+            item=SimpleNamespace(source_item_id=item_id),
+            observation=SimpleNamespace(
+                source_observation_id=observation_id,
+                observation_sha256=digest,
+            ),
+        )
+
+
+def _root_handler(edgar, *, observations=None, object_store=None, artifacts=None):
+    observations = observations or RootObservations()
+    object_store = object_store or RootObjectStore()
+    artifacts = artifacts or RootArtifacts()
+    return (
+        SecResourceFetchHandler(
+            edgar=edgar,
+            object_store=object_store,
+            artifacts=artifacts,
+            observations=observations,
+            clock=lambda: NOW,
+        ),
+        observations,
+        object_store,
+        artifacts,
+    )
+
+
+def _root_context(*, parameters=None, stopping=None, checkpoint=None):
+    events = []
+    context, repository = _context(
+        ROOT_PARAMETERS if parameters is None else parameters,
+        events,
+        stopping=stopping,
+        checkpoint=checkpoint,
+        kind="sec-resource-fetch",
+    )
+    return context, repository, events
+
+
+def test_resource_fetch_uses_exact_urls_roles_parentage_and_transport_metadata():
+    urls = _root_urls()
+    responses = _root_responses()
+    submission = responses[urls["complete_submission"]]
+    final_submission_url = "https://www.sec.gov/Archives/final-submission.txt"
+    responses[urls["complete_submission"]] = EdgarTransportResult(
+        submission.data,
+        final_submission_url,
+        submission.media_type,
+        submission.etag,
+        submission.last_modified,
+    )
+    edgar = FakeEdgar(responses)
+    handler, observations, object_store, artifacts = _root_handler(edgar)
+    context, repository, events = _root_context()
+
+    checkpoint = handler(context)
+
+    assert edgar.urls == list(urls.values())
+    assert [call["metadata"]["role"] for call in observations.calls] == list(urls)
+    assert [call["item"].item_kind for call in observations.calls] == [
+        "resource",
+        "resource",
+        "aggregate",
+        "aggregate",
+    ]
+    assert [call["item"].source_key for call in observations.calls] == [
+        f"{ROOT_ACCESSION}/complete-submission",
+        f"{ROOT_ACCESSION}/index",
+        f"submissions/{ROOT_CIK}",
+        f"companyfacts/{ROOT_CIK}",
+    ]
+    assert [call["item"].parent_source_item_id for call in observations.calls] == [
+        41,
+        41,
+        None,
+        None,
+    ]
+    assert all(call["item"].issuer_source_identifier == ROOT_CIK for call in observations.calls)
+    assert all(
+        call["metadata"]["parent_source_item_id"] == 41
+        for call in observations.calls[:2]
+    )
+    assert all(
+        call["metadata"]["parent_observation_id"] == 42
+        for call in observations.calls[:2]
+    )
+    assert [call["metadata"] for call in observations.calls[2:]] == [
+        {"role": "submissions", "cik": ROOT_CIK},
+        {"role": "company_facts", "cik": ROOT_CIK},
+    ]
+    assert [call["source_url"] for call in observations.calls] == [
+        final_submission_url,
+        *list(urls.values())[1:],
+    ]
+    assert all(call["etag"] and call["last_modified"] for call in observations.calls)
+    assert [media_type for _verified, media_type in artifacts.calls] == [
+        "text/plain",
+        "application/json",
+        "application/json; charset=utf-8",
+        "application/json",
+    ]
+    assert [data for data, _media_type, _digest in object_store.puts] == list(
+        _root_payloads().values()
+    )
+    assert set(checkpoint["roots"]) == set(urls)
+    assert repository.checkpoints == [checkpoint]
+    assert events[-1] == ("checkpoint", checkpoint)
+
+
+def test_issuer_aggregate_revision_is_reused_across_filing_jobs():
+    second_accession = "0000001234-26-000002"
+    second_filename = "edgar/data/1234/0000001234-26-000002.txt"
+    aggregate_payloads = {
+        "submissions": json.dumps(
+            {
+                "cik": "1234",
+                "filings": {
+                    "recent": {
+                        "accessionNumber": [ROOT_ACCESSION, second_accession],
+                        "form": [ROOT_FORM, ROOT_FORM],
+                    }
+                },
+            }
+        ).encode(),
+        "company_facts": json.dumps(
+            {
+                "cik": 1234,
+                "facts": {
+                    "us-gaap": {
+                        "Assets": {
+                            "units": {
+                                "USD": [
+                                    {"accn": ROOT_ACCESSION, "form": ROOT_FORM},
+                                    {"accn": second_accession, "form": ROOT_FORM},
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        ).encode(),
+    }
+
+    def responses(accession, filename):
+        urls = {
+            "complete_submission": f"https://www.sec.gov/Archives/{filename}",
+            "accession_inventory": (
+                "https://www.sec.gov/Archives/edgar/data/1234/"
+                f"{accession.replace('-', '')}/index.json"
+            ),
+            **{
+                role: _root_urls()[role]
+                for role in ("submissions", "company_facts")
+            },
+        }
+        payloads = {
+            "complete_submission": f"filing:{accession}".encode(),
+            "accession_inventory": json.dumps(
+                {
+                    "directory": {
+                        "name": (
+                            "/Archives/edgar/data/1234/"
+                            f"{accession.replace('-', '')}"
+                        ),
+                        "item": [{"name": "annual.htm"}],
+                    }
+                }
+            ).encode(),
+            **aggregate_payloads,
+        }
+        return {
+            url: EdgarTransportResult(
+                payloads[role],
+                url,
+                "application/json",
+                f'"{role}"',
+                None,
+            )
+            for role, url in urls.items()
+        }
+
+    observations = RootObservations()
+    first_handler, _, _, _ = _root_handler(
+        FakeEdgar(responses(ROOT_ACCESSION, ROOT_FILENAME)),
+        observations=observations,
+    )
+    first_context, _repository, _events = _root_context()
+    first_handler(first_context)
+
+    observations.parent = _root_parent(
+        item={"source_item_id": 51, "source_key": second_accession},
+        observation={
+            "source_observation_id": 52,
+            "observation_sha256": "e" * 64,
+        },
+        metadata={
+            "accession": second_accession,
+            "archive_filename": second_filename,
+        },
+    )
+    second_handler, _, _, _ = _root_handler(
+        FakeEdgar(responses(second_accession, second_filename)),
+        observations=observations,
+    )
+    second_context, _repository, _events = _root_context(
+        parameters={
+            **ROOT_PARAMETERS,
+            "accession": second_accession,
+            "filename": second_filename,
+            "observation_id": 52,
+        }
+    )
+    second_handler(second_context)
+
+    assert len(observations.item_ids) == 6
+    assert len(observations.observation_ids) == 6
+    aggregate_calls = [
+        call for call in observations.calls if call["item"].item_kind == "aggregate"
+    ]
+    assert [call["metadata"] for call in aggregate_calls] == [
+        {"role": "submissions", "cik": ROOT_CIK},
+        {"role": "company_facts", "cik": ROOT_CIK},
+    ] * 2
+
+
+def test_historical_submissions_shard_can_cover_accession_absent_from_recent():
+    urls = _root_urls()
+    responses = _root_responses()
+    historical = json.dumps(
+        {
+            "cik": "1234",
+            "filings": {
+                "recent": {
+                    "accessionNumber": ["0000001234-26-999999"],
+                    "form": [ROOT_FORM],
+                },
+                "files": [
+                    {
+                        "name": "CIK0000001234-submissions-001.json",
+                        "filingCount": 1000,
+                        "filingFrom": "2020-01-01",
+                        "filingTo": "2026-09-28",
+                    }
+                ],
+            },
+        }
+    ).encode()
+    current = responses[urls["submissions"]]
+    responses[urls["submissions"]] = EdgarTransportResult(
+        historical,
+        current.url,
+        current.media_type,
+        current.etag,
+        current.last_modified,
+    )
+    handler, _observations, _objects, _artifacts = _root_handler(
+        FakeEdgar(responses)
+    )
+    context, repository, _events = _root_context()
+
+    checkpoint = handler(context)
+
+    assert "submissions" in checkpoint["roots"]
+    assert repository.checkpoints == [checkpoint]
+
+
+def test_historical_submissions_rejects_two_covering_shards():
+    urls = _root_urls()
+    responses = _root_responses()
+    ambiguous = json.dumps(
+        {
+            "cik": "1234",
+            "filings": {
+                "recent": {"accessionNumber": [], "form": []},
+                "files": [
+                    {
+                        "name": f"CIK{ROOT_CIK}-submissions-001.json",
+                        "filingCount": 1000,
+                        "filingFrom": "2020-01-01",
+                        "filingTo": "2026-09-28",
+                    },
+                    {
+                        "name": f"CIK{ROOT_CIK}-submissions-002.json",
+                        "filingCount": 1000,
+                        "filingFrom": "2026-09-28",
+                        "filingTo": "2026-09-29",
+                    },
+                ],
+            },
+        }
+    ).encode()
+    current = responses[urls["submissions"]]
+    responses[urls["submissions"]] = EdgarTransportResult(
+        ambiguous,
+        current.url,
+        current.media_type,
+        current.etag,
+        current.last_modified,
+    )
+    handler, observations, _objects, _artifacts = _root_handler(
+        FakeEdgar(responses)
+    )
+    context, repository, _events = _root_context()
+
+    with pytest.raises(ValueError, match="historical ranges are ambiguous"):
+        handler(context)
+
+    submissions = [
+        call
+        for call in observations.calls
+        if call["metadata"]["role"] == "submissions"
+    ]
+    assert len(submissions) == 1
+    assert submissions[0]["state"] == "present"
+    assert repository.checkpoints == []
+
+
+@pytest.mark.parametrize(
+    ("parameters", "message"),
+    [
+        ({}, "requires only"),
+        ({**ROOT_PARAMETERS, "extra": True}, "requires only"),
+        ({**ROOT_PARAMETERS, "accession": "bad"}, "accession format"),
+        ({**ROOT_PARAMETERS, "cik": "1234"}, "zero-padded"),
+        ({**ROOT_PARAMETERS, "cik": "0000000000"}, "positive"),
+        ({**ROOT_PARAMETERS, "form": "8-K"}, "supported"),
+        ({**ROOT_PARAMETERS, "form": "10-K-WRONG"}, "supported"),
+        ({**ROOT_PARAMETERS, "filename": "edgar/data/1234/wrong.txt"}, "match"),
+        ({**ROOT_PARAMETERS, "observation_id": True}, "positive integer"),
+        ({**ROOT_PARAMETERS, "observation_id": 0}, "positive integer"),
+    ],
+)
+def test_resource_fetch_validates_all_parameters_before_parent_or_io(parameters, message):
+    observations = RootObservations()
+    object_store = RootObjectStore()
+    edgar = FakeEdgar({})
+    handler, _, _, _ = _root_handler(
+        edgar,
+        observations=observations,
+        object_store=object_store,
+    )
+    context, repository, _events = _root_context(parameters=parameters)
+
+    with pytest.raises(ValueError, match=message):
+        handler(context)
+
+    assert observations.parent_ids == []
+    assert observations.calls == []
+    assert edgar.urls == []
+    assert object_store.puts == []
+    assert repository.checkpoints == []
+
+
+@pytest.mark.parametrize(
+    ("observations", "message"),
+    [
+        (RootObservations(parent_error=ValueError("does not exist")), "does not exist"),
+        (RootObservations(parent_error=ValueError("not latest")), "not latest"),
+        (
+            RootObservations(
+                parent=_root_parent(observation={"state": "removed"})
+            ),
+            "not present",
+        ),
+        (
+            RootObservations(
+                parent=_root_parent(observation={"state": "unavailable"})
+            ),
+            "not present",
+        ),
+        (
+            RootObservations(
+                parent=_root_parent(item={"issuer_source_identifier": "0000009999"})
+            ),
+            "does not match",
+        ),
+        (
+            RootObservations(
+                parent=_root_parent(metadata={"form": "10-Q"})
+            ),
+            "does not match",
+        ),
+    ],
+)
+def test_resource_fetch_rejects_missing_stale_changed_or_nonpresent_parent_before_io(
+    observations, message
+):
+    edgar = FakeEdgar({})
+    object_store = RootObjectStore()
+    handler, _, _, _ = _root_handler(
+        edgar,
+        observations=observations,
+        object_store=object_store,
+    )
+    context, repository, _events = _root_context()
+
+    with pytest.raises(ValueError, match=message):
+        handler(context)
+
+    assert edgar.urls == []
+    assert object_store.puts == []
+    assert observations.calls == []
+    assert repository.checkpoints == []
+
+
+@pytest.mark.parametrize("missing_role", list(_root_urls()))
+def test_resource_fetch_404_records_pending_and_remains_retryable(missing_role):
+    urls = _root_urls()
+    responses = _root_responses()
+    responses[urls[missing_role]] = NoXbrlDataError("not found")
+    edgar = FakeEdgar(responses)
+    handler, observations, object_store, _artifacts = _root_handler(edgar)
+    context, repository, _events = _root_context()
+
+    with pytest.raises(SecResourcePending, match=missing_role):
+        handler(context)
+
+    pending = [call for call in observations.calls if call["state"] == "pending"]
+    assert len(pending) == 1
+    assert pending[0]["metadata"]["role"] == missing_role
+    assert pending[0]["metadata"]["reason"] == "not_found"
+    assert len(object_store.puts) == list(urls).index(missing_role)
+    assert repository.checkpoints == []
+
+
+def test_resource_fetch_transient_failure_records_no_invented_state():
+    urls = _root_urls()
+    responses = _root_responses()
+    responses[urls["submissions"]] = EdgarError("timeout")
+    edgar = FakeEdgar(responses)
+    handler, observations, _object_store, _artifacts = _root_handler(edgar)
+    context, repository, _events = _root_context()
+
+    with pytest.raises(EdgarError, match="timeout"):
+        handler(context)
+
+    assert [call["metadata"]["role"] for call in observations.calls] == [
+        "complete_submission",
+        "accession_inventory",
+    ]
+    assert all(call["state"] == "present" for call in observations.calls)
+    assert repository.checkpoints == []
+
+
+@pytest.mark.parametrize(
+    ("role", "payload", "error", "pending"),
+    [
+        ("accession_inventory", b"{", "valid UTF-8 JSON", False),
+        (
+            "accession_inventory",
+            json.dumps({"directory": {"name": "/wrong", "item": [{"name": "x"}]}}).encode(),
+            "another accession",
+            False,
+        ),
+        (
+            "submissions",
+            json.dumps(
+                {
+                    "cik": "9999",
+                    "filings": {
+                        "recent": {"accessionNumber": [], "form": []},
+                        "files": [],
+                    },
+                }
+            ).encode(),
+            "another issuer",
+            False,
+        ),
+        (
+            "submissions",
+            json.dumps(
+                {
+                    "cik": "1234",
+                    "filings": {
+                        "recent": {"accessionNumber": [], "form": []},
+                        "files": [],
+                    },
+                }
+            ).encode(),
+            "does not yet identify",
+            True,
+        ),
+        (
+            "company_facts",
+            json.dumps({"cik": 1234, "facts": {"us-gaap": []}}).encode(),
+            "malformed taxonomy",
+            False,
+        ),
+        (
+            "company_facts",
+            json.dumps({"cik": 1234, "facts": {}}).encode(),
+            "does not yet identify",
+            True,
+        ),
+    ],
+)
+def test_resource_fetch_retains_json_revision_but_never_checkpoints_invalid_graph(
+    role, payload, error, pending
+):
+    urls = _root_urls()
+    responses = _root_responses()
+    prior = responses[urls[role]]
+    responses[urls[role]] = EdgarTransportResult(
+        payload,
+        prior.url,
+        prior.media_type,
+        prior.etag,
+        prior.last_modified,
+    )
+    handler, observations, object_store, _artifacts = _root_handler(
+        FakeEdgar(responses)
+    )
+    context, repository, _events = _root_context()
+
+    expected_error = SecResourcePending if pending else ValueError
+    with pytest.raises(expected_error, match=error):
+        handler(context)
+
+    calls = [call for call in observations.calls if call["metadata"]["role"] == role]
+    assert calls[0]["state"] == "present"
+    assert calls[0]["artifact_sha256"] == hashlib.sha256(payload).hexdigest()
+    assert all(call["state"] == "present" for call in calls)
+    if pending:
+        assert repository.outcomes[-1]["status"] == "failed"
+        assert repository.outcomes[-1]["outcome"]["state"] == "pending"
+    assert any(data == payload for data, _media, _digest in object_store.puts)
+    assert repository.checkpoints == []
+
+
+def test_resource_fetch_duplicate_replay_and_aggregate_revision_are_immutable():
+    observations = RootObservations()
+    object_store = RootObjectStore()
+    artifacts = RootArtifacts()
+    first_handler, _, _, _ = _root_handler(
+        FakeEdgar(_root_responses()),
+        observations=observations,
+        object_store=object_store,
+        artifacts=artifacts,
+    )
+    first_context, _first_repository, _events = _root_context()
+    first = first_handler(first_context)
+
+    replay_context, _replay_repository, _events = _root_context()
+    replay = first_handler(replay_context)
+    assert replay == first
+    assert len(observations.item_ids) == 4
+    assert len(observations.observation_ids) == 4
+
+    changed_handler, _, _, _ = _root_handler(
+        FakeEdgar(_root_responses(fact_value=2)),
+        observations=observations,
+        object_store=object_store,
+        artifacts=artifacts,
+    )
+    changed_context, _changed_repository, _events = _root_context()
+    changed = changed_handler(changed_context)
+
+    assert changed["roots"]["company_facts"] != first["roots"]["company_facts"]
+    assert {
+        role: digest
+        for role, digest in changed["roots"].items()
+        if role != "company_facts"
+    } == {
+        role: digest
+        for role, digest in first["roots"].items()
+        if role != "company_facts"
+    }
+    assert len(observations.item_ids) == 4
+    assert len(observations.observation_ids) == 5
+
+
+def test_resource_fetch_checks_stop_before_each_new_fetch():
+    stopping = threading.Event()
+
+    class StopAfterFirst(FakeEdgar):
+        def fetch(self, url):
+            result = super().fetch(url)
+            stopping.set()
+            return result
+
+    edgar = StopAfterFirst(_root_responses())
+    handler, observations, _object_store, _artifacts = _root_handler(edgar)
+    context, repository, _events = _root_context(stopping=stopping)
+
+    with pytest.raises(SecDiscoveryStopped, match="next resource"):
+        handler(context)
+
+    assert edgar.urls == [_root_urls()["complete_submission"]]
+    assert len(observations.calls) == 1
+    assert repository.checkpoints == []
+
+
+def test_resource_fetch_expired_lease_leaves_verified_orphan_only():
+    class ExpiredObservations(RootObservations):
+        def record(self, lease, **values):
+            raise LeaseLost("expired")
+
+    observations = ExpiredObservations()
+    object_store = RootObjectStore()
+    artifacts = RootArtifacts()
+    handler, _, _, _ = _root_handler(
+        FakeEdgar(_root_responses()),
+        observations=observations,
+        object_store=object_store,
+        artifacts=artifacts,
+    )
+    context, repository, _events = _root_context()
+
+    with pytest.raises(LeaseLost, match="expired"):
+        handler(context)
+
+    assert len(object_store.puts) == 1
+    assert len(artifacts.calls) == 1
+    assert observations.calls == []
+    assert repository.checkpoints == []
+
+
+def test_resource_fetch_completed_checkpoint_does_no_parent_or_io_work():
+    handler, observations, object_store, _artifacts = _root_handler(FakeEdgar({}))
+    roots = {
+        role: f"{index}" * 64
+        for index, role in enumerate(_root_urls(), start=1)
+    }
+    checkpoint = {
+        "accession": ROOT_ACCESSION,
+        "cik": ROOT_CIK,
+        "filing_observation_id": 42,
+        "roots": roots,
+    }
+    context, repository, _events = _root_context(checkpoint=checkpoint)
+
+    assert handler(context) == checkpoint
+    assert observations.parent_ids == []
+    assert object_store.puts == []
+    assert repository.checkpoints == []

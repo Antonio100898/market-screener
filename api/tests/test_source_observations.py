@@ -102,6 +102,14 @@ def test_state_and_evidence_rules_validate_before_sql():
         _record(state="present", artifact_sha256="A" * 64)
 
 
+@pytest.mark.parametrize("observation_id", [0, -1, True, "1"])
+def test_latest_sec_filing_validates_observation_id_before_sql(observation_id):
+    repository = SourceObservationRepository(NoDatabaseEngine())
+
+    with pytest.raises(ValueError, match="positive integer"):
+        repository.latest_sec_filing(observation_id)
+
+
 def test_canonical_hash_is_stable_for_equivalent_input():
     first = observation_sha256(
         state="present",

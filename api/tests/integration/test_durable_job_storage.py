@@ -321,6 +321,103 @@ def test_deadline_prevents_a_retry_beyond_it(repository):
     assert terminal.next_retry_at is None
 
 
+def test_deferred_source_delivery_does_not_spend_error_attempts(repository):
+    stored = _enqueue(repository, "pending-source", max_attempts=2)
+    current = NOW
+    delays = []
+
+    for index in range(9):
+        claimed = _claim(repository, owner=f"pending-{index}", now=current)
+        assert claimed.job.job_id == stored.job_id
+        deferred = repository.defer(
+            claimed.lease,
+            reason="source has not disseminated the resource",
+            now=current,
+        )
+        assert deferred.status == "retry_wait"
+        assert deferred.attempts == 0
+        delays.append(deferred.next_retry_at - current)
+        current = deferred.next_retry_at
+
+    assert delays == [
+        timedelta(seconds=30),
+        timedelta(minutes=1),
+        timedelta(minutes=2),
+        timedelta(minutes=4),
+        timedelta(minutes=8),
+        timedelta(minutes=16),
+        timedelta(minutes=32),
+        timedelta(hours=1),
+        timedelta(hours=1),
+    ]
+
+    repeated = _enqueue(repository, "pending-source", max_attempts=2)
+    assert repeated.job_id == stored.job_id
+    assert repeated.status == "retry_wait"
+    final_claim = _claim(repository, owner="available", now=current)
+    completed = repository.complete(final_claim.lease, now=current)
+    assert completed.status == "succeeded"
+    assert completed.attempts == 1
+
+
+def test_deferred_source_delivery_still_obeys_deadline(repository):
+    _enqueue(
+        repository,
+        "pending-deadline",
+        deadline_at=NOW + timedelta(seconds=20),
+    )
+    claimed = _claim(repository)
+
+    terminal = repository.defer(
+        claimed.lease,
+        reason="source is pending",
+        now=NOW + timedelta(seconds=1),
+    )
+
+    assert terminal.status == "failed"
+    assert terminal.attempts == 1
+    assert terminal.next_retry_at is None
+    assert terminal.error_summary.startswith(
+        "job deadline stopped pending retry:"
+    )
+
+
+def test_deferred_backoff_progression_survives_repository_restart(
+    repository,
+    database_url,
+):
+    _enqueue(repository, "pending-restart")
+    first = _claim(repository)
+    initial = repository.defer(
+        first.lease,
+        reason="source is pending",
+        now=NOW,
+    )
+    assert initial.next_retry_at == NOW + timedelta(seconds=30)
+
+    restarted_engine = create_engine(database_url)
+    restarted = DurableJobRepository(
+        restarted_engine,
+        retry_policy=RetryPolicy(jitter_seconds=lambda cap: cap),
+    )
+    try:
+        second = _claim(
+            restarted,
+            owner="restarted",
+            now=initial.next_retry_at,
+        )
+        assert second.job.ownership_generation == 2
+        resumed = restarted.defer(
+            second.lease,
+            reason="source remains pending",
+            now=initial.next_retry_at,
+        )
+        assert resumed.next_retry_at == initial.next_retry_at + timedelta(minutes=1)
+        assert resumed.attempts == 0
+    finally:
+        restarted_engine.dispose()
+
+
 def test_item_outcomes_can_arrive_out_of_order_and_retry_in_place(repository):
     _enqueue(repository, "items")
     claimed = _claim(repository)
@@ -420,6 +517,7 @@ def _assert_all_mutations_reject(repository, lease, now):
         ),
         lambda: repository.complete(lease, now=now),
         lambda: repository.fail(lease, error_summary="stale failure", now=now),
+        lambda: repository.defer(lease, reason="stale pending", now=now),
     )
     for operation in operations:
         with pytest.raises(LeaseLost):

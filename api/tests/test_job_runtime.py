@@ -9,6 +9,7 @@ from screener.durable_jobs import (
     ClaimedJob,
     DurableJobItemRecord,
     DurableJobRecord,
+    JobDeferred,
     LeaseLost,
     LeaseToken,
 )
@@ -52,6 +53,7 @@ class FakeRepository:
         self.claim_calls = []
         self.completed = []
         self.failed = []
+        self.deferred = []
         self.renewals = 0
         self.recoveries = 0
         self.checkpoints = []
@@ -144,6 +146,13 @@ class FakeRepository:
             self.active.pop(lease.job_id)
             self.failed.append((lease.job_id, error_summary))
         return replace(_record(lease.job_id, "known"), status="failed")
+
+    def defer(self, lease, *, reason, now):
+        with self.lock:
+            self._check(lease)
+            self.active.pop(lease.job_id)
+            self.deferred.append((lease.job_id, reason))
+        return replace(_record(lease.job_id, "known"), status="retry_wait")
 
     def _check(self, lease):
         if self.active.get(lease.job_id) != lease:
@@ -380,3 +389,20 @@ def test_invalid_returned_checkpoint_fails_the_job():
     _wait_for(lambda: len(repository.failed) == 1)
     assert runtime.stop(1) is True
     assert "handler checkpoint must contain JSON values" in repository.failed[0][1]
+
+
+def test_pending_handler_is_deferred_without_becoming_a_failure():
+    repository = FakeRepository()
+    repository.seed("known")
+
+    def handler(_context):
+        raise JobDeferred("source is still pending")
+
+    runtime = _runtime(repository, lambda _now: (), {"known": handler})
+    runtime.start()
+    _wait_for(lambda: len(repository.deferred) == 1)
+    assert runtime.stop(1) is True
+
+    assert repository.failed == []
+    assert "source is still pending" in repository.deferred[0][1]
+    assert not any("handler:known" in error for error in runtime.errors)

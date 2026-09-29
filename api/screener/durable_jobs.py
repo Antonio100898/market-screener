@@ -33,6 +33,12 @@ class LeaseLost(RuntimeError):
     pass
 
 
+class JobDeferred(RuntimeError):
+    """The job made an honest pending result and should be tried again later."""
+
+    pass
+
+
 @dataclass(frozen=True)
 class LeaseToken:
     job_id: int
@@ -553,6 +559,49 @@ class DurableJobRepository:
                 update(durable_job)
                 .where(durable_job.c.job_id == lease.job_id)
                 .values(**values)
+                .returning(*durable_job.c)
+            ).mappings().one()
+        return _job_record(row)
+
+    def defer(
+        self,
+        lease: LeaseToken,
+        *,
+        reason: str,
+        now: datetime | None = None,
+    ) -> DurableJobRecord:
+        summary = _required_error_summary(reason)
+        current = _utc_datetime("now", now or datetime.now(timezone.utc))
+        with self.engine.begin() as connection:
+            locked = self._lock_live_lease(connection, lease, current)
+            next_retry = self.retry_policy.retry_at(
+                attempts=locked["ownership_generation"],
+                now=current,
+            )
+            deadline = locked["deadline_at"]
+            terminal = deadline is not None and next_retry >= deadline
+            stored_summary = (
+                f"job deadline stopped pending retry: {summary}"[:2000]
+                if terminal
+                else summary
+            )
+            row = connection.execute(
+                update(durable_job)
+                .where(durable_job.c.job_id == lease.job_id)
+                .values(
+                    status="failed" if terminal else "retry_wait",
+                    attempts=(
+                        locked["attempts"]
+                        if terminal
+                        else locked["attempts"] - 1
+                    ),
+                    owner=None,
+                    lease_expires_at=None,
+                    next_retry_at=None if terminal else next_retry,
+                    error_summary=stored_summary,
+                    updated_at=current,
+                    finished_at=current if terminal else None,
+                )
                 .returning(*durable_job.c)
             ).mappings().one()
         return _job_record(row)

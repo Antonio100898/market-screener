@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -7,7 +8,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 
 from .artifacts import ArtifactRepository, store_evidence
-from .durable_jobs import DurableJobRepository
+from .durable_jobs import DurableJobRepository, JobDeferred
 from .job_runtime import JobContext
 from .normalize import FINANCIAL_FORMS
 from .object_store import ImmutableObjectStore
@@ -38,6 +39,16 @@ _QUARTERLY_INDEX_URL = (
     "https://www.sec.gov/Archives/edgar/full-index/"
     "{year}/QTR{quarter}/form.idx"
 )
+_ACCESSION_INDEX_URL = (
+    "https://www.sec.gov/Archives/edgar/data/{cik}/{accession}/index.json"
+)
+_SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
+_COMPANY_FACTS_URL = (
+    "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
+)
+_SUPPORTED_SEC_FORM = re.compile(
+    r"^(?:10-[KQ]T?|20-F|40-F|6-K)(?:/A)?$"
+)
 _MAX_DAYS = 31
 _FILING_COMPARISON_FIELDS = (
     "form",
@@ -63,6 +74,20 @@ class SecIndexFiling:
 
 class SecDiscoveryStopped(RuntimeError):
     pass
+
+
+class SecResourcePending(JobDeferred):
+    pass
+
+
+@dataclass(frozen=True)
+class _SecResource:
+    role: str
+    item_kind: str
+    source_key: str
+    url: str
+    parented: bool
+    validator: Callable[[bytes, str, str, str, str], None] | None = None
 
 
 def parse_form_index(data: bytes) -> tuple[SecIndexFiling, ...]:
@@ -460,6 +485,529 @@ class SecQuarterlyReconciliationHandler:
     def _check_stopping(context: JobContext) -> None:
         if context.stopping.is_set():
             raise SecDiscoveryStopped("SEC reconciliation stopped before new work")
+
+
+class SecResourceFetchHandler:
+    def __init__(
+        self,
+        *,
+        edgar: EdgarClient,
+        object_store: ImmutableObjectStore,
+        artifacts: ArtifactRepository,
+        observations: SourceObservationRepository,
+        clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    ) -> None:
+        self._edgar = edgar
+        self._object_store = object_store
+        self._artifacts = artifacts
+        self._observations = observations
+        self._clock = clock
+
+    def __call__(self, context: JobContext) -> Mapping[str, Any]:
+        accession, cik, form, filename, observation_id = _resource_parameters(
+            context.job.parameters
+        )
+        completed = _resource_checkpoint(
+            context.job.checkpoint,
+            accession=accession,
+            cik=cik,
+            observation_id=observation_id,
+        )
+        if completed is not None:
+            return completed
+
+        parent = self._observations.latest_sec_filing(observation_id)
+        _validate_parent_filing(
+            parent,
+            accession=accession,
+            cik=cik,
+            form=form,
+            filename=filename,
+            observation_id=observation_id,
+        )
+        resources = _root_resources(
+            accession=accession,
+            cik=cik,
+            filename=filename,
+        )
+        roots: dict[str, str] = {}
+        filing_date = parent.observation.canonical_metadata.get("filing_date", "")
+        for resource in resources:
+            if context.stopping.is_set():
+                raise SecDiscoveryStopped(
+                    "SEC resource fetch stopped before the next resource"
+                )
+            metadata = _resource_metadata(
+                resource=resource,
+                role=resource.role,
+                accession=accession,
+                cik=cik,
+                form=form,
+                filename=filename,
+                parent=parent,
+            )
+            try:
+                result = self._edgar.fetch(resource.url)
+            except NoXbrlDataError as error:
+                self._observations.record(
+                    context.lease,
+                    item=_resource_identity(resource, cik=cik, parent=parent),
+                    item_outcome_key=f"root:{resource.role}",
+                    state="pending",
+                    metadata={**metadata, "reason": "not_found"},
+                    source_url=resource.url,
+                    detected_at=self._clock(),
+                )
+                raise SecResourcePending(
+                    f"SEC root resource is pending: {resource.role}"
+                ) from error
+
+            artifact = store_evidence(
+                result.data,
+                result.media_type or "application/octet-stream",
+                self._object_store,
+                self._artifacts,
+            )
+            stored = self._observations.record(
+                context.lease,
+                item=_resource_identity(resource, cik=cik, parent=parent),
+                item_outcome_key=f"root:{resource.role}",
+                state="present",
+                metadata=metadata,
+                source_url=result.url,
+                artifact_sha256=artifact.content_sha256,
+                etag=result.etag,
+                last_modified=result.last_modified,
+                detected_at=self._clock(),
+            )
+            if resource.validator is not None:
+                try:
+                    resource.validator(
+                        result.data, accession, cik, form, filing_date
+                    )
+                except SecResourcePending as error:
+                    context.record_item_outcome(
+                        item_key=f"root:{resource.role}",
+                        status="failed",
+                        outcome={
+                            "state": "pending",
+                            "source_item_id": stored.item.source_item_id,
+                            "source_observation_id": (
+                                stored.observation.source_observation_id
+                            ),
+                            "observation_sha256": (
+                                stored.observation.observation_sha256
+                            ),
+                        },
+                        error_summary=str(error),
+                    )
+                    raise
+            roots[resource.role] = stored.observation.observation_sha256
+
+        checkpoint = {
+            "accession": accession,
+            "cik": cik,
+            "filing_observation_id": observation_id,
+            "roots": roots,
+        }
+        context.save_checkpoint(checkpoint)
+        return checkpoint
+
+
+def _resource_parameters(
+    parameters: Mapping[str, Any],
+) -> tuple[str, str, str, str, int]:
+    required = {"accession", "cik", "form", "filename", "observation_id"}
+    if not isinstance(parameters, Mapping) or set(parameters) != required:
+        raise ValueError(
+            "SEC resource fetch requires only accession, cik, form, filename, "
+            "and observation_id"
+        )
+    accession = parameters["accession"]
+    cik = parameters["cik"]
+    form = parameters["form"]
+    filename = parameters["filename"]
+    observation_id = parameters["observation_id"]
+    if not isinstance(accession, str) or re.fullmatch(
+        r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession
+    ) is None:
+        raise ValueError("accession must use the SEC accession format")
+    if (
+        not isinstance(cik, str)
+        or re.fullmatch(r"[0-9]{10}", cik) is None
+        or int(cik) == 0
+    ):
+        raise ValueError("cik must be a positive zero-padded ten-digit CIK")
+    if not isinstance(form, str) or _SUPPORTED_SEC_FORM.fullmatch(form) is None:
+        raise ValueError("form must be a supported SEC financial form")
+    if not isinstance(filename, str):
+        raise ValueError("filename must be the filing archive filename")
+    archive = _ARCHIVE_FILE.fullmatch(filename)
+    if (
+        archive is None
+        or archive.group("accession") != accession
+        or int(archive.group("cik")) != int(cik)
+    ):
+        raise ValueError("filename must match the accession and CIK")
+    if (
+        isinstance(observation_id, bool)
+        or not isinstance(observation_id, int)
+        or observation_id <= 0
+    ):
+        raise ValueError("observation_id must be a positive integer")
+    return accession, cik, form, filename, observation_id
+
+
+def _validate_parent_filing(
+    parent,
+    *,
+    accession: str,
+    cik: str,
+    form: str,
+    filename: str,
+    observation_id: int,
+) -> None:
+    item = parent.item
+    observation = parent.observation
+    metadata = observation.canonical_metadata
+    if observation.source_observation_id != observation_id:
+        raise ValueError("cited SEC filing observation identity changed")
+    if observation.state != "present":
+        raise ValueError("cited SEC filing observation is not present")
+    if (
+        item.source_system != "SEC"
+        or item.item_kind != "filing"
+        or item.source_key != accession
+        or item.issuer_source_identifier != cik
+        or metadata.get("accession") != accession
+        or metadata.get("cik") != cik
+        or metadata.get("form") != form
+        or metadata.get("archive_filename") != filename
+    ):
+        raise ValueError("cited SEC filing observation does not match the job")
+
+
+def _root_resources(
+    *,
+    accession: str,
+    cik: str,
+    filename: str,
+) -> tuple[_SecResource, ...]:
+    compact_accession = accession.replace("-", "")
+    archive_cik = str(int(cik))
+    return (
+        _SecResource(
+            "complete_submission",
+            "resource",
+            f"{accession}/complete-submission",
+            f"https://www.sec.gov/Archives/{filename}",
+            True,
+        ),
+        _SecResource(
+            "accession_inventory",
+            "resource",
+            f"{accession}/index",
+            _ACCESSION_INDEX_URL.format(
+                cik=archive_cik,
+                accession=compact_accession,
+            ),
+            True,
+            _validate_accession_inventory,
+        ),
+        _SecResource(
+            "submissions",
+            "aggregate",
+            f"submissions/{cik}",
+            _SUBMISSIONS_URL.format(cik=cik),
+            False,
+            _validate_submissions,
+        ),
+        _SecResource(
+            "company_facts",
+            "aggregate",
+            f"companyfacts/{cik}",
+            _COMPANY_FACTS_URL.format(cik=cik),
+            False,
+            _validate_company_facts,
+        ),
+    )
+
+
+def _resource_identity(resource: _SecResource, *, cik: str, parent):
+    return SourceItemIdentity(
+        "SEC",
+        resource.item_kind,
+        resource.source_key,
+        issuer_source_identifier=cik,
+        parent_source_item_id=(
+            parent.item.source_item_id if resource.parented else None
+        ),
+    )
+
+
+def _resource_metadata(
+    *,
+    resource: _SecResource,
+    role: str,
+    accession: str,
+    cik: str,
+    form: str,
+    filename: str,
+    parent,
+) -> dict[str, Any]:
+    metadata = {
+        "role": role,
+        "cik": cik,
+    }
+    if resource.parented:
+        metadata.update(
+            {
+                "accession": accession,
+                "form": form,
+                "archive_filename": filename,
+                "parent_source_item_id": parent.item.source_item_id,
+                "parent_observation_id": (
+                    parent.observation.source_observation_id
+                ),
+                "parent_observation_sha256": (
+                    parent.observation.observation_sha256
+                ),
+            }
+        )
+    return metadata
+
+
+def _resource_checkpoint(
+    checkpoint: Mapping[str, Any] | None,
+    *,
+    accession: str,
+    cik: str,
+    observation_id: int,
+) -> dict[str, Any] | None:
+    if checkpoint is None:
+        return None
+    if not isinstance(checkpoint, Mapping) or set(checkpoint) != {
+        "accession",
+        "cik",
+        "filing_observation_id",
+        "roots",
+    }:
+        raise ValueError("SEC resource fetch checkpoint has an invalid shape")
+    if (
+        checkpoint["accession"] != accession
+        or checkpoint["cik"] != cik
+        or checkpoint["filing_observation_id"] != observation_id
+    ):
+        raise ValueError("SEC resource fetch checkpoint does not match its filing")
+    roles = {
+        "complete_submission",
+        "accession_inventory",
+        "submissions",
+        "company_facts",
+    }
+    roots = checkpoint["roots"]
+    if (
+        not isinstance(roots, Mapping)
+        or set(roots) != roles
+        or any(
+            not isinstance(digest, str)
+            or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            for digest in roots.values()
+        )
+    ):
+        raise ValueError("SEC resource fetch checkpoint has invalid roots")
+    return dict(checkpoint)
+
+
+def _strict_json_object(data: bytes, label: str) -> dict[str, Any]:
+    if not isinstance(data, bytes):
+        raise ValueError(f"{label} must be exact response bytes")
+
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"{label} contains duplicate object keys")
+            result[key] = value
+        return result
+
+    def invalid_constant(value):
+        raise ValueError(f"{label} contains {value}")
+
+    try:
+        value = json.loads(
+            data.decode("utf-8-sig"),
+            object_pairs_hook=unique_object,
+            parse_constant=invalid_constant,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"{label} is not valid UTF-8 JSON") from error
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must be a JSON object")
+    return value
+
+
+def _validate_accession_inventory(
+    data: bytes,
+    accession: str,
+    cik: str,
+    _form: str,
+    _filing_date: str,
+) -> None:
+    payload = _strict_json_object(data, "SEC accession inventory")
+    directory = payload.get("directory")
+    if not isinstance(directory, dict):
+        raise ValueError("SEC accession inventory has no directory object")
+    expected = f"/Archives/edgar/data/{int(cik)}/{accession.replace('-', '')}"
+    name = directory.get("name")
+    if not isinstance(name, str) or name.rstrip("/") != expected:
+        raise ValueError("SEC accession inventory identifies another accession")
+    items = directory.get("item")
+    if not isinstance(items, list) or not items:
+        raise ValueError("SEC accession inventory has no resource items")
+    names = []
+    for item in items:
+        if not isinstance(item, dict) or not isinstance(item.get("name"), str):
+            raise ValueError("SEC accession inventory has a malformed resource item")
+        item_name = item["name"]
+        if not item_name or "/" in item_name or "\\" in item_name:
+            raise ValueError("SEC accession inventory has a malformed resource name")
+        names.append(item_name)
+    if len(names) != len(set(names)):
+        raise ValueError("SEC accession inventory has duplicate resource names")
+
+
+def _validate_submissions(
+    data: bytes,
+    accession: str,
+    cik: str,
+    form: str,
+    filing_date: str,
+) -> None:
+    payload = _strict_json_object(data, "SEC submissions")
+    if not _same_cik(payload.get("cik"), cik):
+        raise ValueError("SEC submissions identifies another issuer")
+    filings = payload.get("filings")
+    recent = filings.get("recent") if isinstance(filings, dict) else None
+    if not isinstance(recent, dict):
+        raise ValueError("SEC submissions has no recent filings object")
+    accessions = recent.get("accessionNumber")
+    forms = recent.get("form")
+    if (
+        not isinstance(accessions, list)
+        or not isinstance(forms, list)
+        or len(accessions) != len(forms)
+        or any(not isinstance(value, str) for value in accessions + forms)
+    ):
+        raise ValueError("SEC submissions recent filing arrays are malformed")
+    matches = [
+        index for index, value in enumerate(accessions) if value == accession
+    ]
+    if not matches:
+        if _historical_submissions_file(payload, cik, filing_date) is None:
+            raise SecResourcePending(
+                "SEC submissions does not yet identify the filing accession"
+            )
+        return
+    if len(matches) != 1 or forms[matches[0]] != form:
+        raise ValueError("SEC submissions filing identity is ambiguous or mismatched")
+
+
+def _validate_company_facts(
+    data: bytes,
+    accession: str,
+    cik: str,
+    form: str,
+    _filing_date: str,
+) -> None:
+    payload = _strict_json_object(data, "SEC Company Facts")
+    if not _same_cik(payload.get("cik"), cik):
+        raise ValueError("SEC Company Facts identifies another issuer")
+    facts = payload.get("facts")
+    if not isinstance(facts, dict):
+        raise ValueError("SEC Company Facts has no facts object")
+    matches = []
+    for taxonomy, concepts in facts.items():
+        if not isinstance(taxonomy, str) or not taxonomy or not isinstance(concepts, dict):
+            raise ValueError("SEC Company Facts has a malformed taxonomy")
+        for concept, definition in concepts.items():
+            if not isinstance(concept, str) or not concept or not isinstance(definition, dict):
+                raise ValueError("SEC Company Facts has a malformed concept")
+            units = definition.get("units")
+            if not isinstance(units, dict):
+                raise ValueError("SEC Company Facts concept has no units object")
+            for unit, entries in units.items():
+                if not isinstance(unit, str) or not unit or not isinstance(entries, list):
+                    raise ValueError("SEC Company Facts has malformed units")
+                for entry in entries:
+                    if not isinstance(entry, dict):
+                        raise ValueError("SEC Company Facts has a malformed fact")
+                    accn = entry.get("accn")
+                    entry_form = entry.get("form")
+                    if not isinstance(accn, str):
+                        raise ValueError("SEC Company Facts has a malformed accession")
+                    if not isinstance(entry_form, str):
+                        raise ValueError("SEC Company Facts has a malformed form")
+                    if accn == accession:
+                        matches.append(entry_form)
+    if not matches:
+        raise SecResourcePending(
+            "SEC Company Facts does not yet identify the filing accession"
+        )
+    if any(entry_form != form for entry_form in matches):
+        raise ValueError("SEC Company Facts filing form does not match the job")
+
+
+def _same_cik(value: Any, cik: str) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return value > 0 and value == int(cik)
+    return bool(
+        isinstance(value, str)
+        and re.fullmatch(r"[0-9]+", value)
+        and int(value) == int(cik)
+    )
+
+
+def _historical_submissions_file(
+    payload: Mapping[str, Any], cik: str, filing_date: str
+) -> str | None:
+    try:
+        filed = date.fromisoformat(filing_date)
+    except (TypeError, ValueError):
+        raise ValueError("SEC filing parent has an invalid filing date")
+    filings = payload.get("filings")
+    files = filings.get("files") if isinstance(filings, dict) else None
+    if not isinstance(files, list):
+        raise ValueError("SEC submissions has no historical files array")
+    pattern = re.compile(rf"CIK{re.escape(cik)}-submissions-[0-9]{{3}}\.json")
+    matched = None
+    for entry in files:
+        if not isinstance(entry, dict):
+            raise ValueError("SEC submissions has a malformed historical file")
+        name = entry.get("name")
+        filing_count = entry.get("filingCount")
+        try:
+            start = date.fromisoformat(entry.get("filingFrom"))
+            end = date.fromisoformat(entry.get("filingTo"))
+        except (TypeError, ValueError):
+            raise ValueError("SEC submissions has a malformed historical date")
+        if not isinstance(name, str) or pattern.fullmatch(name) is None:
+            raise ValueError("SEC submissions has a malformed historical filename")
+        if (
+            isinstance(filing_count, bool)
+            or not isinstance(filing_count, int)
+            or filing_count <= 0
+        ):
+            raise ValueError("SEC submissions has a malformed historical count")
+        if end < start:
+            raise ValueError("SEC submissions has a reversed historical range")
+        if start <= filed <= end:
+            if matched is not None:
+                raise ValueError("SEC submissions historical ranges are ambiguous")
+            matched = name
+    return matched
 
 
 def _date_range(parameters: Mapping[str, Any]) -> tuple[date, date]:

@@ -228,6 +228,45 @@ class SourceObservationRepository:
             ).mappings().all()
         return tuple(_observation_record(row) for row in rows)
 
+    def latest_sec_filing(
+        self,
+        observation_id: int,
+    ) -> StoredSourceObservation:
+        cited_id = _positive_integer("observation id", observation_id)
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(source_observation, source_item)
+                .join(
+                    source_item,
+                    source_item.c.source_item_id
+                    == source_observation.c.source_item_id,
+                )
+                .where(source_observation.c.source_observation_id == cited_id)
+            ).mappings().one_or_none()
+            if row is None:
+                raise ValueError("cited SEC filing observation does not exist")
+            if row["source_system"] != "SEC" or row["item_kind"] != "filing":
+                raise ValueError("cited observation is not an SEC filing")
+            latest_id = connection.scalar(
+                select(source_observation.c.source_observation_id)
+                .where(
+                    source_observation.c.source_item_id
+                    == row["source_item_id"]
+                )
+                .order_by(
+                    source_observation.c.detected_at.desc(),
+                    source_observation.c.source_observation_id.desc(),
+                )
+                .limit(1)
+            )
+        if latest_id != cited_id:
+            raise ValueError("cited SEC filing observation is not latest")
+        return StoredSourceObservation(
+            item=_item_record(row),
+            observation=_observation_record(row),
+            created=False,
+        )
+
     def record_witnessed_sec_removal(
         self,
         lease: LeaseToken,

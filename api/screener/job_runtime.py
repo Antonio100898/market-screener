@@ -17,6 +17,7 @@ from .durable_jobs import (
     DurableJobRecord,
     DurableJobRepository,
     ItemStatus,
+    JobDeferred,
     LeaseLost,
     LeaseToken,
 )
@@ -252,6 +253,7 @@ class DurableJobRuntime:
             _clock=self._clock,
         )
         handler_error: Exception | None = None
+        deferred: JobDeferred | None = None
         final_checkpoint: Mapping[str, Any] | None = None
         heartbeat.start()
         try:
@@ -260,6 +262,8 @@ class DurableJobRuntime:
             )
         except LeaseLost:
             lease_lost.set()
+        except JobDeferred as error:
+            deferred = error
         except Exception as error:
             handler_error = error
             self._record_error(f"handler:{claimed.job.kind}", error)
@@ -268,6 +272,9 @@ class DurableJobRuntime:
             heartbeat.join()
 
         if lease_lost.is_set():
+            return
+        if deferred is not None:
+            self._defer(claimed.lease, deferred)
             return
         if handler_error is not None:
             self._fail(claimed.lease, handler_error)
@@ -315,6 +322,15 @@ class DurableJobRuntime:
             return
         except Exception as failure_error:
             self._record_error("fail", failure_error)
+
+    def _defer(self, lease: LeaseToken, error: JobDeferred) -> None:
+        summary = f"{type(error).__name__}: {error}"[:2000]
+        try:
+            self._repository.defer(lease, reason=summary, now=self._clock())
+        except LeaseLost:
+            return
+        except Exception as defer_error:
+            self._record_error("defer", defer_error)
 
     def _record_error(self, component: str, error: Exception) -> None:
         message = f"{component}: {type(error).__name__}: {error}"[:2200]
