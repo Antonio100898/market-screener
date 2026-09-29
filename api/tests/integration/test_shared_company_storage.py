@@ -26,7 +26,13 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.mark.parametrize(
     "starting_revision",
-    ["base", "20260927_0002", "20260927_0003", "20260928_0004"],
+    [
+        "base",
+        "20260927_0002",
+        "20260927_0003",
+        "20260928_0004",
+        "20260929_0005",
+    ],
 )
 def test_upgrade_evidence_revision_retry_and_restart(monkeypatch, starting_revision):
     settings = StorageSettings.from_env()
@@ -72,7 +78,7 @@ def test_upgrade_evidence_revision_retry_and_restart(monkeypatch, starting_revis
         engine = create_engine(database_url)
         with engine.connect() as connection:
             assert MigrationContext.configure(connection).get_current_revision() == (
-                "20260929_0005"
+                "20260929_0006"
             )
         repository = SharedCompanyRepository(engine)
 

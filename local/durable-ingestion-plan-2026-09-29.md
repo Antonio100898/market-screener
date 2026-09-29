@@ -32,8 +32,8 @@ freshness target and what users see during a source outage before automatic publ
 | 0. Existing-path and gap investigation | accepted | Exact reuse map and smallest safe slice recorded in `local/dev31-review-map.md` |
 | 1. PostgreSQL durable-job schema and repository | accepted | 14 unit, 13 real PostgreSQL/migration, and 865 full Python tests; Alembic at `20260929_0005` |
 | 2. Scheduler and worker lifecycle | accepted | 24 unit and 12 real PostgreSQL tests; clean drain, bounded stop, duplicate runtime, child-process death, checkpoint recovery pass |
-| 3A. Source-item and immutable-observation contract | active | Live-lease atomic write; duplicate reuse; pending/present/removed history; real PostgreSQL/S3 and migration checks |
-| 3B. SEC incremental discovery and reconciliation | queued | New, amended, changed, removed, pending, duplicate, overlap, and rebuilt-index cases persist honest outcomes |
+| 3A. Source-item and immutable-observation contract | accepted | 43 unit, 26 real PostgreSQL/S3/migration, and 903 full Python tests; Alembic at `20260929_0006` |
+| 3B. SEC incremental discovery and reconciliation | active | New, amended, changed, removed, pending, duplicate, overlap, and rebuilt-index cases persist honest outcomes |
 | 4. EDINET incremental discovery and reconciliation | queued | New, amended, edited, withdrawn, parent-linked, duplicate, overlap, and expired-download cases persist honest outcomes |
 | 5. Automatic end-to-end publication gate | blocked on owner decision and increment 5 publication model | Browsers closed; due work produces one validated current release; outage and restart behavior match policy |
 

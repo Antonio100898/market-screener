@@ -386,6 +386,135 @@ durable_job_item = Table(
     PrimaryKeyConstraint("job_id", "item_key", name="pk_durable_job_item"),
 )
 
+source_item = Table(
+    "source_item",
+    metadata,
+    Column("source_item_id", BigInteger, Identity(), nullable=False),
+    Column("source_system", Text, nullable=False),
+    Column("item_kind", Text, nullable=False),
+    Column("source_key", Text, nullable=False),
+    Column("issuer_source_identifier", Text, nullable=True),
+    Column(
+        "parent_source_item_id",
+        BigInteger,
+        nullable=True,
+    ),
+    Column(
+        "created_at",
+        DateTime(timezone=True),
+        server_default=text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    ),
+    CheckConstraint(
+        "source_system IN ('SEC', 'EDINET')",
+        name="ck_source_item_source_system",
+    ),
+    CheckConstraint(
+        "item_kind IN ('inventory', 'aggregate', 'filing', 'resource')",
+        name="ck_source_item_kind",
+    ),
+    CheckConstraint(
+        "length(trim(source_key)) > 0",
+        name="ck_source_item_source_key",
+    ),
+    CheckConstraint(
+        "issuer_source_identifier IS NULL "
+        "OR length(trim(issuer_source_identifier)) > 0",
+        name="ck_source_item_issuer_source_identifier",
+    ),
+    CheckConstraint(
+        "parent_source_item_id IS NULL OR parent_source_item_id <> source_item_id",
+        name="ck_source_item_parent_not_self",
+    ),
+    PrimaryKeyConstraint("source_item_id", name="pk_source_item"),
+    UniqueConstraint(
+        "source_item_id",
+        "source_system",
+        name="uq_source_item_id_system",
+    ),
+    UniqueConstraint(
+        "source_system",
+        "item_kind",
+        "source_key",
+        name="uq_source_item_identity",
+    ),
+    ForeignKeyConstraint(
+        ["parent_source_item_id", "source_system"],
+        ["source_item.source_item_id", "source_item.source_system"],
+        name="fk_source_item_parent",
+    ),
+)
+
+source_observation = Table(
+    "source_observation",
+    metadata,
+    Column("source_observation_id", BigInteger, Identity(), nullable=False),
+    Column(
+        "source_item_id",
+        BigInteger,
+        ForeignKey("source_item.source_item_id", name="fk_source_observation_item"),
+        nullable=False,
+    ),
+    Column("observation_sha256", String(64), nullable=False),
+    Column("state", Text, nullable=False),
+    Column("canonical_metadata", JSONB, nullable=False),
+    Column(
+        "artifact_sha256",
+        String(64),
+        ForeignKey(
+            "evidence_artifact.content_sha256",
+            name="fk_source_observation_artifact",
+        ),
+        nullable=True,
+    ),
+    Column("source_url", Text, nullable=False),
+    Column("etag", Text, nullable=True),
+    Column("last_modified", Text, nullable=True),
+    Column("source_published_at", DateTime(timezone=True), nullable=True),
+    Column("detected_at", DateTime(timezone=True), nullable=False),
+    Column(
+        "detecting_job_id",
+        BigInteger,
+        ForeignKey("durable_job.job_id", name="fk_source_observation_job"),
+        nullable=False,
+    ),
+    CheckConstraint(
+        "observation_sha256 ~ '^[0-9a-f]{64}$'",
+        name="ck_source_observation_sha256",
+    ).ddl_if(dialect="postgresql"),
+    CheckConstraint(
+        "state IN ('present', 'pending', 'unavailable', 'removed')",
+        name="ck_source_observation_state",
+    ),
+    CheckConstraint(
+        "jsonb_typeof(canonical_metadata) = 'object'",
+        name="ck_source_observation_metadata_object",
+    ).ddl_if(dialect="postgresql"),
+    CheckConstraint(
+        "(state = 'present' AND artifact_sha256 IS NOT NULL) "
+        "OR (state <> 'present' AND artifact_sha256 IS NULL)",
+        name="ck_source_observation_state_artifact",
+    ),
+    CheckConstraint(
+        "length(trim(source_url)) > 0",
+        name="ck_source_observation_source_url",
+    ),
+    CheckConstraint(
+        "etag IS NULL OR length(trim(etag)) > 0",
+        name="ck_source_observation_etag",
+    ),
+    CheckConstraint(
+        "last_modified IS NULL OR length(trim(last_modified)) > 0",
+        name="ck_source_observation_last_modified",
+    ),
+    PrimaryKeyConstraint("source_observation_id", name="pk_source_observation"),
+    UniqueConstraint(
+        "source_item_id",
+        "observation_sha256",
+        name="uq_source_observation_identity",
+    ),
+)
+
 
 def create_postgres_engine(settings: StorageSettings | None = None) -> Engine:
     return create_engine((settings or StorageSettings.from_env()).database_url)

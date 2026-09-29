@@ -360,55 +360,77 @@ class DurableJobRepository:
         error = _error_summary(error_summary)
         current = _utc_datetime("now", now or datetime.now(timezone.utc))
         with self.engine.begin() as connection:
-            self._lock_live_lease(connection, lease, current)
-            existing = connection.execute(
-                select(durable_job_item)
-                .where(
-                    durable_job_item.c.job_id == lease.job_id,
-                    durable_job_item.c.item_key == key,
-                )
-                .with_for_update()
-            ).mappings().one_or_none()
-            if (
-                existing is not None
-                and existing["status"] == status
-                and existing["outcome"] == result
-                and existing["error_summary"] == error
-            ):
-                row = existing
-            elif existing is None:
-                row = connection.execute(
-                    durable_job_item.insert()
-                    .values(
-                        job_id=lease.job_id,
-                        item_key=key,
-                        status=status,
-                        attempts=1,
-                        outcome=result,
-                        error_summary=error,
-                        updated_at=current,
-                        finished_at=current,
-                    )
-                    .returning(*durable_job_item.c)
-                ).mappings().one()
-            else:
-                row = connection.execute(
-                    update(durable_job_item)
-                    .where(
-                        durable_job_item.c.job_id == lease.job_id,
-                        durable_job_item.c.item_key == key,
-                    )
-                    .values(
-                        status=status,
-                        attempts=durable_job_item.c.attempts + 1,
-                        outcome=result,
-                        error_summary=error,
-                        updated_at=current,
-                        finished_at=current,
-                    )
-                    .returning(*durable_job_item.c)
-                ).mappings().one()
+            row = self._record_item_outcome_on_connection(
+                connection,
+                lease,
+                item_key=key,
+                status=status,
+                outcome=result,
+                error_summary=error,
+                now=current,
+            )
         return _item_record(row)
+
+    def _record_item_outcome_on_connection(
+        self,
+        connection: Connection,
+        lease: LeaseToken,
+        *,
+        item_key: str,
+        status: ItemStatus,
+        outcome: dict[str, Any] | None,
+        error_summary: str | None,
+        now: datetime,
+        lease_is_locked: bool = False,
+    ) -> Mapping[str, Any]:
+        if not lease_is_locked:
+            self._lock_live_lease(connection, lease, now)
+        existing = connection.execute(
+            select(durable_job_item)
+            .where(
+                durable_job_item.c.job_id == lease.job_id,
+                durable_job_item.c.item_key == item_key,
+            )
+            .with_for_update()
+        ).mappings().one_or_none()
+        if (
+            existing is not None
+            and existing["status"] == status
+            and existing["outcome"] == outcome
+            and existing["error_summary"] == error_summary
+        ):
+            return existing
+        if existing is None:
+            return connection.execute(
+                durable_job_item.insert()
+                .values(
+                    job_id=lease.job_id,
+                    item_key=item_key,
+                    status=status,
+                    attempts=1,
+                    outcome=outcome,
+                    error_summary=error_summary,
+                    updated_at=now,
+                    finished_at=now,
+                )
+                .returning(*durable_job_item.c)
+            ).mappings().one()
+        return connection.execute(
+            update(durable_job_item)
+            .where(
+                durable_job_item.c.job_id == lease.job_id,
+                durable_job_item.c.item_key == item_key,
+            )
+            .values(
+                status=status,
+                attempts=durable_job_item.c.attempts + 1,
+                outcome=outcome,
+                error_summary=error_summary,
+                updated_at=now,
+                finished_at=now,
+            )
+            .returning(*durable_job_item.c)
+        ).mappings().one()
 
     def complete(
         self,
