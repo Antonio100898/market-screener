@@ -5,7 +5,13 @@ from decimal import Decimal
 import httpx
 import pytest
 
-from screener.sources.edinet import EdinetClient, EdinetError, annual_filings, xbrl_facts
+from screener.sources.edinet import (
+    EdinetClient,
+    EdinetError,
+    annual_filings,
+    validate_xbrl_archive,
+    xbrl_facts,
+)
 
 
 def archive(document: str) -> bytes:
@@ -84,3 +90,17 @@ def test_edinet_http_failure_does_not_expose_key():
         with pytest.raises(EdinetError) as error:
             client.documents_on("2026-06-19")
     assert "private-test-key" not in str(error.value)
+
+
+def test_archive_validation_rejects_a_corrupt_non_xbrl_member():
+    data = io.BytesIO()
+    bad_payload = b"corrupt member payload"
+    with zipfile.ZipFile(data, "w", compression=zipfile.ZIP_STORED) as bundle:
+        bundle.writestr("XBRL/PublicDoc/report.xbrl", PANASONIC_FACTS)
+        bundle.writestr("XBRL/PublicDoc/attachment.pdf", bad_payload)
+    corrupt = bytearray(data.getvalue())
+    position = corrupt.index(bad_payload)
+    corrupt[position] ^= 1
+
+    with pytest.raises(EdinetError, match="corrupt archive member"):
+        validate_xbrl_archive(bytes(corrupt), "S100YETA")

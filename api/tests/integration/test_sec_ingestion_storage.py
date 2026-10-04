@@ -17,6 +17,8 @@ from screener.durable_jobs import DurableJobRepository, LeaseLost, RetryPolicy
 from screener.job_runtime import DurableJobRuntime, JobContext, ScheduledOccurrence
 from screener.object_store import ImmutableObjectStore, create_s3_client
 from screener.postgres import (
+    company_snapshot,
+    current_company_snapshot,
     create_postgres_engine,
     durable_job,
     durable_job_item,
@@ -26,11 +28,13 @@ from screener.postgres import (
     source_observation,
 )
 from screener.sec_ingestion import (
+    SecCandidateStageHandler,
     SecQuarterlyReconciliationHandler,
     SecRecentDiscoveryHandler,
     SecResourceFetchHandler,
     SecResourcePending,
 )
+from screener.shared_companies import SharedCompanyRepository
 from screener.source_observations import (
     SourceItemIdentity,
     SourceItemIdentityConflict,
@@ -87,7 +91,9 @@ def storage(database_url):
         connection.execute(
             text(
                 "TRUNCATE source_observation, source_item, durable_job_item, "
-                "durable_job, job_schedule_occurrence, evidence_artifact "
+                "durable_job, job_schedule_occurrence, current_company_snapshot, "
+                "company_snapshot_artifact, company_snapshot, priced_security, issuer, "
+                "evidence_artifact "
                 "RESTART IDENTITY CASCADE"
             )
         )
@@ -220,6 +226,7 @@ def _resource_handler(engine, objects, edgar, clock=lambda: NOW):
         object_store=objects,
         artifacts=SqlArtifactRepository(engine),
         observations=SourceObservationRepository(engine, clock=clock),
+        jobs=_repository(engine),
         clock=clock,
     )
 
@@ -721,17 +728,23 @@ def _resource_payloads(*, revision=1):
                     "name": (
                         "/Archives/edgar/data/1234/000000123426000001"
                     ),
-                    "item": [{"name": "annual.htm"}],
+                    "item": [{"name": "annual.htm"}, {"name": "R1.htm"}],
                 }
             }
         ).encode(),
         "submissions": json.dumps(
             {
                 "cik": "1234",
+                "name": "FIXTURE CORP",
+                "tickers": ["FIX"],
+                "exchanges": ["Nasdaq"],
                 "filings": {
                     "recent": {
                         "accessionNumber": [RESOURCE_ACCESSION],
                         "form": [RESOURCE_FORM],
+                        "filingDate": ["2026-09-28"],
+                        "reportDate": ["2025-12-31"],
+                        "primaryDocument": ["annual.htm"],
                     }
                 },
             }
@@ -958,6 +971,147 @@ def test_resource_fetch_exact_bytes_revisions_and_replay(storage):
         "children": before_replay["children"] + 1,
     }
     assert replay_checkpoint == changed_checkpoint
+
+
+def test_leaf_fetch_stages_idempotent_candidate_without_selecting_it(storage):
+    engine, objects = storage
+    jobs = _repository(engine)
+    parent = _seed_resource_parent(engine, objects, jobs, "candidate")
+    root_claim = _enqueue_resource_job(jobs, parent, "candidate")
+    root_checkpoint = _resource_handler(
+        engine, objects, FixtureEdgar(_resource_responses())
+    )(_context(root_claim, jobs))
+    jobs.complete(root_claim.lease, final_checkpoint=root_checkpoint, now=NOW)
+
+    candidate = jobs.claim_next(
+        owner="candidate-worker",
+        lease_duration=LEASE,
+        now=NOW,
+        allowed_kinds={"sec-candidate-stage"},
+    )
+    assert candidate is not None
+    base = "https://www.sec.gov/Archives/edgar/data/1234/000000123426000001/"
+    leaves = {
+        base + "annual.htm": EdgarTransportResult(
+            b"<html>annual</html>", base + "annual.htm", "text/html", None, None
+        ),
+        base + "R1.htm": EdgarTransportResult(
+            (
+                b"<html>Title of each class Common Stock Trading Symbol FIX "
+                b"Name of each exchange Nasdaq</html>"
+            ),
+            base + "R1.htm",
+            "text/html",
+            None,
+            None,
+        ),
+    }
+    handler = SecCandidateStageHandler(
+        edgar=FixtureEdgar(leaves),
+        object_store=objects,
+        artifacts=SqlArtifactRepository(engine),
+        observations=SourceObservationRepository(engine, clock=lambda: NOW),
+        companies=SharedCompanyRepository(engine, clock=lambda: NOW),
+        derive=lambda bundle: ("ok", {"ticker": bundle.ticker, "assets": 100}),
+        clock=lambda: NOW,
+    )
+    checkpoint = handler(_context(candidate, jobs))
+    jobs.complete(candidate.lease, final_checkpoint=checkpoint, now=NOW)
+
+    repeated_stage = jobs.enqueue_scheduled(
+        schedule_key="candidate:explicit-replay",
+        scheduled_for=NOW,
+        kind="sec-candidate-stage",
+        parameters=candidate.job.parameters,
+        due_at=NOW,
+    )
+    repeated_claim = jobs.claim_next(
+        owner="candidate-replay-worker",
+        lease_duration=LEASE,
+        now=NOW,
+        allowed_kinds={"sec-candidate-stage"},
+    )
+    assert repeated_claim is not None
+    repeated_candidate = handler(_context(repeated_claim, jobs))
+    jobs.complete(
+        repeated_claim.lease,
+        final_checkpoint=repeated_candidate,
+        now=NOW,
+    )
+    assert repeated_candidate["snapshot_id"] == checkpoint["snapshot_id"]
+    assert repeated_candidate["snapshot_created"] is False
+
+    with engine.connect() as connection:
+        snapshots = connection.execute(select(company_snapshot)).mappings().all()
+        selected = connection.scalar(
+            select(func.count()).select_from(current_company_snapshot)
+        )
+    assert len(snapshots) == 1
+    assert snapshots[0]["ticker"] == "FIX"
+    assert snapshots[0]["canonical_payload"] == {"ticker": "FIX", "assets": 100}
+    assert selected == 0
+
+    repeated_root = _enqueue_resource_job(jobs, parent, "candidate-replay")
+    repeated_checkpoint = _resource_handler(
+        engine, objects, FixtureEdgar(_resource_responses())
+    )(_context(repeated_root, jobs))
+    jobs.complete(repeated_root.lease, final_checkpoint=repeated_checkpoint, now=NOW)
+    with engine.connect() as connection:
+        assert connection.scalar(
+            select(func.count()).select_from(company_snapshot)
+        ) == 1
+        assert connection.scalar(
+            select(func.count())
+            .select_from(durable_job)
+            .where(durable_job.c.kind == "sec-candidate-stage")
+        ) == 2
+
+
+def test_candidate_store_rejects_expired_owner_before_any_company_write(storage):
+    engine, _objects = storage
+    jobs = _repository(engine)
+    jobs.enqueue_scheduled(
+        schedule_key="candidate:expired",
+        scheduled_for=NOW,
+        kind="sec-candidate-stage",
+        parameters={},
+        due_at=NOW,
+    )
+    claimed = jobs.claim_next(
+        owner="candidate-expired",
+        lease_duration=LEASE,
+        now=NOW,
+        allowed_kinds={"sec-candidate-stage"},
+    )
+    assert claimed is not None
+    repository = SharedCompanyRepository(
+        engine, clock=lambda: NOW + LEASE + timedelta(seconds=1)
+    )
+    with engine.connect() as connection:
+        before = connection.scalar(
+            select(func.count()).select_from(company_snapshot)
+        )
+
+    with pytest.raises(LeaseLost):
+        repository.store_candidate(
+            claimed.lease,
+            issuer_source="SEC",
+            issuer_identifier=RESOURCE_CIK,
+            security_identifier=f"sec:{RESOURCE_CIK}:primary-listed-security",
+            ticker="FIX",
+            exchange_code="Nasdaq",
+            quote_currency="USD",
+            security_title="Common Stock",
+            source_accession=RESOURCE_ACCESSION,
+            security_basis="PRIMARY_COMMON_SHARE",
+            engine_revision=1,
+            canonical_payload={"ticker": "FIX"},
+        )
+
+    with engine.connect() as connection:
+        assert connection.scalar(
+            select(func.count()).select_from(company_snapshot)
+        ) == before
 
 
 def test_resource_fetch_restart_finishes_without_duplicate_observations(storage):

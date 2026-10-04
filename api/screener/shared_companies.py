@@ -4,14 +4,15 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
-from typing import Any, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Connection, Engine
 
+from .durable_jobs import DurableJobRepository, LeaseToken
 from .postgres import (
     company_snapshot,
     company_snapshot_artifact,
@@ -73,8 +74,15 @@ class SelectedCompany:
 
 
 class SharedCompanyRepository:
-    def __init__(self, engine: Engine):
+    def __init__(
+        self,
+        engine: Engine,
+        *,
+        clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    ):
         self.engine = engine
+        self._jobs = DurableJobRepository(engine)
+        self._clock = clock
 
     def store_and_select(
         self,
@@ -92,6 +100,78 @@ class SharedCompanyRepository:
         quote_currency: str | None = None,
         receipt_ratio: Decimal | str | int | None = None,
         artifacts: Iterable[SnapshotArtifact] = (),
+    ) -> StoredCompany:
+        return self._store(
+            issuer_source=issuer_source,
+            issuer_identifier=issuer_identifier,
+            security_identifier=security_identifier,
+            ticker=ticker,
+            security_title=security_title,
+            source_accession=source_accession,
+            security_basis=security_basis,
+            engine_revision=engine_revision,
+            canonical_payload=canonical_payload,
+            exchange_code=exchange_code,
+            quote_currency=quote_currency,
+            receipt_ratio=receipt_ratio,
+            artifacts=artifacts,
+            select_current=True,
+        )
+
+    def store_candidate(
+        self,
+        lease: LeaseToken,
+        *,
+        issuer_source: str,
+        issuer_identifier: str,
+        security_identifier: str,
+        ticker: str,
+        security_title: str | None,
+        source_accession: str | None,
+        security_basis: str,
+        engine_revision: int,
+        canonical_payload: Mapping[str, Any],
+        exchange_code: str | None = None,
+        quote_currency: str | None = None,
+        receipt_ratio: Decimal | str | int | None = None,
+        artifacts: Iterable[SnapshotArtifact] = (),
+    ) -> StoredCompany:
+        return self._store(
+            issuer_source=issuer_source,
+            issuer_identifier=issuer_identifier,
+            security_identifier=security_identifier,
+            ticker=ticker,
+            security_title=security_title,
+            source_accession=source_accession,
+            security_basis=security_basis,
+            engine_revision=engine_revision,
+            canonical_payload=canonical_payload,
+            exchange_code=exchange_code,
+            quote_currency=quote_currency,
+            receipt_ratio=receipt_ratio,
+            artifacts=artifacts,
+            select_current=False,
+            lease=lease,
+        )
+
+    def _store(
+        self,
+        *,
+        issuer_source: str,
+        issuer_identifier: str,
+        security_identifier: str,
+        ticker: str,
+        security_title: str | None,
+        source_accession: str | None,
+        security_basis: str,
+        engine_revision: int,
+        canonical_payload: Mapping[str, Any],
+        exchange_code: str | None,
+        quote_currency: str | None,
+        receipt_ratio: Decimal | str | int | None,
+        artifacts: Iterable[SnapshotArtifact],
+        select_current: bool,
+        lease: LeaseToken | None = None,
     ) -> StoredCompany:
         issuer_values = _issuer_values(issuer_source, issuer_identifier)
         security_values = {
@@ -128,6 +208,8 @@ class SharedCompanyRepository:
         )
 
         with self.engine.begin() as connection:
+            if lease is not None:
+                self._jobs._lock_live_lease(connection, lease, self._clock())
             issuer_row = self._put_issuer(connection, issuer_values)
             security_row = self._put_security(
                 connection,
@@ -154,11 +236,12 @@ class SharedCompanyRepository:
                 snapshot_row["snapshot_id"],
                 artifact_values,
             )
-            self._select_current(
-                connection,
-                security_row["security_id"],
-                snapshot_row["snapshot_id"],
-            )
+            if select_current:
+                self._select_current(
+                    connection,
+                    security_row["security_id"],
+                    snapshot_row["snapshot_id"],
+                )
 
         return StoredCompany(
             issuer_id=issuer_row["issuer_id"],

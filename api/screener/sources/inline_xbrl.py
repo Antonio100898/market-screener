@@ -215,6 +215,38 @@ def parse_inline_xbrl(
     """Return standard numeric facts without selecting or normalizing them."""
     cik = _validate_metadata(metadata, paths)
     source_bytes, hashes = _read_verified(paths, expected_sha256)
+    documents = {field: getattr(paths, field).name for field in _FILE_FIELDS}
+    return _parse_inline_xbrl_bytes(metadata, cik, source_bytes, documents, hashes)
+
+
+def parse_inline_xbrl_bytes(
+    metadata: InlineXbrlMetadata,
+    payloads: Mapping[str, bytes],
+    documents: Mapping[str, str],
+    expected_sha256: Mapping[str, str],
+) -> dict:
+    """Parse verified retained bytes without requiring a local cache directory."""
+    cik = _validate_metadata_values(metadata)
+    if documents.get("primary_document") != metadata.source_document:
+        raise ValueError("primary document name does not match source document")
+    source_bytes, hashes = _verified_bytes(payloads, expected_sha256)
+    if set(documents) != set(_FILE_FIELDS):
+        raise ValueError("document map must name every retained Inline-XBRL file")
+    safe_documents = {
+        field: safe_document_name(str(documents[field])) for field in _FILE_FIELDS
+    }
+    return _parse_inline_xbrl_bytes(
+        metadata, cik, source_bytes, safe_documents, hashes
+    )
+
+
+def _parse_inline_xbrl_bytes(
+    metadata: InlineXbrlMetadata,
+    cik: str,
+    source_bytes: Mapping[str, bytes],
+    documents: Mapping[str, str],
+    hashes: Mapping[str, str],
+) -> dict:
 
     instance = _xml(source_bytes["instance"], "instance")
     _xml(source_bytes["schema"], "schema")
@@ -258,7 +290,7 @@ def parse_inline_xbrl(
             "report_date": metadata.report_date,
             "files": {
                 field: {
-                    "document": getattr(paths, field).name,
+                    "document": documents[field],
                     "sha256": hashes[field],
                 }
                 for field in _FILE_FIELDS
@@ -679,6 +711,13 @@ def safe_document_name(document: str) -> str:
 
 
 def _validate_metadata(metadata: InlineXbrlMetadata, paths: InlineXbrlPaths) -> str:
+    cik = _validate_metadata_values(metadata)
+    if paths.primary_document.name != metadata.source_document:
+        raise ValueError("primary document path does not match source document")
+    return cik
+
+
+def _validate_metadata_values(metadata: InlineXbrlMetadata) -> str:
     cik = _cik(metadata.cik)
     for field in (
         "entity_name", "source_accession", "source_form", "source_document",
@@ -691,8 +730,6 @@ def _validate_metadata(metadata: InlineXbrlMetadata, paths: InlineXbrlPaths) -> 
             date.fromisoformat(getattr(metadata, field))
         except ValueError as exc:
             raise ValueError(f"invalid Inline-XBRL date: {field}") from exc
-    if paths.primary_document.name != metadata.source_document:
-        raise ValueError("primary document path does not match source document")
     return cik
 
 
@@ -710,6 +747,30 @@ def _read_verified(
         except OSError as exc:
             raise ValueError(f"missing retained Inline-XBRL file: {field}") from exc
         expected = expected_sha256[field].casefold()
+        if not re.fullmatch(r"[0-9a-f]{64}", expected):
+            raise ValueError(f"invalid expected SHA-256: {field}")
+        actual = hashlib.sha256(payload).hexdigest()
+        if actual != expected:
+            raise ValueError(f"retained Inline-XBRL hash mismatch: {field}")
+        content[field] = payload
+        hashes[field] = actual
+    return content, hashes
+
+
+def _verified_bytes(
+    payloads: Mapping[str, bytes], expected_sha256: Mapping[str, str]
+) -> tuple[dict[str, bytes], dict[str, str]]:
+    if set(payloads) != set(_FILE_FIELDS):
+        raise ValueError("payload map must name every retained Inline-XBRL file")
+    if set(expected_sha256) != set(_FILE_FIELDS):
+        raise ValueError("expected SHA-256 map must name every retained Inline-XBRL file")
+    content = {}
+    hashes = {}
+    for field in _FILE_FIELDS:
+        payload = payloads[field]
+        if not isinstance(payload, bytes):
+            raise ValueError(f"retained Inline-XBRL payload must be bytes: {field}")
+        expected = str(expected_sha256[field]).casefold()
         if not re.fullmatch(r"[0-9a-f]{64}", expected):
             raise ValueError(f"invalid expected SHA-256: {field}")
         actual = hashlib.sha256(payload).hexdigest()

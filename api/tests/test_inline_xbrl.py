@@ -16,6 +16,7 @@ from screener.sources.inline_xbrl import (
     manifest_bytes,
     merge_missing_facts,
     parse_inline_xbrl,
+    parse_inline_xbrl_bytes,
 )
 
 
@@ -360,6 +361,19 @@ def test_ifrs_parser_preserves_values_periods_dimensions_roles_and_sources(tmp_p
     assert "issuer" not in payload["facts"]
     assert payload["_inline_xbrl"]["standard_fact_count"] == 3
     assert payload["_inline_xbrl"]["files"]["instance"]["sha256"] == hashes["instance"]
+
+
+def test_byte_backed_parser_matches_path_backed_parser(tmp_path):
+    metadata, paths, hashes = _fixture(tmp_path)
+    payloads = {
+        field: getattr(paths, field).read_bytes()
+        for field in hashes
+    }
+    documents = {field: getattr(paths, field).name for field in hashes}
+
+    assert parse_inline_xbrl_bytes(
+        metadata, payloads, documents, hashes
+    ) == parse_inline_xbrl(metadata, paths, hashes)
 
 
 def test_us_gaap_parser_keeps_standard_namespace(tmp_path):

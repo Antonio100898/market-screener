@@ -36,8 +36,9 @@ freshness target and what users see during a source outage before automatic publ
 | 3B1. SEC recent-index discovery | accepted | 66 focused, 27 real PostgreSQL/S3, 917 normal full-suite tests; overlap/retry/restart exact |
 | 3B2. SEC rebuilt-index reconciliation | accepted | 53 focused, 17 real PostgreSQL/S3, 928 normal full-suite tests; witnessed removal and replay pass |
 | 3B3a. SEC root resource fetch | accepted | 117 focused, 39 real PostgreSQL/S3/runtime, and 968 normal full-suite tests; exact roots, deferred retries, restart, stale lease, and historical shard checks pass |
-| 3B3b. SEC leaf fetch and non-current candidate | queued | Generic cover/Inline-XBRL evidence creates an immutable candidate without changing current selection |
-| 4. EDINET incremental discovery and reconciliation | queued | New, amended, edited, withdrawn, parent-linked, duplicate, overlap, and expired-download cases persist honest outcomes |
+| 3B3b. SEC leaf fetch and non-current candidate | accepted | Independent review accepted after four corrections; 135 focused, 46 real PostgreSQL/S3/runtime, 976 Python, and 113 web tests; direct 20-F, historical incorporated 40-F, immutable candidate replay, stale lease, and unchanged current selection pass |
+| 4A. EDINET list discovery and source-state reconciliation | accepted | Independent review accepted exact list retention, source-time fencing, separate lifecycle axes, reconciliation, and future-fetch enqueue; 38 focused, 48 real storage/runtime, 982 Python, and 113 web tests pass |
+| 4B. EDINET archive fetch and non-current candidate | accepted | Independent review accepted current-listing eligibility, whole-ZIP validation, exact retention, restart recovery, stale-lease fencing, real mapping/derivation, immutable replay, and unchanged current selection; 108 focused, 27 real storage/runtime, 1,001 Python, and 113 web tests pass |
 | 5. Automatic end-to-end publication gate | blocked on owner decision and increment 5 publication model | Browsers closed; due work produces one validated current release; outage and restart behavior match policy |
 
 ## Verification

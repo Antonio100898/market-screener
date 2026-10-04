@@ -27,6 +27,8 @@ class ArtifactRepository(Protocol):
         self, verified: VerifiedObject, media_type: str
     ) -> EvidenceArtifact: ...
 
+    def get(self, content_sha256: str) -> EvidenceArtifact: ...
+
 
 class SqlArtifactRepository:
     def __init__(self, engine: Engine):
@@ -54,6 +56,17 @@ class SqlArtifactRepository:
         for field in ("object_key", "byte_size"):
             if row[field] != values[field]:
                 raise RuntimeError("Stored artifact conflicts with its content address")
+        return EvidenceArtifact(**row)
+
+    def get(self, content_sha256: str) -> EvidenceArtifact:
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(evidence_artifact).where(
+                    evidence_artifact.c.content_sha256 == content_sha256
+                )
+            ).mappings().one_or_none()
+        if row is None:
+            raise ValueError("verified evidence artifact does not exist")
         return EvidenceArtifact(**row)
 
 

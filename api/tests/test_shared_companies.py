@@ -20,6 +20,7 @@ from screener.shared_companies import (
     SharedCompanyRepository,
     SnapshotArtifact,
 )
+from screener.durable_jobs import LeaseToken
 
 
 @compiles(JSONB, "sqlite")
@@ -144,6 +145,31 @@ def test_snapshot_write_is_canonical_and_idempotent(repository):
         "assets": 100,
         "ticker": "ABT",
     }
+
+
+def test_candidate_write_reuses_snapshot_owner_without_changing_current(repository):
+    selected = repository.store_and_select(
+        **_company(canonical_payload={"ticker": "ABT", "assets": 100})
+    )
+    locks = []
+
+    class LiveJobs:
+        def _lock_live_lease(self, _connection, lease, _now):
+            locks.append(lease)
+
+    repository._jobs = LiveJobs()
+    candidate = repository.store_candidate(
+        LeaseToken(7, "worker", 3),
+        **_company(canonical_payload={"ticker": "ABT", "assets": 125}),
+    )
+
+    assert locks == [LeaseToken(7, "worker", 3)]
+    assert candidate.snapshot_id != selected.snapshot_id
+    assert repository.current(selected.security_id).snapshot_id == selected.snapshot_id
+    assert [row.snapshot_id for row in repository.snapshots(selected.security_id)] == [
+        selected.snapshot_id,
+        candidate.snapshot_id,
+    ]
 
 
 def test_snapshot_accepts_absent_cover_evidence_but_not_empty_values(repository):

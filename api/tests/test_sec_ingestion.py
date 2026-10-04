@@ -12,6 +12,7 @@ from screener.durable_jobs import DurableJobRecord, LeaseLost, LeaseToken
 from screener.job_runtime import JobContext
 from screener.object_store import VerifiedObject
 from screener.sec_ingestion import (
+    SecCandidateStageHandler,
     SecDiscoveryStopped,
     SecQuarterlyReconciliationHandler,
     SecRecentDiscoveryHandler,
@@ -1049,16 +1050,20 @@ class RootObservations:
         )
 
 
-def _root_handler(edgar, *, observations=None, object_store=None, artifacts=None):
+def _root_handler(
+    edgar, *, observations=None, object_store=None, artifacts=None, jobs=None
+):
     observations = observations or RootObservations()
     object_store = object_store or RootObjectStore()
     artifacts = artifacts or RootArtifacts()
+    jobs = jobs or FakeJobs([])
     return (
         SecResourceFetchHandler(
             edgar=edgar,
             object_store=object_store,
             artifacts=artifacts,
             observations=observations,
+            jobs=jobs,
             clock=lambda: NOW,
         ),
         observations,
@@ -1092,7 +1097,10 @@ def test_resource_fetch_uses_exact_urls_roles_parentage_and_transport_metadata()
         submission.last_modified,
     )
     edgar = FakeEdgar(responses)
-    handler, observations, object_store, artifacts = _root_handler(edgar)
+    jobs = FakeJobs([])
+    handler, observations, object_store, artifacts = _root_handler(
+        edgar, jobs=jobs
+    )
     context, repository, events = _root_context()
 
     checkpoint = handler(context)
@@ -1145,6 +1153,8 @@ def test_resource_fetch_uses_exact_urls_roles_parentage_and_transport_metadata()
         _root_payloads().values()
     )
     assert set(checkpoint["roots"]) == set(urls)
+    assert jobs.children[0]["kind"] == "sec-candidate-stage"
+    assert jobs.children[0]["parameters"]["roots"] == checkpoint["roots"]
     assert repository.checkpoints == [checkpoint]
     assert events[-1] == ("checkpoint", checkpoint)
 
@@ -1657,8 +1667,11 @@ def test_resource_fetch_expired_lease_leaves_verified_orphan_only():
     assert repository.checkpoints == []
 
 
-def test_resource_fetch_completed_checkpoint_does_no_parent_or_io_work():
-    handler, observations, object_store, _artifacts = _root_handler(FakeEdgar({}))
+def test_resource_fetch_completed_checkpoint_only_reasserts_stable_candidate_child():
+    jobs = FakeJobs([])
+    handler, observations, object_store, _artifacts = _root_handler(
+        FakeEdgar({}), jobs=jobs
+    )
     roots = {
         role: f"{index}" * 64
         for index, role in enumerate(_root_urls(), start=1)
@@ -1675,3 +1688,476 @@ def test_resource_fetch_completed_checkpoint_does_no_parent_or_io_work():
     assert observations.parent_ids == []
     assert object_store.puts == []
     assert repository.checkpoints == []
+    assert jobs.children[0]["parameters"]["roots"] == roots
+
+
+class CandidateObjectStore:
+    def __init__(self, payloads):
+        self.payloads = {
+            hashlib.sha256(payload).hexdigest(): payload
+            for payload in payloads
+        }
+
+    def put_verified(self, data, _media_type):
+        digest = hashlib.sha256(data).hexdigest()
+        self.payloads[digest] = bytes(data)
+        return VerifiedObject(digest, f"raw/sha256/{digest}", len(data), NOW)
+
+    def read_verified(self, _key, digest, size):
+        payload = self.payloads[digest]
+        assert len(payload) == size
+        return payload
+
+
+class CandidateArtifacts(RootArtifacts):
+    def __init__(self, payloads):
+        super().__init__()
+        self.rows = {}
+        for payload in payloads:
+            digest = hashlib.sha256(payload).hexdigest()
+            self.rows[digest] = EvidenceArtifact(
+                digest, f"raw/sha256/{digest}", len(payload),
+                "application/octet-stream", NOW, NOW,
+            )
+
+    def add_verified(self, verified, media_type):
+        row = super().add_verified(verified, media_type)
+        self.rows[row.content_sha256] = row
+        return row
+
+    def get(self, digest):
+        return self.rows[digest]
+
+
+class CandidateObservations(RootObservations):
+    def __init__(self, roots, parent=None):
+        super().__init__(parent=parent)
+        self.roots = roots
+
+    def by_sha256(self, digest):
+        return self.roots[digest]
+
+
+class CandidateCompanies:
+    def __init__(self):
+        self.calls = []
+
+    def store_candidate(self, lease, **values):
+        assert lease == LeaseToken(1, "worker", 1)
+        self.calls.append(values)
+        return SimpleNamespace(snapshot_id=701, created=len(self.calls) == 1)
+
+
+def _candidate_roots(
+    *,
+    form="10-K",
+    inventory_names=("annual.htm", "R1.htm"),
+    primary_document="annual.htm",
+    submissions_value=None,
+):
+    inventory = json.dumps({
+        "directory": {
+            "name": "/Archives/edgar/data/1234/000000123426000001",
+            "item": [{"name": name} for name in inventory_names],
+        }
+    }).encode()
+    submissions = json.dumps(submissions_value or {
+        "cik": "1234",
+        "name": "TEST COMPANY",
+        "tickers": ["TEST"],
+        "exchanges": ["Nasdaq"],
+        "filings": {"recent": {
+            "accessionNumber": [ROOT_ACCESSION],
+            "form": [form],
+            "filingDate": ["2026-09-28"],
+            "reportDate": ["2025-12-31"],
+            "primaryDocument": [primary_document],
+        }},
+    }).encode()
+    payloads = {
+        "complete_submission": b"complete",
+        "accession_inventory": inventory,
+        "submissions": submissions,
+        "company_facts": json.dumps({"cik": 1234, "facts": {}}).encode(),
+    }
+    parent = _root_parent(metadata={"form": form})
+    roots = {}
+    stored = {}
+    for index, (role, payload) in enumerate(payloads.items(), start=1):
+        observation_digest = f"{index}" * 64
+        artifact_digest = hashlib.sha256(payload).hexdigest()
+        roots[role] = observation_digest
+        parent_id = 41 if role in {"complete_submission", "accession_inventory"} else None
+        stored[observation_digest] = SimpleNamespace(
+            item=SimpleNamespace(
+                source_item_id=50 + index,
+                source_system="SEC",
+                item_kind="resource" if parent_id else "aggregate",
+                source_key=role,
+                issuer_source_identifier=ROOT_CIK,
+                parent_source_item_id=parent_id,
+            ),
+            observation=SimpleNamespace(
+                state="present",
+                artifact_sha256=artifact_digest,
+                canonical_metadata={
+                    "role": role,
+                    "cik": ROOT_CIK,
+                    **({"accession": ROOT_ACCESSION} if parent_id else {}),
+                },
+            ),
+        )
+    return parent, payloads, roots, stored
+
+
+def _candidate_handler(
+    responses,
+    *,
+    form="10-K",
+    inventory_names=("annual.htm", "R1.htm"),
+    primary_document="annual.htm",
+    submissions_value=None,
+    derive=None,
+):
+    parent, payloads, roots, stored = _candidate_roots(
+        form=form,
+        inventory_names=inventory_names,
+        primary_document=primary_document,
+        submissions_value=submissions_value,
+    )
+    objects = CandidateObjectStore(payloads.values())
+    artifacts = CandidateArtifacts(payloads.values())
+    observations = CandidateObservations(stored, parent=parent)
+    companies = CandidateCompanies()
+    handler = SecCandidateStageHandler(
+        edgar=FakeEdgar(responses),
+        object_store=objects,
+        artifacts=artifacts,
+        observations=observations,
+        companies=companies,
+        derive=derive or (lambda bundle: ("ok", {"ticker": bundle.ticker})),
+        clock=lambda: NOW,
+    )
+    parameters = {
+        **ROOT_PARAMETERS,
+        "form": form,
+        "roots": roots,
+    }
+    context, repository = _context(
+        parameters, [], kind="sec-candidate-stage"
+    )[:2]
+    return handler, context, repository, observations, companies
+
+
+def test_candidate_stage_fetches_bounded_10k_leaves_and_stores_noncurrent_candidate():
+    base = "https://www.sec.gov/Archives/edgar/data/1234/000000123426000001/"
+    cover_html = (
+        b"<html>Title of each class Common Stock Trading Symbol TEST "
+        b"Name of each exchange Nasdaq</html>"
+    )
+    responses = {
+        base + "annual.htm": EdgarTransportResult(
+            b"<html>annual</html>", base + "annual.htm", "text/html", None, None
+        ),
+        base + "R1.htm": EdgarTransportResult(
+            cover_html, base + "R1.htm", "text/html", None, None
+        ),
+    }
+    seen = []
+
+    def derive(bundle):
+        seen.append(bundle)
+        return "ok", {"ticker": bundle.ticker, "source": "fixture"}
+
+    handler, context, repository, observations, companies = _candidate_handler(
+        responses, derive=derive
+    )
+
+    checkpoint = handler(context)
+
+    assert [call["metadata"]["role"] for call in observations.calls] == [
+        "primary_document",
+        "cover_r1",
+    ]
+    assert seen[0].ticker == "TEST"
+    assert seen[0].receipt["title"] == "Common Stock"
+    assert companies.calls[0]["security_basis"] == "PRIMARY_COMMON_SHARE"
+    assert companies.calls[0]["canonical_payload"]["source"] == "fixture"
+    assert {artifact.role for artifact in companies.calls[0]["artifacts"]} == {
+        "sec_root_complete_submission",
+        "sec_root_accession_inventory",
+        "sec_root_submissions",
+        "sec_root_company_facts",
+        "sec_primary_document",
+        "sec_cover_r1",
+    }
+    assert checkpoint["snapshot_id"] == 701
+    assert repository.checkpoints == [checkpoint]
+
+
+def test_candidate_stage_pending_leaf_never_stores_candidate_or_checkpoint():
+    base = "https://www.sec.gov/Archives/edgar/data/1234/000000123426000001/"
+    handler, context, repository, observations, companies = _candidate_handler({
+        base + "annual.htm": NoXbrlDataError("pending"),
+    })
+
+    with pytest.raises(SecResourcePending, match="annual.htm"):
+        handler(context)
+
+    assert observations.calls[-1]["state"] == "pending"
+    assert companies.calls == []
+    assert repository.checkpoints == []
+
+
+def test_candidate_stage_partial_inline_inventory_stays_pending():
+    names = ("annual.htm", "R1.htm", "issuer_htm.xml", "issuer.xsd")
+    base = "https://www.sec.gov/Archives/edgar/data/1234/000000123426000001/"
+    responses = {
+        base + "annual.htm": EdgarTransportResult(
+            b"<html>annual</html>", base + "annual.htm", "text/html", None, None
+        ),
+        base + "R1.htm": EdgarTransportResult(
+            (
+                b"<html>Title of each class Common Stock Trading Symbol TEST "
+                b"Name of each exchange Nasdaq</html>"
+            ),
+            base + "R1.htm",
+            "text/html",
+            None,
+            None,
+        ),
+    }
+    handler, context, repository, _observations, companies = _candidate_handler(
+        responses, inventory_names=names
+    )
+
+    with pytest.raises(SecResourcePending, match="Inline-XBRL graph"):
+        handler(context)
+
+    assert companies.calls == []
+    assert repository.checkpoints == []
+
+
+def test_candidate_stage_missing_instance_with_companions_stays_pending():
+    names = ("annual.htm", "R1.htm", "FilingSummary.xml", "issuer.xsd")
+    base = "https://www.sec.gov/Archives/edgar/data/1234/000000123426000001/"
+    responses = {
+        base + "annual.htm": EdgarTransportResult(
+            b"<html>annual</html>", base + "annual.htm", "text/html", None, None
+        ),
+        base + "R1.htm": EdgarTransportResult(
+            (
+                b"<html>Title of each class Common Stock Trading Symbol TEST "
+                b"Name of each exchange Nasdaq</html>"
+            ),
+            base + "R1.htm",
+            "text/html",
+            None,
+            None,
+        ),
+    }
+    handler, context, repository, _observations, companies = _candidate_handler(
+        responses, inventory_names=names
+    )
+
+    with pytest.raises(SecResourcePending, match="Inline-XBRL graph"):
+        handler(context)
+
+    assert companies.calls == []
+    assert repository.checkpoints == []
+
+
+def test_candidate_stage_routes_direct_20f_through_inline_bytes(monkeypatch):
+    names = (
+        "annual.htm",
+        "R1.htm",
+        "R2.htm",
+        "issuer_htm.xml",
+        "FilingSummary.xml",
+        "issuer.xsd",
+        "issuer_pre.xml",
+    )
+    base = "https://www.sec.gov/Archives/edgar/data/1234/000000123426000001/"
+    cover_html = (
+        b"<html>Title of each class American Depositary Shares, each representing "
+        b"two Ordinary Shares Trading Symbol TEST Name of each exchange Nasdaq</html>"
+    )
+    responses = {
+        base + name: EdgarTransportResult(
+            (
+                cover_html
+                if name == "R1.htm"
+                else b"<html>American Depositary Shares each representing three Ordinary Shares</html>"
+                if name == "R2.htm"
+                else f"<{name}/>".encode()
+            ),
+            base + name,
+            "text/html" if name.endswith(".htm") else "application/xml",
+            None,
+            None,
+        )
+        for name in names
+    }
+    captured = []
+
+    def parse(manifest, payloads):
+        captured.append((manifest, payloads))
+        return {"cik": ROOT_CIK, "facts": {}, "_inline_xbrl": {}}
+
+    monkeypatch.setattr("screener.sec_ingestion._parse_inline_manifest", parse)
+    monkeypatch.setattr(
+        "screener.sec_ingestion.normalize._current_supported_foreign_annual",
+        lambda _facts: (("2026-09-28", ROOT_ACCESSION), "ifrs-full"),
+    )
+    handler, context, _repository, _observations, companies = _candidate_handler(
+        responses,
+        form="20-F",
+        inventory_names=names,
+    )
+
+    handler(context)
+
+    assert captured[0][0]["relationship"] == "direct_annual"
+    assert set(captured[0][1]) == {
+        "instance", "filing_summary", "presentation", "schema", "primary_document"
+    }
+    assert companies.calls[0]["receipt_ratio"] == 2
+    roles = {
+        artifact.role for artifact in companies.calls[0]["artifacts"]
+    }
+    assert {
+        "sec_inline_direct_annual_instance",
+        "sec_inline_direct_annual_filing_summary",
+        "sec_inline_direct_annual_presentation",
+        "sec_inline_direct_annual_schema",
+        "sec_inline_direct_annual_primary_document",
+        "sec_inline_direct_annual_index",
+        "sec_inline_current_manifest",
+    } <= roles
+
+
+def test_candidate_stage_routes_40f_to_incorporated_6k(monkeypatch):
+    source_accession = "0000001234-26-000002"
+    wrapper = "wrapper.htm"
+    annual_names = (wrapper, "R1.htm")
+    source_names = (
+        "cover6k.htm",
+        "statements.htm",
+        "source_htm.xml",
+        "FilingSummary.xml",
+        "source.xsd",
+        "source_pre.xml",
+    )
+    annual_base = "https://www.sec.gov/Archives/edgar/data/1234/000000123426000001/"
+    source_base = "https://www.sec.gov/Archives/edgar/data/1234/000000123426000002/"
+    wrapper_html = f"""<html>
+      Title of each class Common Shares Trading Symbol TEST Name of each exchange NYSE
+      incorporated by reference into this Form 40-F from Form 6-K
+      <a href="https://www.sec.gov/Archives/edgar/data/1234/000000123426000002/statements.htm">
+      Audited consolidated financial statements</a></html>""".encode()
+    historical_name = f"CIK{ROOT_CIK}-submissions-001.json"
+    submissions = {
+        "cik": "1234",
+        "name": "TEST COMPANY",
+        "tickers": ["TEST"],
+        "exchanges": ["NYSE"],
+        "filings": {"recent": {
+            "accessionNumber": [],
+            "form": [],
+            "filingDate": [],
+            "reportDate": [],
+            "primaryDocument": [],
+        }, "files": [{
+            "name": historical_name,
+            "filingCount": 2,
+            "filingFrom": "2026-09-01",
+            "filingTo": "2026-09-29",
+        }]},
+    }
+    historical = json.dumps({
+            "accessionNumber": [ROOT_ACCESSION, source_accession],
+            "form": ["40-F", "6-K"],
+            "filingDate": ["2026-09-28", "2026-09-20"],
+            "reportDate": ["2025-12-31", "2025-12-31"],
+            "primaryDocument": [wrapper, "cover6k.htm"],
+    }).encode()
+    source_index = json.dumps({
+        "directory": {
+            "name": "/Archives/edgar/data/1234/000000123426000002",
+            "item": [{"name": name} for name in source_names],
+        }
+    }).encode()
+    responses = {
+        "https://data.sec.gov/submissions/" + historical_name: EdgarTransportResult(
+            historical,
+            "https://data.sec.gov/submissions/" + historical_name,
+            "application/json",
+            None,
+            None,
+        ),
+        annual_base + wrapper: EdgarTransportResult(
+            wrapper_html, annual_base + wrapper, "text/html", None, None
+        ),
+        annual_base + "R1.htm": EdgarTransportResult(
+            wrapper_html, annual_base + "R1.htm", "text/html", None, None
+        ),
+        source_base + "index.json": EdgarTransportResult(
+            source_index, source_base + "index.json", "application/json", None, None
+        ),
+        **{
+            source_base + name: EdgarTransportResult(
+                f"<{name}/>".encode(), source_base + name,
+                "text/html" if name.endswith(".htm") else "application/xml",
+                None, None,
+            )
+            for name in source_names
+        },
+    }
+    captured = []
+
+    def parse(manifest, payloads):
+        captured.append((manifest, payloads))
+        return {"cik": ROOT_CIK, "facts": {}, "_inline_xbrl": {}}
+
+    monkeypatch.setattr("screener.sec_ingestion._parse_inline_manifest", parse)
+    monkeypatch.setattr(
+        "screener.sec_ingestion.normalize._current_supported_foreign_annual",
+        lambda _facts: (("2026-09-28", ROOT_ACCESSION), "us-gaap"),
+    )
+    handler, context, _repository, observations, companies = _candidate_handler(
+        responses,
+        form="40-F",
+        inventory_names=annual_names,
+        primary_document=wrapper,
+        submissions_value=submissions,
+    )
+
+    handler(context)
+
+    assert captured[0][0]["relationship"] == "incorporated_annual_exhibit"
+    assert captured[0][0]["source"]["accession"] == source_accession
+    assert captured[0][0]["source"]["document"] == "statements.htm"
+    assert companies.calls[0]["source_accession"] == ROOT_ACCESSION
+    source_items = [
+        call["item"]
+        for call in observations.calls
+        if call["metadata"].get("accession") == source_accession
+    ]
+    assert source_items
+    assert all(
+        item.source_key.startswith(f"{source_accession}/")
+        and item.parent_source_item_id is None
+        for item in source_items
+    )
+    roles = {artifact.role for artifact in companies.calls[0]["artifacts"]}
+    assert {
+        "sec_inline_annual_wrapper_index",
+        "sec_inline_annual_wrapper_primary_document",
+        "sec_inline_incorporated_source_index",
+        "sec_inline_incorporated_source_instance",
+        "sec_inline_incorporated_source_filing_summary",
+        "sec_inline_incorporated_source_presentation",
+        "sec_inline_incorporated_source_schema",
+        "sec_inline_incorporated_source_primary_document",
+        "sec_inline_current_manifest",
+    } <= roles

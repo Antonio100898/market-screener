@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import re
 import xml.etree.ElementTree as ET
 import zipfile
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
 import httpx
@@ -20,6 +22,22 @@ _XSI_NIL = "{http://www.w3.org/2001/XMLSchema-instance}nil"
 
 class EdinetError(Exception):
     pass
+
+
+class EdinetHttpError(EdinetError):
+    def __init__(self, status_code: int, path: str, url: str):
+        self.status_code = status_code
+        self.url = url
+        super().__init__(f"EDINET returned HTTP {status_code} for {path}")
+
+
+@dataclass(frozen=True)
+class EdinetTransportResult:
+    data: bytes
+    url: str
+    media_type: str | None
+    etag: str | None
+    last_modified: str | None
 
 
 class EdinetClient:
@@ -39,21 +57,46 @@ class EdinetClient:
             # httpx exception URLs contain the subscription key.
             raise EdinetError(f"EDINET request failed: {type(exc).__name__}") from None
         if response.status_code != 200:
-            raise EdinetError(f"EDINET returned HTTP {response.status_code} for {path}")
+            raise EdinetHttpError(
+                response.status_code,
+                path,
+                str(response.request.url.copy_remove_param("Subscription-Key")),
+            )
         return response
 
     def documents_on(self, filing_date: str) -> list[dict]:
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", filing_date):
-            raise ValueError("filing_date must be YYYY-MM-DD")
-        payload = self._get("documents.json", date=filing_date, type=2).json()
+        result = self.fetch_documents_on(filing_date)
+        payload = json.loads(result.data)
         if payload.get("metadata", {}).get("status") != "200":
             raise EdinetError(f"EDINET list unavailable for {filing_date}")
         return payload.get("results") or []
 
+    def fetch_documents_on(self, filing_date: str) -> EdinetTransportResult:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", filing_date):
+            raise ValueError("filing_date must be YYYY-MM-DD")
+        response = self._get("documents.json", date=filing_date, type=2)
+        return EdinetTransportResult(
+            response.content,
+            f"{API_ROOT}/documents.json?date={filing_date}&type=2",
+            response.headers.get("content-type"),
+            response.headers.get("etag"),
+            response.headers.get("last-modified"),
+        )
+
     def xbrl_archive(self, document_id: str) -> bytes:
+        return self.fetch_xbrl_archive(document_id).data
+
+    def fetch_xbrl_archive(self, document_id: str) -> EdinetTransportResult:
         if not _DOCUMENT_ID.fullmatch(document_id):
             raise ValueError("invalid EDINET document ID")
-        return self._get(f"documents/{document_id}", type=1).content
+        response = self._get(f"documents/{document_id}", type=1)
+        return EdinetTransportResult(
+            response.content,
+            f"{API_ROOT}/documents/{document_id}?type=1",
+            response.headers.get("content-type"),
+            response.headers.get("etag"),
+            response.headers.get("last-modified"),
+        )
 
 
 def annual_filings(rows: list[dict]) -> list[dict]:
@@ -61,6 +104,18 @@ def annual_filings(rows: list[dict]) -> list[dict]:
     return [row for row in rows
             if row.get("docTypeCode") in {"120", "130"} and row.get("xbrlFlag") == "1"
             and row.get("edinetCode") and row.get("secCode")]
+
+
+def validate_xbrl_archive(archive: bytes, document_id: str) -> None:
+    try:
+        with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
+            bad_member = bundle.testzip()
+    except zipfile.BadZipFile:
+        raise EdinetError(f"{document_id} is not an EDINET XBRL archive") from None
+    if bad_member is not None:
+        raise EdinetError(
+            f"{document_id} has a corrupt archive member: {bad_member}"
+        )
 
 
 def _unit(unit: ET.Element) -> str | None:

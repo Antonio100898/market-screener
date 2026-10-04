@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 import argparse
-import io
 import json
 import re
 import sqlite3
-import zipfile
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -21,6 +19,7 @@ from .postgres import create_postgres_engine
 from .shared_companies import SharedCompanyRepository, SnapshotArtifact, StoredCompany
 from .sources import cover, dera, inline_xbrl
 from .sources.edinet_mapper import ADAPTER_KIND as EDINET_ADAPTER
+from .sources.edinet import EdinetError, validate_xbrl_archive
 from .storage_config import StorageSettings
 
 
@@ -376,16 +375,11 @@ class CompanyImporter:
                 "raw_filing",
             )
             try:
-                with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-                    bad_member = archive.testzip()
-            except zipfile.BadZipFile as exc:
+                validate_xbrl_archive(raw, document)
+            except EdinetError as exc:
                 raise RetainedInputError(
-                    f"{ticker}: retained EDINET filing {document} is not a ZIP"
+                    f"{ticker}: retained EDINET filing is invalid: {exc}"
                 ) from exc
-            if bad_member is not None:
-                raise RetainedInputError(
-                    f"{ticker}: retained EDINET filing {document} has a corrupt member"
-                )
             retained.append(artifact)
 
         latest = max(

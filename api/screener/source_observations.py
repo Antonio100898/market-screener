@@ -5,11 +5,11 @@ import json
 import math
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Callable, Literal, Mapping
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Engine
 
@@ -59,6 +59,10 @@ class SourceItemIdentityConflict(RuntimeError):
 
 
 class SourceObservationIdentityConflict(RuntimeError):
+    pass
+
+
+class StaleSourceRevision(RuntimeError):
     pass
 
 
@@ -189,6 +193,98 @@ class SourceObservationRepository:
             created=created,
         )
 
+    def record_edinet_list(
+        self,
+        lease: LeaseToken,
+        *,
+        index_date: str,
+        process_at: datetime,
+        item_outcome_key: str,
+        artifact_sha256: str,
+        source_url: str,
+        etag: str | None = None,
+        last_modified: str | None = None,
+        detected_at: datetime | None = None,
+    ) -> StoredSourceObservation:
+        process = _utc_datetime("EDINET process time", process_at)
+        current = _utc_datetime("repository clock", self._clock())
+        detected = _utc_datetime("detected_at", detected_at or current)
+        identity = _source_item_identity(
+            SourceItemIdentity("EDINET", "aggregate", f"documents/{index_date}")
+        )
+        metadata = _json_object({
+            "index_date": index_date,
+            "process_at": process.isoformat(),
+        })
+        artifact = _optional_sha256("artifact_sha256", artifact_sha256)
+        assert artifact is not None
+        url = _canonical_url(source_url)
+        canonical_etag = _optional_text("etag", etag)
+        canonical_last_modified = _optional_text("last_modified", last_modified)
+        digest = observation_sha256(
+            state="present",
+            metadata=metadata,
+            artifact_sha256=artifact,
+            source_url=url,
+            etag=canonical_etag,
+            last_modified=canonical_last_modified,
+            source_published_at=process,
+        )
+        values = {
+            "observation_sha256": digest,
+            "state": "present",
+            "canonical_metadata": metadata,
+            "artifact_sha256": artifact,
+            "source_url": url,
+            "etag": canonical_etag,
+            "last_modified": canonical_last_modified,
+            "source_published_at": process,
+        }
+        with self.engine.begin() as connection:
+            self._jobs._lock_live_lease(connection, lease, current)
+            item_row = self._store_item(connection, identity)
+            connection.execute(
+                select(source_item.c.source_item_id)
+                .where(source_item.c.source_item_id == item_row["source_item_id"])
+                .with_for_update()
+            ).scalar_one()
+            latest = connection.execute(
+                select(source_observation)
+                .where(source_observation.c.source_item_id == item_row["source_item_id"])
+                .order_by(
+                    source_observation.c.source_published_at.desc().nullslast(),
+                    source_observation.c.source_observation_id.desc(),
+                )
+                .limit(1)
+                .with_for_update()
+            ).mappings().one_or_none()
+            latest_process = latest["source_published_at"] if latest is not None else None
+            if latest_process is not None and latest_process > process:
+                raise StaleSourceRevision("EDINET list revision is older than retained state")
+            if (
+                latest is not None
+                and latest_process == process
+                and latest["artifact_sha256"] != artifact
+            ):
+                raise StaleSourceRevision(
+                    "EDINET list changed without a newer process time"
+                )
+            observation_row, created = self._record_on_connection(
+                connection,
+                lease,
+                item_row=item_row,
+                outcome_key=_required_text("item outcome key", item_outcome_key),
+                digest=digest,
+                values=values,
+                detected=detected,
+                now=current,
+            )
+        return StoredSourceObservation(
+            item=_item_record(item_row),
+            observation=_observation_record(observation_row),
+            created=created,
+        )
+
     def latest_sec_financial_filings(
         self,
         quarter: str,
@@ -232,6 +328,19 @@ class SourceObservationRepository:
         self,
         observation_id: int,
     ) -> StoredSourceObservation:
+        return self._latest_filing("SEC", observation_id)
+
+    def latest_edinet_filing(
+        self,
+        observation_id: int,
+    ) -> StoredSourceObservation:
+        return self._latest_filing("EDINET", observation_id)
+
+    def _latest_filing(
+        self,
+        source_system: SourceSystem,
+        observation_id: int,
+    ) -> StoredSourceObservation:
         cited_id = _positive_integer("observation id", observation_id)
         with self.engine.connect() as connection:
             row = connection.execute(
@@ -244,9 +353,16 @@ class SourceObservationRepository:
                 .where(source_observation.c.source_observation_id == cited_id)
             ).mappings().one_or_none()
             if row is None:
-                raise ValueError("cited SEC filing observation does not exist")
-            if row["source_system"] != "SEC" or row["item_kind"] != "filing":
-                raise ValueError("cited observation is not an SEC filing")
+                raise ValueError(
+                    f"cited {source_system} filing observation does not exist"
+                )
+            if (
+                row["source_system"] != source_system
+                or row["item_kind"] != "filing"
+            ):
+                raise ValueError(
+                    f"cited observation is not an {source_system} filing"
+                )
             latest_id = connection.scalar(
                 select(source_observation.c.source_observation_id)
                 .where(
@@ -260,11 +376,162 @@ class SourceObservationRepository:
                 .limit(1)
             )
         if latest_id != cited_id:
-            raise ValueError("cited SEC filing observation is not latest")
+            raise ValueError(
+                f"cited {source_system} filing observation is not latest"
+            )
         return StoredSourceObservation(
             item=_item_record(row),
             observation=_observation_record(row),
             created=False,
+        )
+
+    def by_sha256(self, observation_digest: str) -> StoredSourceObservation:
+        digest = _optional_sha256("observation SHA-256", observation_digest)
+        assert digest is not None
+        with self.engine.connect() as connection:
+            rows = connection.execute(
+                select(source_observation, source_item)
+                .join(
+                    source_item,
+                    source_item.c.source_item_id
+                    == source_observation.c.source_item_id,
+                )
+                .where(source_observation.c.observation_sha256 == digest)
+                .limit(2)
+            ).mappings().all()
+        if len(rows) != 1:
+            raise ValueError("source observation SHA-256 is missing or ambiguous")
+        return StoredSourceObservation(
+            item=_item_record(rows[0]),
+            observation=_observation_record(rows[0]),
+            created=False,
+        )
+
+    def latest_item(
+        self,
+        source_system: SourceSystem,
+        item_kind: SourceItemKind,
+        source_key: str,
+    ) -> StoredSourceObservation | None:
+        identity = _source_item_identity(
+            SourceItemIdentity(source_system, item_kind, source_key)
+        )
+        system = identity.source_system
+        kind = identity.item_kind
+        key = identity.source_key
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(source_observation, source_item)
+                .join(
+                    source_item,
+                    source_item.c.source_item_id
+                    == source_observation.c.source_item_id,
+                )
+                .where(
+                    source_item.c.source_system == system,
+                    source_item.c.item_kind == kind,
+                    source_item.c.source_key == key,
+                )
+                .order_by(
+                    source_observation.c.detected_at.desc(),
+                    source_observation.c.source_observation_id.desc(),
+                )
+                .limit(1)
+            ).mappings().one_or_none()
+        if row is None:
+            return None
+        return StoredSourceObservation(
+            item=_item_record(row),
+            observation=_observation_record(row),
+            created=False,
+        )
+
+    def latest_edinet_filings(
+        self, index_date: str
+    ) -> tuple[StoredSourceObservation, ...]:
+        try:
+            date.fromisoformat(index_date)
+        except (TypeError, ValueError) as error:
+            raise ValueError("EDINET index date must be an ISO date") from error
+        latest = (
+            select(*source_observation.c)
+            .join(
+                source_item,
+                source_item.c.source_item_id == source_observation.c.source_item_id,
+            )
+            .where(
+                source_item.c.source_system == "EDINET",
+                source_item.c.item_kind == "filing",
+                source_observation.c.canonical_metadata["index_date"].astext
+                == index_date,
+            )
+            .distinct(source_observation.c.source_item_id)
+            .order_by(
+                source_observation.c.source_item_id,
+                source_observation.c.detected_at.desc(),
+                source_observation.c.source_observation_id.desc(),
+            )
+            .subquery()
+        )
+        with self.engine.connect() as connection:
+            rows = connection.execute(
+                select(latest, source_item)
+                .join(
+                    source_item,
+                    source_item.c.source_item_id == latest.c.source_item_id,
+                )
+                .order_by(latest.c.source_item_id)
+            ).mappings().all()
+        return tuple(
+            StoredSourceObservation(
+                item=_item_record(row),
+                observation=_observation_record(row),
+                created=False,
+            )
+            for row in rows
+        )
+
+    def latest_edinet_event(
+        self, document_id: str, event_types: tuple[str, ...] | None = None
+    ) -> StoredSourceObservation | None:
+        key = _required_text("EDINET document id", document_id)
+        event_filter = (
+            source_observation.c.canonical_metadata["event"].astext.in_(event_types)
+            if event_types is not None else
+            source_observation.c.canonical_metadata["event"].astext.is_not(None)
+        )
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(source_observation, source_item)
+                .join(source_item, source_item.c.source_item_id == source_observation.c.source_item_id)
+                .where(
+                    source_item.c.source_system == "EDINET",
+                    source_item.c.item_kind == "resource",
+                    event_filter,
+                    or_(
+                        (
+                            source_observation.c.canonical_metadata["event"].astext != "withdrawal"
+                        ) & (
+                            source_observation.c.canonical_metadata["row"]["docID"].astext == key
+                        ),
+                        (
+                            source_observation.c.canonical_metadata["event"].astext == "withdrawal"
+                        ) & (
+                            source_observation.c.canonical_metadata["row"]["parentDocID"].astext == key
+                        ),
+                    ),
+                )
+                .order_by(
+                    source_observation.c.source_published_at.desc().nullslast(),
+                    source_observation.c.source_observation_id.desc(),
+                )
+                .limit(1)
+            ).mappings().one_or_none()
+        return (
+            StoredSourceObservation(
+                item=_item_record(row), observation=_observation_record(row), created=False
+            )
+            if row is not None else None
         )
 
     def record_witnessed_sec_removal(
