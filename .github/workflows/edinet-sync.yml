@@ -15,6 +15,11 @@ on:
         description: Optional four-digit Japanese security code
         required: false
         type: string
+      export_raw_filings:
+        description: Upload retained EDINET ZIPs and public filing references
+        required: false
+        type: boolean
+        default: false
   schedule:
     # After the Japanese filing day, Monday through Friday.
     - cron: "30 10 * * 1-5"
@@ -116,6 +121,18 @@ jobs:
             args+=(--edinet-code "$EDINET_CODE")
           fi
           python -m screener.sync "${args[@]}"
+
+      - name: Upload retained EDINET filings
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.export_raw_filings }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: edinet-raw-filings-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ~/.cache/graham-screener/edinet/S*.zip
+            ~/.cache/graham-screener/companyfacts_E*.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Rebuild dashboard payload
         working-directory: api
