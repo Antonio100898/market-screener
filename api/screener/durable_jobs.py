@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import Text, cast, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Connection, Engine
 
@@ -19,6 +19,8 @@ JobStatus = Literal["pending", "running", "retry_wait", "succeeded", "failed"]
 ItemStatus = Literal["succeeded", "failed"]
 _RUNNABLE_STATUSES = ("pending", "retry_wait")
 _MAX_ERROR_SUMMARY_LENGTH = 2000
+_SOURCE_RECEIPT_PREFIX = "source-acquisition-receipt:"
+MAX_SCHEDULE_PARAMETER_BYTES = 1024 * 1024
 
 
 def _full_jitter(cap_seconds: float) -> float:
@@ -130,9 +132,119 @@ class RetryPolicy:
 
 
 class DurableJobRepository:
+    @staticmethod
+    def _read_jsonb_row(connection, statement, identifiers, json_columns, budget, *, for_update=False, maximum_rows=1):
+        """Read the same locked row after reserving its actual PostgreSQL payload."""
+        if budget is None:
+            return connection.execute(statement).mappings().one_or_none()
+        if (connection.engine.dialect.name != "postgresql"
+                or connection.connection.dbapi_connection.autocommit is not False):
+            raise ValueError("raw JSONB admission requires a PostgreSQL transaction")
+        scalars = tuple(column for column in statement.selected_columns
+                        if not any(column is value for value in json_columns))
+        sizes = tuple(json_columns) + scalars
+        length_columns = tuple(func.octet_length(cast(column, Text)).label("_raw_bytes_" + str(index))
+                               for index, column in enumerate(sizes))
+        # IDs are fixed bigint, except the already bounded requested item key.
+        budget.sql_row_preflight(identifiers, len(sizes), maximum_rows)
+        preflight = statement.with_only_columns(*identifiers, *length_columns, maintain_column_froms=True)
+        preflight = preflight.with_for_update() if for_update else preflight.with_for_update(read=True)
+        selected_rows = connection.execute(preflight).mappings().all()
+        if not selected_rows:
+            return None
+        if len(selected_rows) != 1:
+            raise ValueError("raw JSONB row selection is ambiguous")
+        selected = selected_rows[0]
+        lengths = tuple(selected["_raw_bytes_" + str(index)] for index in range(len(sizes)))
+        budget.sql_row_read(lengths[:len(json_columns)], lengths[len(json_columns):])
+        exact = statement.where(*(column == selected[column.key] for column in identifiers))
+        row = connection.execute(exact).mappings().one_or_none()
+        if row is None or any(row[column.key] != selected[column.key] for column in identifiers):
+            raise ValueError("selected raw JSONB row changed after reservation")
+        return row
+
+    @staticmethod
+    def _return_item_row(connection, statement, budget):
+        if budget is None:
+            return connection.execute(statement.returning(*durable_job_item.c)).mappings().one()
+        budget.sql_row_preflight((durable_job_item.c.job_id, durable_job_item.c.item_key), 0)
+        identity = connection.execute(statement.returning(durable_job_item.c.job_id,
+            durable_job_item.c.item_key)).mappings().one()
+        row = DurableJobRepository._read_jsonb_row(connection, select(durable_job_item).where(
+            durable_job_item.c.job_id == identity["job_id"], durable_job_item.c.item_key == identity["item_key"]),
+            (durable_job_item.c.job_id, durable_job_item.c.item_key), (durable_job_item.c.outcome,),
+            budget, for_update=True)
+        if row is None:
+            raise ValueError("written item disappeared within its locked transaction")
+        return row
+
     def __init__(self, engine: Engine, *, retry_policy: RetryPolicy | None = None):
         self.engine = engine
         self.retry_policy = retry_policy or RetryPolicy()
+
+    def job_for_occurrence(
+        self, *, schedule_key: str, scheduled_for: datetime, kind: str,
+        parameters: Mapping[str, Any], due_at: datetime, priority: int = 0,
+        max_attempts: int = 3, deadline_at: datetime | None = None,
+    ) -> DurableJobRecord | None:
+        """Recover a lost enqueue return by exact immutable scheduling declaration."""
+        if type(priority) is not int or type(max_attempts) is not int:
+            raise ValueError("schedule priority/max_attempts must be exact integers")
+        key = _bounded_schedule_text("schedule key", schedule_key, 1024)
+        job_kind = _bounded_schedule_text("job kind", kind, 256)
+        _, parameter_json = _bounded_schedule_parameters(parameters)
+        scheduled = _schedule_datetime("scheduled_for", scheduled_for)
+        due = _schedule_datetime("due_at", due_at)
+        deadline = _schedule_datetime("deadline_at", deadline_at) if deadline_at is not None else None
+        job_priority = _integer("priority", priority)
+        attempts = _positive_integer("max_attempts", max_attempts)
+        if not -2**31 <= job_priority < 2**31 or attempts >= 2**31:
+            raise ValueError("schedule priority/attempts must fit PostgreSQL integer")
+        if deadline is not None and deadline <= due:
+            raise ValueError("deadline_at must be after due_at")
+        with self.engine.connect() as connection:
+            row = connection.execute(select(durable_job, job_schedule_occurrence.c.occurrence_id.label("matched_occurrence_id"))
+                .select_from(job_schedule_occurrence.outerjoin(durable_job,
+                    durable_job.c.occurrence_id == job_schedule_occurrence.c.occurrence_id))
+                .where(job_schedule_occurrence.c.schedule_key == key,
+                       job_schedule_occurrence.c.scheduled_for == scheduled)).mappings().one_or_none()
+        if row is None:
+            return None
+        if row["job_id"] is None:
+            raise JobIdentityConflict("schedule occurrence has no associated durable job")
+        immutable = dict(kind=job_kind, due_at=due, priority=job_priority,
+                         max_attempts=attempts, deadline_at=deadline)
+        _, actual_json = _bounded_schedule_parameters(row["parameters"])
+        if (any(row[name] != value for name, value in immutable.items())
+                or any(type(row[name]) is not int for name in ("priority", "max_attempts"))
+                or actual_json != parameter_json):
+            raise JobIdentityConflict("schedule occurrence identifies different immutable job content")
+        return _job_record(row)
+
+    def scheduled_job(
+        self, *, job_id: int, occurrence_id: int, schedule_key: str,
+        scheduled_for: datetime, _raw_work_budget=None,
+    ) -> DurableJobRecord:
+        """Read one recorded child association without enqueueing or selecting latest."""
+        job = _positive_integer("job_id", job_id)
+        occurrence = _positive_integer("occurrence_id", occurrence_id)
+        if job > 2**63 - 1 or occurrence > 2**63 - 1:
+            raise ValueError("recorded child IDs must fit PostgreSQL bigint")
+        key = _required_text("schedule_key", schedule_key)
+        if key != schedule_key or "\0" in key or len(key.encode("utf-8")) > 1024:
+            raise ValueError("exact schedule key must be canonical text within1024 bytes")
+        scheduled = _utc_datetime("scheduled_for", scheduled_for)
+        with self.engine.connect() as connection:
+            statement = select(durable_job).join(job_schedule_occurrence,
+                durable_job.c.occurrence_id == job_schedule_occurrence.c.occurrence_id,
+            ).where(durable_job.c.job_id == job, durable_job.c.occurrence_id == occurrence,
+                job_schedule_occurrence.c.schedule_key == key,
+                job_schedule_occurrence.c.scheduled_for == scheduled)
+            row = self._read_jsonb_row(connection, statement, (durable_job.c.job_id,),
+                (durable_job.c.parameters, durable_job.c.checkpoint), _raw_work_budget)
+        if row is None:
+            raise JobIdentityConflict("recorded child job/occurrence/key/time association is absent")
+        return _job_record(row)
 
     def enqueue_scheduled(
         self,
@@ -190,7 +302,7 @@ class DurableJobRepository:
         priority: int = 0,
         max_attempts: int = 3,
         deadline_at: datetime | None = None,
-        now: datetime | None = None,
+        now: datetime | Callable[[], datetime] | None = None,
     ) -> DurableJobRecord:
         schedule = _required_text("child key", child_key)
         scheduled = _utc_datetime("scheduled_for", scheduled_for)
@@ -206,7 +318,7 @@ class DurableJobRepository:
         attempt_limit = _positive_integer("max_attempts", max_attempts)
         if deadline is not None and deadline <= due:
             raise ValueError("deadline_at must be after due_at")
-        current = _utc_datetime("now", now or datetime.now(timezone.utc))
+        current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
         immutable = {
             "kind": job_kind,
             "parameters": job_parameters,
@@ -216,13 +328,14 @@ class DurableJobRepository:
             "deadline_at": deadline,
         }
         with self.engine.begin() as connection:
-            self._lock_live_lease(connection, lease, current)
+            self._lock_live_lease(connection, lease, now)
             row = self._enqueue_on_connection(
                 connection,
                 schedule_key=schedule,
                 scheduled_for=scheduled,
                 immutable=immutable,
             )
+            self._lock_live_lease(connection, lease, now)
         return _job_record(row)
 
     @staticmethod
@@ -285,12 +398,12 @@ class DurableJobRepository:
         *,
         owner: str,
         lease_duration: timedelta,
-        now: datetime | None = None,
+        now: datetime | Callable[[], datetime] | None = None,
         allowed_kinds: Collection[str] | None = None,
     ) -> ClaimedJob | None:
         worker = _required_text("owner", owner)
         duration = _positive_duration("lease_duration", lease_duration)
-        current = _utc_datetime("now", now or datetime.now(timezone.utc))
+        current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
         kinds = _job_kinds(allowed_kinds)
         if kinds == ():
             return None
@@ -375,12 +488,13 @@ class DurableJobRepository:
         lease: LeaseToken,
         *,
         lease_duration: timedelta,
-        now: datetime | None = None,
+        now: datetime | Callable[[], datetime] | None = None,
     ) -> DurableJobRecord:
         duration = _positive_duration("lease_duration", lease_duration)
-        current = _utc_datetime("now", now or datetime.now(timezone.utc))
+        current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
         with self.engine.begin() as connection:
-            self._lock_live_lease(connection, lease, current)
+            self._lock_live_lease(connection, lease, now)
+            current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
             row = connection.execute(
                 update(durable_job)
                 .where(durable_job.c.job_id == lease.job_id)
@@ -398,19 +512,63 @@ class DurableJobRepository:
         lease: LeaseToken,
         checkpoint: Mapping[str, Any],
         *,
-        now: datetime | None = None,
+        now: datetime | Callable[[], datetime] | None = None,
+        _raw_work_budget=None,
     ) -> DurableJobRecord:
         value = _json_object("checkpoint", checkpoint)
-        current = _utc_datetime("now", now or datetime.now(timezone.utc))
         with self.engine.begin() as connection:
-            self._lock_live_lease(connection, lease, current)
-            row = connection.execute(
-                update(durable_job)
-                .where(durable_job.c.job_id == lease.job_id)
-                .values(checkpoint=value, updated_at=current)
-                .returning(*durable_job.c)
-            ).mappings().one()
+            row = self._save_checkpoint_on_connection(connection, lease, value, now,
+                **({} if _raw_work_budget is None else dict(_raw_work_budget=_raw_work_budget)))
         return _job_record(row)
+
+    def save_checkpoint_on_connection(
+        self,
+        connection: Connection,
+        lease: LeaseToken,
+        checkpoint: Mapping[str, Any],
+        *,
+        now: datetime | Callable[[], datetime] | None = None,
+        _raw_work_budget=None,
+    ) -> DurableJobRecord:
+        """Write a provisional checkpoint without committing the caller's work."""
+        value = _json_object("checkpoint", checkpoint)
+        if (not isinstance(connection, Connection) or connection.closed
+                or connection.engine is not self.engine or not connection.in_transaction()
+                or not connection.get_transaction().is_active):
+            raise ValueError("checkpoint requires a live transaction from this repository engine")
+        if getattr(connection.connection.dbapi_connection, "autocommit", None) is not False:
+            raise ValueError("checkpoint requires DBAPI autocommit disabled")
+        return _job_record(self._save_checkpoint_on_connection(connection, lease, value, now,
+            **({} if _raw_work_budget is None else dict(_raw_work_budget=_raw_work_budget))))
+
+    def _save_checkpoint_on_connection(
+        self,
+        connection: Connection,
+        lease: LeaseToken,
+        value: dict[str, Any],
+        now: datetime | Callable[[], datetime] | None,
+        _raw_work_budget=None,
+    ) -> Mapping[str, Any]:
+        budget_args = {} if _raw_work_budget is None else dict(_raw_work_budget=_raw_work_budget)
+        self._lock_live_lease(connection, lease, now, **budget_args)
+        current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
+        statement = (
+            update(durable_job)
+            .where(durable_job.c.job_id == lease.job_id)
+            .values(checkpoint=value, updated_at=current)
+        )
+        if _raw_work_budget is None:
+            row = connection.execute(statement.returning(*durable_job.c)).mappings().one()
+        else:
+            _raw_work_budget.sql_row_preflight((durable_job.c.job_id,), 0)
+            identity = connection.execute(statement.returning(durable_job.c.job_id)).scalar_one()
+            row = self._read_jsonb_row(connection, select(durable_job).where(durable_job.c.job_id == identity),
+                (durable_job.c.job_id,), (durable_job.c.parameters, durable_job.c.checkpoint),
+                _raw_work_budget, for_update=True)
+            if row is None:
+                raise LeaseLost("checkpoint job disappeared within its locked transaction")
+        self._lock_live_lease(connection, lease, now, **budget_args)
+        return row
 
     def record_item_outcome(
         self,
@@ -420,14 +578,16 @@ class DurableJobRepository:
         status: ItemStatus,
         outcome: Mapping[str, Any] | None = None,
         error_summary: str | None = None,
-        now: datetime | None = None,
+        now: datetime | Callable[[], datetime] | None = None,
     ) -> DurableJobItemRecord:
         key = _required_text("item key", item_key)
+        if key.startswith(_SOURCE_RECEIPT_PREFIX):
+            raise ValueError("source acquisition receipts require immutable insertion")
         if status not in ("succeeded", "failed"):
             raise ValueError("item status must be succeeded or failed")
         result = _json_object("outcome", outcome) if outcome is not None else None
         error = _error_summary(error_summary)
-        current = _utc_datetime("now", now or datetime.now(timezone.utc))
+        current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
         with self.engine.begin() as connection:
             row = self._record_item_outcome_on_connection(
                 connection,
@@ -436,7 +596,7 @@ class DurableJobRepository:
                 status=status,
                 outcome=result,
                 error_summary=error,
-                now=current,
+                now=now,
             )
         return _item_record(row)
 
@@ -449,19 +609,28 @@ class DurableJobRepository:
         status: ItemStatus,
         outcome: dict[str, Any] | None,
         error_summary: str | None,
-        now: datetime,
+        now: datetime | Callable[[], datetime] | None,
         lease_is_locked: bool = False,
+        _raw_work_budget=None,
     ) -> Mapping[str, Any]:
+        budget_args = {} if _raw_work_budget is None else dict(_raw_work_budget=_raw_work_budget)
+        if item_key.startswith(_SOURCE_RECEIPT_PREFIX):
+            raise ValueError("source acquisition receipts require immutable insertion")
         if not lease_is_locked:
-            self._lock_live_lease(connection, lease, now)
-        existing = connection.execute(
+            self._lock_live_lease(connection, lease, now, **budget_args)
+        statement = (
             select(durable_job_item)
             .where(
                 durable_job_item.c.job_id == lease.job_id,
                 durable_job_item.c.item_key == item_key,
             )
             .with_for_update()
-        ).mappings().one_or_none()
+        )
+        existing = self._read_jsonb_row(connection, statement,
+            (durable_job_item.c.job_id, durable_job_item.c.item_key), (durable_job_item.c.outcome,),
+            _raw_work_budget, for_update=True)
+        self._lock_live_lease(connection, lease, now, **budget_args)
+        current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
         if (
             existing is not None
             and existing["status"] == status
@@ -470,7 +639,7 @@ class DurableJobRepository:
         ):
             return existing
         if existing is None:
-            return connection.execute(
+            return self._return_item_row(connection,
                 durable_job_item.insert()
                 .values(
                     job_id=lease.job_id,
@@ -479,12 +648,10 @@ class DurableJobRepository:
                     attempts=1,
                     outcome=outcome,
                     error_summary=error_summary,
-                    updated_at=now,
-                    finished_at=now,
-                )
-                .returning(*durable_job_item.c)
-            ).mappings().one()
-        return connection.execute(
+                    updated_at=current,
+                    finished_at=current,
+                ), _raw_work_budget)
+        return self._return_item_row(connection,
             update(durable_job_item)
             .where(
                 durable_job_item.c.job_id == lease.job_id,
@@ -495,27 +662,61 @@ class DurableJobRepository:
                 attempts=durable_job_item.c.attempts + 1,
                 outcome=outcome,
                 error_summary=error_summary,
-                updated_at=now,
-                finished_at=now,
-            )
-            .returning(*durable_job_item.c)
-        ).mappings().one()
+                updated_at=current,
+                finished_at=current,
+            ), _raw_work_budget)
+
+    @staticmethod
+    def _item_outcome_on_connection(connection: Connection, job_id: int, item_key: str, *, _raw_work_budget=None):
+        statement = select(durable_job_item).where(
+            durable_job_item.c.job_id == job_id,
+            durable_job_item.c.item_key == item_key,
+        )
+        return DurableJobRepository._read_jsonb_row(connection, statement,
+            (durable_job_item.c.job_id, durable_job_item.c.item_key), (durable_job_item.c.outcome,), _raw_work_budget)
+
+    def _record_source_receipt_on_connection(
+        self, connection: Connection, lease: LeaseToken, *, item_key: str,
+        outcome: Mapping[str, Any], now: Callable[[], datetime],
+        _raw_work_budget=None,
+    ) -> Mapping[str, Any]:
+        budget_args = {} if _raw_work_budget is None else dict(_raw_work_budget=_raw_work_budget)
+        if not item_key.startswith(_SOURCE_RECEIPT_PREFIX):
+            raise ValueError("source receipt requires its reserved namespace")
+        value = _json_object("source receipt", outcome)
+        self._lock_live_lease(connection, lease, now, **budget_args)
+        existing = self._item_outcome_on_connection(connection, lease.job_id, item_key, **budget_args)
+        self._lock_live_lease(connection, lease, now, **budget_args)
+        if existing is not None:
+            # Canonical text keeps JSON booleans and equal-valued floats distinct.
+            if (existing["status"] != "succeeded" or existing["error_summary"] is not None
+                    or existing["attempts"] != 1
+                    or json.dumps(existing["outcome"], sort_keys=True, separators=(",", ":"))
+                    != json.dumps(value, sort_keys=True, separators=(",", ":"))):
+                raise JobIdentityConflict("source acquisition receipt is immutable")
+            return existing
+        current = _utc_datetime("receipt clock", now())
+        return self._return_item_row(connection, durable_job_item.insert().values(
+            job_id=lease.job_id, item_key=item_key, status="succeeded", attempts=1,
+            outcome=value, error_summary=None, updated_at=current, finished_at=current,
+        ), _raw_work_budget)
 
     def complete(
         self,
         lease: LeaseToken,
         *,
         final_checkpoint: Mapping[str, Any] | None = None,
-        now: datetime | None = None,
+        now: datetime | Callable[[], datetime] | None = None,
     ) -> DurableJobRecord:
         checkpoint = (
             _json_object("final checkpoint", final_checkpoint)
             if final_checkpoint is not None
             else None
         )
-        current = _utc_datetime("now", now or datetime.now(timezone.utc))
+        current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
         with self.engine.begin() as connection:
-            self._lock_live_lease(connection, lease, current)
+            self._lock_live_lease(connection, lease, now)
+            current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
             values: dict[str, Any] = {
                 "status": "succeeded",
                 "owner": None,
@@ -541,7 +742,7 @@ class DurableJobRepository:
         *,
         error_summary: str,
         final_checkpoint: Mapping[str, Any] | None = None,
-        now: datetime | None = None,
+        now: datetime | Callable[[], datetime] | None = None,
     ) -> DurableJobRecord:
         error = _required_error_summary(error_summary)
         checkpoint = (
@@ -549,9 +750,10 @@ class DurableJobRepository:
             if final_checkpoint is not None
             else None
         )
-        current = _utc_datetime("now", now or datetime.now(timezone.utc))
+        current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
         with self.engine.begin() as connection:
-            locked = self._lock_live_lease(connection, lease, current)
+            locked = self._lock_live_lease(connection, lease, now)
+            current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
             values = self._failed_or_retry_values(locked, current, error)
             if checkpoint is not None:
                 values["checkpoint"] = checkpoint
@@ -568,12 +770,13 @@ class DurableJobRepository:
         lease: LeaseToken,
         *,
         reason: str,
-        now: datetime | None = None,
+        now: datetime | Callable[[], datetime] | None = None,
     ) -> DurableJobRecord:
         summary = _required_error_summary(reason)
-        current = _utc_datetime("now", now or datetime.now(timezone.utc))
+        current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
         with self.engine.begin() as connection:
-            locked = self._lock_live_lease(connection, lease, current)
+            locked = self._lock_live_lease(connection, lease, now)
+            current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
             next_retry = self.retry_policy.retry_at(
                 attempts=locked["ownership_generation"],
                 now=current,
@@ -609,10 +812,10 @@ class DurableJobRepository:
     def recover_expired(
         self,
         *,
-        now: datetime | None = None,
+        now: datetime | Callable[[], datetime] | None = None,
         limit: int = 100,
     ) -> tuple[DurableJobRecord, ...]:
-        current = _utc_datetime("now", now or datetime.now(timezone.utc))
+        current = _utc_datetime("now", now() if callable(now) else now or datetime.now(timezone.utc))
         batch_size = _positive_integer("limit", limit)
         with self.engine.begin() as connection:
             rows = connection.execute(
@@ -646,20 +849,24 @@ class DurableJobRepository:
         self,
         connection: Connection,
         lease: LeaseToken,
-        now: datetime,
+        now: datetime | Callable[[], datetime] | None = None,
+        _raw_work_budget=None,
     ) -> Mapping[str, Any]:
         token = _lease_token(lease)
-        row = connection.execute(
-            select(durable_job)
-            .where(durable_job.c.job_id == token.job_id)
-            .with_for_update()
-        ).mappings().one_or_none()
+        columns = tuple(column for column in durable_job.c if column.key not in {"parameters", "checkpoint"})
+        statement = (
+            select(durable_job) if _raw_work_budget is None else select(*columns)
+        ).where(durable_job.c.job_id == token.job_id).with_for_update()
+        row = self._read_jsonb_row(connection, statement, (durable_job.c.job_id,), (),
+            _raw_work_budget, for_update=True)
+        # Evaluate the live clock after FOR UPDATE, which may have waited past expiry.
+        current = _utc_datetime("lease clock", now() if callable(now) else now or datetime.now(timezone.utc))
         if (
             row is None
             or row["status"] != "running"
             or row["owner"] != token.owner
             or row["ownership_generation"] != token.generation
-            or row["lease_expires_at"] <= now
+            or row["lease_expires_at"] <= current
         ):
             raise LeaseLost("job lease is absent, expired, or no longer owned")
         return row
@@ -696,6 +903,69 @@ def _job_record(row: Mapping[str, Any]) -> DurableJobRecord:
     return DurableJobRecord(
         **{field: row[field] for field in DurableJobRecord.__dataclass_fields__}
     )
+
+
+def _bounded_schedule_text(name, value, maximum):
+    if type(value) is not str or len(value) > maximum:
+        raise ValueError(f"{name} must be text within{maximum} codepoints")
+    result = _required_text(name, value)
+    if result != value or "\0" in result or len(result.encode("utf-8")) > maximum:
+        raise ValueError(f"{name} must be canonical text within{maximum} UTF8 bytes")
+    return result
+
+
+def _schedule_datetime(name, value):
+    try:
+        return _utc_datetime(name, value)
+    except OverflowError as error:
+        raise ValueError(f"{name} cannot be represented in UTC") from error
+
+
+def _bounded_schedule_parameters(value):
+    """Admit bounded strict JSON before allocating its detached canonical copy."""
+    if type(value) is not dict:
+        raise ValueError("schedule parameters must be a JSON object")
+    stack, nodes = [(value, 0)], 0
+    while stack:
+        item, depth = stack.pop()
+        nodes += 1
+        if nodes > 100000 or depth > 32:
+            raise ValueError("schedule JSON exceeds node/depth limit")
+        if type(item) is dict:
+            if len(item) > 10000:
+                raise ValueError("schedule JSON object exceeds10000 entries")
+            if len(stack) + 2 * len(item) > 100000 - nodes:
+                raise ValueError("schedule JSON pending work exceeds node limit")
+            for key, child in item.items():
+                if type(key) is not str:
+                    raise ValueError("schedule JSON requires exact string object keys")
+                stack.extend(((key, depth + 1), (child, depth + 1)))
+        elif type(item) is list:
+            if len(item) > 10000:
+                raise ValueError("schedule JSON array exceeds10000 entries")
+            if len(stack) + len(item) > 100000 - nodes:
+                raise ValueError("schedule JSON pending work exceeds node limit")
+            stack.extend((child, depth + 1) for child in item)
+        elif type(item) is str:
+            if len(item) > 65536 or len(item.encode("utf-8")) > 65536:
+                raise ValueError("schedule JSON text exceeds64KiB")
+        elif type(item) is int:
+            if not -2**63 <= item < 2**63:
+                raise ValueError("schedule JSON integer exceeds signed64bit")
+        elif type(item) is float:
+            if not math.isfinite(item):
+                raise ValueError("schedule JSON number must be finite")
+        elif item is not None and type(item) is not bool:
+            raise ValueError("schedule JSON contains unsupported value")
+    parts, size = [], 0
+    encoder = json.JSONEncoder(sort_keys=True, separators=(",", ":"), allow_nan=False)
+    for part in encoder.iterencode(value):
+        size += len(part.encode("utf-8"))
+        if size > MAX_SCHEDULE_PARAMETER_BYTES:
+            raise ValueError("schedule JSON parameters exceed1MiB")
+        parts.append(part)
+    canonical = "".join(parts)
+    return json.loads(canonical), canonical
 
 
 def _item_record(row: Mapping[str, Any]) -> DurableJobItemRecord:

@@ -1,4 +1,6 @@
 import json
+import io
+import zipfile
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
@@ -22,9 +24,25 @@ def test_japanese_filing_routes_use_cached_edinet_data_and_jpy_quote(tmp_path, m
             }]}}
         }},
         "_adapter": {"kind": "edinet_xbrl", "statement_basis": "canonical",
-                     "reporting_currency": "JPY", "quote_currency": "JPY"},
+                     "reporting_currency": "JPY", "quote_currency": "JPY",
+                     "ticker": "6752.T", "security_code": "67520",
+                     "security_basis": "PRIMARY_ORDINARY_SHARE",
+                     "reports": [{"document": "S100YETA", "published": "2026-06-19",
+                                  "period_start": "2025-04-01", "period_end": "2026-03-31"}]},
     }
     (tmp_path / "companyfacts_E01772.json").write_text(json.dumps(facts))
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as filing:
+        filing.writestr("XBRL/PublicDoc/annual.xbrl", '''<xbrli:xbrl
+          xmlns:xbrli="http://www.xbrl.org/2003/instance"
+          xmlns:jpigp_cor="http://disclosure.edinet-fsa.go.jp/taxonomy/jpigp_cor">
+          <xbrli:context id="balance"><xbrli:entity><xbrli:identifier>E01772-000</xbrli:identifier></xbrli:entity>
+            <xbrli:period><xbrli:instant>2026-03-31</xbrli:instant></xbrli:period></xbrli:context>
+          <xbrli:unit id="JPY"><xbrli:measure>JPY</xbrli:measure></xbrli:unit>
+          <jpigp_cor:AssetsIFRS contextRef="balance" unitRef="JPY">10172412000000</jpigp_cor:AssetsIFRS>
+        </xbrli:xbrl>''')
+    (tmp_path / "edinet").mkdir()
+    (tmp_path / "edinet" / "S100YETA.zip").write_bytes(archive.getvalue())
     database = tmp_path / "test.db"
     conn = store.connect(database)
     store.upsert_company(conn, "E01772", "6752.T", "Panasonic Holdings Corporation")

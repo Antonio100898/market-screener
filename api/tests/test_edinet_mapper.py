@@ -262,3 +262,187 @@ def test_observed_jgaap_rows_keep_net_assets_and_intangibles_unmapped(monkeypatc
         assert Decimal(entry["val"]) == expected
     assert "StockholdersEquity" not in bundle["facts"]["canonical"]
     assert "IntangibleAssetsNetExcludingGoodwill" not in bundle["facts"]["canonical"]
+
+
+def _s100z3o7_cashflow_rows():
+    # Native S100Z3O7 archive SHA4c0a0a9e374faa5dea7af0b746282077f2cdef59eb6f927098e5c08d62bf68e0.
+    member = "XBRL/PublicDoc/jpcrp030000-asr-001_E00009-000_2026-06-30_01_2026-09-24.xbrl"
+    rows = [_fact("jppfs_cor", "Assets", "28461000000", start=None,
+                  end="2026-06-30", document="S100Z3O7")]
+    values = {
+        "ProfitLossAttributableToOwnersOfParent": ("1720000000", "2925000000"),
+        "NetCashProvidedByUsedInOperatingActivities": ("2915000000", "4885000000"),
+        "DepreciationAndAmortizationOpeCF": ("1771000000", "1815000000"),
+        "PurchaseOfPropertyPlantAndEquipmentInvCF": ("-2026000000", "-1521000000"),
+        "PurchaseOfIntangibleAssetsInvCF": ("-19000000", "-0"),
+    }
+    for tag, amounts in values.items():
+        for (start, end), amount in zip(
+                (("2024-07-01", "2025-06-30"), ("2025-07-01", "2026-06-30")), amounts):
+            rows.append(_fact("jppfs_cor", tag, amount, start=start, end=end,
+                              document="S100Z3O7"))
+    for row in rows:
+        row.update(namespace="http://disclosure.edinet-fsa.go.jp/taxonomy/jppfs/2025-11-01/jppfs_cor",
+                   entity="E00009-000", source_file=member)
+    record = {**_record("S100Z3O7", "E00009", "13810"),
+              "submitDateTime": "2026-09-24", "periodStart": "2025-07-01",
+              "periodEnd": "2026-06-30"}
+    return record, rows
+
+
+def test_retained_jgaap_cash_purchases_and_depreciation_keep_separate_source_rows(monkeypatch):
+    record, raw = _s100z3o7_cashflow_rows()
+    monkeypatch.setattr(edinet_mapper, "xbrl_facts", lambda archive, doc: raw)
+    bundle = edinet_mapper.build_edinet_companyfacts(record, b"fixture", ticker="1381.T")
+    expected = {
+        "DepreciationAndAmortization": ("DepreciationAndAmortizationOpeCF", ("1771000000", "1815000000")),
+        "PaymentsToAcquirePropertyPlantAndEquipment": ("PurchaseOfPropertyPlantAndEquipmentInvCF", ("2026000000", "1521000000")),
+        "PaymentsToAcquireIntangibleAssets": ("PurchaseOfIntangibleAssetsInvCF", ("19000000", "0")),
+    }
+    for tag, (source_tag, values) in expected.items():
+        entries = bundle["facts"]["canonical"][tag]["units"]["JPY"]
+        assert [entry["val"] for entry in entries] == list(values)
+        assert [(entry["start"], entry["end"]) for entry in entries] == [
+            ("2024-07-01", "2025-06-30"), ("2025-07-01", "2026-06-30")]
+        for entry in entries:
+            assert entry["_source_tag"] == source_tag
+            assert entry["_source_namespace"] == "jppfs_cor"
+            assert entry["_source_unit"] == "JPY"
+            assert entry["_source_document"] == entry["accn"] == "S100Z3O7"
+            assert entry["_source_file"] == raw[0]["source_file"]
+            assert entry["filed"] == "2026-09-24" and entry["form"] == "JP-AR"
+        if tag.startswith("Payments"):
+            assert entries[0]["_source_concept"].endswith("source signed negative)")
+    snapshot = build_snapshot("1381.T", "E00009", bundle)
+    owner = snapshot.owner_earnings
+    assert owner is not None
+    assert owner.annual[2025].free_cash_flow.value == Decimal("889000000")
+    assert owner.annual[2025].capitalized_intangible_investment.value == Decimal("19000000")
+    assert owner.annual[2025].expanded_free_cash_flow.value == Decimal("870000000")
+    assert owner.annual[2026].free_cash_flow.value == Decimal("3364000000")
+    assert owner.annual[2026].capitalized_intangible_investment.value == 0
+    assert owner.annual[2025].diluted_shares is None
+    assert owner.annual[2025].free_cash_flow_per_share is None
+
+    from screener.sync import _owner_earnings_row
+
+    bridge = _owner_earnings_row(snapshot)["annual_per_share"]["2025"]["cash_flow_bridge"]
+    capex = bridge["total_capital_expenditure"]
+    fact = owner.annual[2025].total_capital_expenditure
+    assert capex[:7] == [2026000000.0, "jppfs_cor:PurchaseOfPropertyPlantAndEquipmentInvCF",
+                         "JP-AR", "S100Z3O7", "2025-06-30", "JPY", "S100Z3O7"]
+    assert capex[7] == {
+        "tag": capex[1], "form": "JP-AR", "accn": "S100Z3O7",
+        "start": "2024-07-01", "end": "2025-06-30", "filed": "2026-09-24",
+        "unit": "JPY", "document": "S100Z3O7",
+        "canonical_tag": "PaymentsToAcquirePropertyPlantAndEquipment",
+        "concept": fact.provenance.concept,
+    }
+    assert capex[7]["concept"].endswith("source signed negative)")
+    depreciation = bridge["depreciation_and_amortisation"]
+    assert depreciation[0] == 1771000000.0
+    assert depreciation[7]["start"] == "2024-07-01"
+    assert depreciation[7]["canonical_tag"] == "DepreciationAndAmortization"
+    assert "source signed negative" not in depreciation[7]["concept"]
+    assert owner.annual[2025].free_cash_flow.value == Decimal("889000000")
+
+    from dataclasses import replace
+
+    without_location = replace(fact, provenance=replace(fact.provenance, unit=None, document=None))
+    annual = replace(owner.annual[2025], total_capital_expenditure=without_location)
+    sparse_snapshot = replace(snapshot, owner_earnings=replace(owner, annual={2025: annual}))
+    sparse = _owner_earnings_row(sparse_snapshot)["annual_per_share"]["2025"]["cash_flow_bridge"]["total_capital_expenditure"]
+    assert sparse[:5] == capex[:5]
+    assert sparse[5:7] == [None, None]
+    assert sparse[7]["start"] == "2024-07-01"
+    assert "unit" not in sparse[7] and "document" not in sparse[7]
+
+
+@pytest.mark.parametrize("problem", ["dimension", "entity", "currency"])
+def test_retained_cashflow_aliases_do_not_admit_tampered_scope(monkeypatch, problem):
+    record, raw = _s100z3o7_cashflow_rows()
+    for row in raw:
+        if row["tag"] not in {"DepreciationAndAmortizationOpeCF",
+                              "PurchaseOfPropertyPlantAndEquipmentInvCF", "PurchaseOfIntangibleAssetsInvCF"}:
+            continue
+        if problem == "dimension":
+            row["dimensions"] = [{"axis": "ConsolidatedOrNonConsolidatedAxis", "member": "NonConsolidatedMember"}]
+        elif problem == "entity":
+            row["entity"] = "E99999-000"
+        else:
+            row["unit"] = "USD"
+    monkeypatch.setattr(edinet_mapper, "xbrl_facts", lambda archive, doc: raw)
+    bundle = edinet_mapper.build_edinet_companyfacts(record, b"fixture", ticker="1381.T")
+    assert not {"DepreciationAndAmortization", "PaymentsToAcquirePropertyPlantAndEquipment",
+                "PaymentsToAcquireIntangibleAssets"} & bundle["facts"]["canonical"].keys()
+
+
+def test_native_ifrs_cash_payments_use_the_same_separate_cash_contract(monkeypatch):
+    # QB Net, S100Z383, current-year native JPY balance and cash-payment rows.
+    record = {**_record("S100Z383", "E33838", "65710"),
+              "submitDateTime": "2026-09-24", "periodStart": "2025-07-01",
+              "periodEnd": "2026-06-30"}
+    rows = [
+        _fact("jpigp_cor", "AssetsIFRS", "35719000000", start=None, end="2026-06-30"),
+        _fact("jpigp_cor", "PurchaseOfPropertyPlantAndEquipmentInvCFIFRS", "-1323000000",
+              start="2025-07-01", end="2026-06-30"),
+        _fact("jpigp_cor", "PurchaseOfIntangibleAssetsInvCFIFRS", "-218000000",
+              start="2025-07-01", end="2026-06-30"),
+    ]
+    for row in rows:
+        row["entity"] = "E33838-000"
+    monkeypatch.setattr(edinet_mapper, "xbrl_facts", lambda archive, doc: rows)
+    bundle = edinet_mapper.build_edinet_companyfacts(record, b"fixture", ticker="6571.T")
+    ppe = _entry(bundle, "PaymentsToAcquirePropertyPlantAndEquipment")
+    intangible = _entry(bundle, "PaymentsToAcquireIntangibleAssets")
+    assert ppe["val"] == "1323000000" and intangible["val"] == "218000000"
+    assert ppe["_source_namespace"] == intangible["_source_namespace"] == "jpigp_cor"
+    assert ppe["_source_tag"] == "PurchaseOfPropertyPlantAndEquipmentInvCFIFRS"
+    assert intangible["_source_tag"] == "PurchaseOfIntangibleAssetsInvCFIFRS"
+
+
+def test_direct_jgaap_cash_equivalents_do_not_relabel_cash_and_deposits(monkeypatch):
+    record, rows = _s100z3o7_cashflow_rows()
+    for tag, value in (("CashAndCashEquivalents", "100"), ("CashAndDeposits", "150")):
+        cash = {**rows[0], "tag": tag, "value": Decimal(value)}
+        rows.append(cash)
+    monkeypatch.setattr(edinet_mapper, "xbrl_facts", lambda archive, doc: rows)
+    bundle = edinet_mapper.build_edinet_companyfacts(record, b"fixture", ticker="1381.T")
+    cash = _entry(bundle, "CashAndCashEquivalentsAtCarryingValue")
+    assert cash["val"] == "100" and cash["_source_tag"] == "CashAndCashEquivalents"
+
+
+def test_tse_quote_currency_does_not_follow_a_usd_statement(monkeypatch):
+    from screener import sync
+    from screener.evidence import EvidenceBundle
+
+    raw = [
+        _fact("jpigp_cor", "AssetsIFRS", 100, start=None, unit="USD"),
+        _fact("jpigp_cor", "BasicEarningsLossPerShareIFRS", "2.5", unit="USD/shares"),
+    ]
+    monkeypatch.setattr(edinet_mapper, "xbrl_facts", lambda archive, doc: raw)
+    bundle = edinet_mapper.build_edinet_companyfacts(
+        _record("S100YETA", "E01772", "67520"), b"fixture", ticker="6752.T")
+    assert bundle["_adapter"]["reporting_currency"] == "USD"
+    assert bundle["_adapter"]["quote_currency"] == "JPY"
+    status, row = sync._derive_evidence(EvidenceBundle("E01772", "6752.T", bundle, None, None))
+    assert status == "ok"
+    priced = sync.apply_price(row, 5000)
+    assert next(criterion for criterion in priced["criteria"] if criterion["n"] == 1)["status"] == "INSUFFICIENT_DATA"
+
+
+def test_combined_jgaap_purchase_keeps_tangible_and_intangible_scope(monkeypatch):
+    record, rows = _s100z3o7_cashflow_rows()
+    # A filing-shaped scope control using Beauty Kadan's reported combined cash payment.
+    rows = [row for row in rows if row["tag"] not in {
+        "PurchaseOfPropertyPlantAndEquipmentInvCF", "PurchaseOfIntangibleAssetsInvCF"}]
+    combined = {**rows[-1], "tag": "PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCF",
+                "value": Decimal("-41661000")}
+    rows.append(combined)
+    monkeypatch.setattr(edinet_mapper, "xbrl_facts", lambda archive, doc: rows)
+    bundle = edinet_mapper.build_edinet_companyfacts(record, b"fixture", ticker="1381.T")
+    purchase = _entry(bundle, "PaymentsToAcquireProductiveAssets")
+    assert purchase["val"] == "41661000"
+    assert purchase["_source_tag"] == "PurchaseOfPropertyPlantAndEquipmentAndIntangibleAssetsInvCF"
+    assert "PaymentsToAcquirePropertyPlantAndEquipment" not in bundle["facts"]["canonical"]
+    assert "PaymentsToAcquireIntangibleAssets" not in bundle["facts"]["canonical"]

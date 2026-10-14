@@ -13,6 +13,7 @@ def bundle(doc, value, published):
         "_adapter": {
             "kind": "edinet_xbrl", "statement_basis": "canonical",
             "reporting_currency": "JPY", "quote_currency": "JPY",
+            "accounting_standard": "IFRS",
             "ticker": "6752.T", "reports": [{"document": doc, "published": published}],
         },
     }

@@ -20,6 +20,10 @@ class EdgarError(Exception):
     pass
 
 
+class EdgarPayloadTooLarge(EdgarError):
+    pass
+
+
 class UnknownTickerError(EdgarError):
     pass
 
@@ -60,6 +64,9 @@ class EdgarClient:
         # so the wait-and-stamp must be atomic across threads
         self._rate_lock = threading.Lock()
 
+    def close(self) -> None:
+        self._http.close()
+
     def cik_for(self, ticker: str) -> str:
         mapping = self._cached("company_tickers", TICKER_MAP_URL)
         wanted = ticker.upper().replace(".", "-")  # SEC maps BRK.B as BRK-B
@@ -76,8 +83,10 @@ class EdgarClient:
         company has been an SEC filer at all, which XBRL facts cannot show."""
         return self._get(f"https://data.sec.gov/submissions/CIK{cik}.json")
 
-    def fetch(self, url: str) -> EdgarTransportResult:
+    def fetch(self, url: str, *, maximum_bytes: int | None = None) -> EdgarTransportResult:
         """Fetch exact response bytes and source metadata through the SEC limiter."""
+        if maximum_bytes is not None:
+            return self._request(url, maximum_bytes=maximum_bytes)
         response = self._request(url)
         return EdgarTransportResult(
             data=bytes(response.content),
@@ -110,21 +119,59 @@ class EdgarClient:
         except ValueError:
             raise EdgarError(f"non-JSON body on HTTP 200 for {url}")
 
-    def _request(self, url: str) -> httpx.Response:
+    def _bounded_fetch_attempt(self, url: str, maximum_bytes: int):
+        request = self._http.build_request("GET", url, headers={"Accept-Encoding": "identity"})
+        for hop in range(self._http.max_redirects + 1):
+            if hop:
+                self._wait_for_rate_limit()
+            response = self._http.send(request, stream=True, follow_redirects=False)
+            try:
+                if response.next_request is not None and self._http.follow_redirects:
+                    request = response.next_request
+                    continue
+                if response.status_code != 200:
+                    return response, None
+                if response.headers.get("content-encoding", "identity").strip().lower() != "identity":
+                    raise EdgarError("bounded SEC fetch requires identity Content-Encoding")
+                length = response.headers.get("content-length")
+                if length is not None and not (length.isascii() and length.isdecimal()):
+                    raise EdgarError("invalid Content-Length for bounded SEC fetch")
+                payload = bytearray()
+                for chunk in response.iter_raw():
+                    if len(payload) + len(chunk) > maximum_bytes:
+                        raise EdgarPayloadTooLarge(f"SEC payload exceeds {maximum_bytes} bytes for {url}")
+                    payload.extend(chunk)
+                return response, EdgarTransportResult(
+                    bytes(payload), str(response.url), response.headers.get("content-type"),
+                    response.headers.get("etag"), response.headers.get("last-modified"))
+            finally:
+                response.close()
+        raise httpx.TooManyRedirects("Exceeded maximum allowed redirects.", request=request)
+
+    def _wait_for_rate_limit(self):
+        with self._rate_lock:
+            gap = self._last_request + _MIN_INTERVAL - time.monotonic()
+            if gap > 0:
+                time.sleep(gap)
+            self._last_request = time.monotonic()
+
+    def _request(self, url: str, *, maximum_bytes: int | None = None) -> httpx.Response | EdgarTransportResult:
+        if maximum_bytes is not None and (type(maximum_bytes) is not int or maximum_bytes <= 0):
+            raise ValueError("maximum_bytes must be a positive integer")
         error = "unknown"
         for attempt in range(_RETRIES):
-            with self._rate_lock:
-                gap = self._last_request + _MIN_INTERVAL - time.monotonic()
-                if gap > 0:
-                    time.sleep(gap)
-                self._last_request = time.monotonic()
+            self._wait_for_rate_limit()
             try:
-                resp = self._http.get(url)
+                bounded = None
+                if maximum_bytes is None:
+                    resp = self._http.get(url)
+                else:
+                    resp, bounded = self._bounded_fetch_attempt(url, maximum_bytes)
             except httpx.HTTPError as exc:
                 error = repr(exc)
             else:
                 if resp.status_code == 200:
-                    return resp
+                    return resp if bounded is None else bounded
                 if resp.status_code == 404:
                     raise NoXbrlDataError(f"not found: {url}")
                 error = f"HTTP {resp.status_code}"

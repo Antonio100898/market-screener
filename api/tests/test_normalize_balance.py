@@ -787,14 +787,21 @@ def test_owner_cash_diagnostics_remain_separate_and_period_aligned():
     assert bridge["total_capital_expenditure"][0] == 12e9
     assert bridge["free_cash_flow"] == 63e9
     assert bridge["share_repurchases"][0] == 7e9
-    assert bridge["share_repurchases"][1:] == [
+    assert bridge["share_repurchases"][1:7] == [
         "us-gaap:PaymentsForRepurchaseOfCommonStock",
-        "10-K", "k25", "2025-12-31",
+        "10-K", "k25", "2025-12-31", "USD", None,
     ]
-    assert bridge["operating_cash_flow"][1:] == [
+    assert bridge["operating_cash_flow"][1:7] == [
         "us-gaap:NetCashProvidedByUsedInOperatingActivities",
-        "10-K", "k25", "2025-12-31",
+        "10-K", "k25", "2025-12-31", "USD", None,
     ]
+    for field in ("share_repurchases", "operating_cash_flow"):
+        source = bridge[field][7]
+        assert source["tag"] == bridge[field][1]
+        assert source["accn"] == "k25"
+        assert source["start"] == "2025-01-01"
+        assert source["end"] == "2025-12-31"
+        assert source["unit"] == "USD"
 
 
 def test_annual_cash_bridge_residual_absorbs_unseparated_stock_compensation():

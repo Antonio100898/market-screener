@@ -16,6 +16,24 @@ from screener.durable_jobs import (
 from screener.job_runtime import DurableJobRuntime, ScheduledOccurrence
 
 
+def test_context_checkpoint_connection_delegates_without_mutating_checkpoint():
+    from screener.job_runtime import JobContext
+    lease = LeaseToken(1, "worker", 2)
+    clock = lambda: NOW
+    connection = object()
+    checkpoint = {"pair": [7, 8]}
+    record = replace(_record(1, "known"), checkpoint={"before": True})
+    provisional = replace(record, checkpoint=checkpoint)
+    class Owner:
+        def save_checkpoint_on_connection(self, actual_connection, actual_lease, actual_checkpoint, *, now):
+            assert actual_connection is connection and actual_lease is lease
+            assert actual_checkpoint is checkpoint and now is clock
+            return provisional
+    context = JobContext(record, threading.Event(), Owner(), lease, clock)
+    assert context.save_checkpoint_on_connection(connection, checkpoint) is provisional
+    assert context.job is record and context.job.checkpoint == {"before": True}
+
+
 NOW = datetime(2026, 9, 29, 12, tzinfo=timezone.utc)
 
 
@@ -86,6 +104,7 @@ class FakeRepository:
 
     def claim_next(self, *, owner, lease_duration, now, allowed_kinds=None):
         with self.lock:
+            now = now() if callable(now) else now
             self.claim_calls.append(frozenset(allowed_kinds or ()))
             candidates = [job for job in self.queue if job.kind in allowed_kinds]
             if not candidates:
@@ -129,8 +148,8 @@ class FakeRepository:
             attempts=1,
             outcome=values.get("outcome"),
             error_summary=values.get("error_summary"),
-            updated_at=values["now"],
-            finished_at=values["now"],
+            updated_at=values["now"]() if callable(values["now"]) else values["now"],
+            finished_at=values["now"]() if callable(values["now"]) else values["now"],
         )
 
     def complete(self, lease, *, final_checkpoint, now):
@@ -406,3 +425,122 @@ def test_pending_handler_is_deferred_without_becoming_a_failure():
     assert repository.failed == []
     assert "source is still pending" in repository.deferred[0][1]
     assert not any("handler:known" in error for error in runtime.errors)
+
+
+def _cleanup_started_runtime(runtime):
+    runtime._claim_gate_closed.set()
+    runtime._stop_requested.set()
+    for thread in runtime._threads:
+        if thread.ident is not None:
+            thread.join(.5)
+    assert not any(thread.is_alive() for thread in runtime._threads)
+
+
+@pytest.mark.parametrize("failed_thread", ["coordinator", "worker"])
+def test_failed_start_closes_gates_and_stop_joins_only_started_threads(monkeypatch, failed_thread):
+    repository = FakeRepository()
+    entered = threading.Event()
+
+    def source(_now):
+        entered.set()
+        return ()
+
+    runtime = _runtime(repository, source, {"known": lambda context: None})
+    original_start = threading.Thread.start
+    original_join = threading.Thread.join
+    joined = []
+    failure = RuntimeError("injected " + failed_thread + " start failure" + "x" * 3000)
+
+    def fail_start(thread):
+        if thread.name.startswith("durable-" + failed_thread + "-"):
+            if failed_thread == "worker":
+                assert entered.wait(1)
+            raise failure
+        return original_start(thread)
+
+    def observe_join(thread, *args, **kwargs):
+        joined.append(thread.ident is not None)
+        return original_join(thread, *args, **kwargs)
+
+    monkeypatch.setattr(threading.Thread, "start", fail_start)
+    monkeypatch.setattr(threading.Thread, "join", observe_join)
+    try:
+        with pytest.raises(RuntimeError) as raised:
+            runtime.start()
+        assert raised.value is failure
+        assert runtime._claim_gate_closed.is_set() and runtime._stop_requested.is_set()
+        assert runtime.errors and len(runtime.errors[-1]) == 2200
+        assert runtime.stop(.2) and not runtime.running
+        assert all(joined)
+    finally:
+        _cleanup_started_runtime(runtime)
+
+
+def test_heartbeat_start_failure_fails_attempt_and_keeps_worker_for_next_job(monkeypatch):
+    repository = FakeRepository()
+    first = repository.seed("known")
+    second = repository.seed("known")
+    ran = []
+    failed_start = threading.Event()
+    uncaught = []
+
+    def handler(context):
+        ran.append(context.job.job_id)
+        return {"ok": True}
+
+    runtime = _runtime(repository, lambda now: (), {"known": handler})
+    original_start = threading.Thread.start
+
+    def fail_first_heartbeat(thread):
+        if thread.name == f"durable-heartbeat-{first.job_id}" and not failed_start.is_set():
+            failed_start.set()
+            raise RuntimeError("injected heartbeat start failure")
+        return original_start(thread)
+
+    monkeypatch.setattr(threading.Thread, "start", fail_first_heartbeat)
+    monkeypatch.setattr(threading, "excepthook", lambda error: uncaught.append(error))
+    try:
+        assert runtime.start() and failed_start.wait(1)
+        _wait_for(lambda: bool(repository.completed))
+        assert ran == [second.job_id]
+        assert repository.failed[0][0] == first.job_id
+        assert repository.completed[0][0] == second.job_id
+        assert uncaught == [] and runtime._threads[1].is_alive()
+        assert any("heartbeat-start" in error for error in runtime.errors)
+    finally:
+        _cleanup_started_runtime(runtime)
+
+
+def test_partial_start_with_live_handler_retains_bounded_drain_and_heartbeat(monkeypatch):
+    repository = FakeRepository()
+    repository.seed("known")
+    repository.seed("known")
+    entered = threading.Event()
+    release = threading.Event()
+
+    def handler(context):
+        entered.set()
+        assert release.wait(1)
+        return {"released": True}
+
+    runtime = _runtime(repository, lambda now: (), {"known": handler}, worker_count=2)
+    original_start = threading.Thread.start
+
+    def fail_second_worker(thread):
+        if thread.name.startswith("durable-worker-") and thread.name.endswith("-1"):
+            assert entered.wait(1)
+            raise RuntimeError("injected second worker start failure")
+        return original_start(thread)
+
+    monkeypatch.setattr(threading.Thread, "start", fail_second_worker)
+    try:
+        with pytest.raises(RuntimeError, match="second worker"):
+            runtime.start()
+        assert runtime._claim_gate_closed.is_set() and runtime._stop_requested.is_set()
+        assert runtime.stop(.03) is False
+        assert runtime.running and runtime._threads[1].is_alive()
+        assert repository.renewals > 0 and len(repository.active) == 1
+        assert len(repository.queue) == 1 and runtime.errors
+    finally:
+        release.set()
+        _cleanup_started_runtime(runtime)

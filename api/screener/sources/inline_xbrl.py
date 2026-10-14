@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import io
 import json
 import re
 import xml.etree.ElementTree as ET
@@ -13,6 +14,9 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Mapping
 from urllib.parse import unquote, urlparse
+
+from ..models import (CapturedSource, NativeContext, NativeDimension, NativeInlineOrdinalLocation,
+                      NativeNumericInput, NativeNumericRequest, NativeSource, NativeXmlOrdinalLocation)
 
 
 XBRLI = "http://www.xbrl.org/2003/instance"
@@ -126,6 +130,7 @@ class _AnnualLinks(HTMLParser):
         if tag.casefold() == "a":
             self._href = dict(attrs).get("href")
             self._label = []
+
             self._start = len(self.text)
 
     def handle_data(self, data: str) -> None:
@@ -1099,3 +1104,252 @@ def _fact_order(fact: dict) -> tuple:
         fact.get("end") or "", fact.get("start") or "", fact["_source_context_id"],
         _natural(fact["_source_fact_id"]),
     )
+
+
+def read_native_numeric(payload: bytes, request: NativeNumericRequest) -> NativeNumericInput:
+    """Validate one exact original occurrence; never select a financial role."""
+    if not isinstance(request, NativeNumericRequest) or type(payload) is not bytes:
+        raise ValueError("native request and immutable bytes required")
+    source, location = request.source, request.location
+    if (not isinstance(source, NativeSource) or not isinstance(request.context, NativeContext)
+            or any(type(value) is not str for value in
+                   (source.artifact_sha256, source.cik, source.accession, source.form,
+                    source.source_document, source.annual_accession, source.annual_form))):
+        raise ValueError("typed native source/context required")
+    if (type(source.byte_size) is not int or source.byte_size <= 0
+            or len(payload) != source.byte_size
+            or not re.fullmatch(r"[0-9a-f]{64}", source.artifact_sha256)
+            or hashlib.sha256(payload).hexdigest() != source.artifact_sha256):
+        raise ValueError("native source byte identity mismatch")
+    cik = _cik(source.cik)
+    _accession_digits(source.accession)
+    _accession_digits(source.annual_accession)
+    for value in (source.filed, source.annual_filed):
+        if type(value) is not date:
+            raise ValueError("native filed dates required")
+    if (source.form not in {"10-K", "10-K/A", "20-F", "20-F/A", "40-F", "40-F/A", "6-K"}
+            or source.annual_form not in {"10-K", "10-K/A", "20-F", "20-F/A", "40-F", "40-F/A"}):
+        raise ValueError("native annual/source form unsupported")
+    parsed = urlparse(source.source_document)
+    prefix = f"/Archives/edgar/data/{int(cik)}/{source.accession.replace('-', '')}/"
+    if (parsed.scheme != "https" or parsed.netloc != "www.sec.gov" or parsed.query
+            or parsed.fragment or not parsed.path.startswith(prefix)):
+        raise ValueError("native source document identity mismatch")
+    safe_document_name(parsed.path[len(prefix):])
+    if source.captured_source is not None:
+        captured = source.captured_source
+        if (not isinstance(captured, CapturedSource)
+                or any(type(value) is not str or not value.strip() for value in
+                       (captured.role, captured.artifact_sha256, captured.source_document, captured.fidelity))
+                or captured.artifact_sha256 != source.artifact_sha256
+                or captured.source_document != source.source_document
+                or any(type(v) is not int or v <= 0 for v in
+                       (captured.source_item_id, captured.source_observation_id))
+                or captured.occurrence_id is None
+                or type(captured.occurrence_id) is not int or captured.occurrence_id <= 0):
+            raise ValueError("native captured source binding mismatch")
+    if (not isinstance(location, (NativeInlineOrdinalLocation, NativeXmlOrdinalLocation))
+            or type(location.element_ordinal) is not int or location.element_ordinal < 0
+            or type(location.fact_qname) is not str
+            or not re.fullmatch(r"\{[^{}]+\}[^{}:]+", location.fact_qname)
+            or not location.context_ref or not location.unit_ref
+            or type(request.scale) is not int):
+        raise ValueError("invalid native numeric locator")
+    # Preserve the existing strict XML owner's error convention, including malformed bytes.
+    root = _xml(payload, "requested original")
+    scopes = _native_namespace_scopes(payload)
+    elements = list(root.iter())
+    namespaces = {id(element): scope for element, scope in zip(elements, scopes, strict=True)}
+    ids: dict[str, list[ET.Element]] = {}
+    for element in elements:
+        if element_id := element.get("id"):
+            ids.setdefault(element_id, []).append(element)
+    if isinstance(location, NativeInlineOrdinalLocation):
+        candidates = [e for e in elements if e.tag in {
+            "{http://www.xbrl.org/2013/inlineXBRL}nonFraction",
+            "{http://www.xbrl.org/2008/inlineXBRL}nonFraction"}]
+    else:
+        if root.tag != f"{{{XBRLI}}}xbrl":
+            raise ValueError("native instance root required")
+        candidates = list(root)
+    if location.element_ordinal >= len(candidates):
+        raise ValueError("native numeric ordinal absent")
+    item = candidates[location.element_ordinal]
+    if any(len(ids.get(key, [])) != 1 for key in
+           (location.context_ref, location.unit_ref, *([location.fact_id] if location.fact_id else []))):
+        raise ValueError("missing or duplicate referenced native identity")
+    scope = namespaces[id(item)]
+    qname = (_native_qname(item.get("name") or "", scope)
+             if isinstance(location, NativeInlineOrdinalLocation) else item.tag)
+    if (qname != location.fact_qname or item.get("contextRef") != location.context_ref
+            or item.get("unitRef") != location.unit_ref or item.get("id") != location.fact_id
+            or item.get("decimals") != request.decimals):
+        raise ValueError("native occurrence locator mismatch")
+    if item.get(f"{{{XSI}}}nil") not in {None, "false", "0"}:
+        raise ValueError("native nil is unavailable")
+    if request.decimals is not None and not re.fullmatch(r"(?:INF|[+-]?[0-9]+)", request.decimals):
+        raise ValueError("invalid native decimals")
+    if item.get("continuedAt") or item.get("precision") is not None or list(item):
+        raise ValueError("unsupported native numeric continuation/content/precision")
+    context_items = ids.get(location.context_ref, [])
+    unit_items = ids.get(location.unit_ref, [])
+    if len(context_items) != 1 or context_items[0].tag != f"{{{XBRLI}}}context":
+        raise ValueError("native context absent")
+    if len(unit_items) != 1 or unit_items[0].tag != f"{{{XBRLI}}}unit":
+        raise ValueError("native unit absent")
+    context = _native_context(context_items[0], namespaces)
+    if (context != request.context or context.entity_scheme != "http://www.sec.gov/CIK"
+            or _cik(context.entity_identifier) != cik):
+        raise ValueError("native context identity mismatch")
+    unit = unit_items[0]
+    direct = unit.findall(f"{{{XBRLI}}}measure")
+    if direct:
+        if len(direct) != len(unit):
+            raise ValueError("ambiguous native unit shape")
+    else:
+        divides = unit.findall(f"{{{XBRLI}}}divide")
+        if (len(divides) != 1 or len(unit) != 1
+                or [e.tag for e in divides[0]] != [f"{{{XBRLI}}}unitNumerator", f"{{{XBRLI}}}unitDenominator"]
+                or any(any(e.tag != f"{{{XBRLI}}}measure" for e in side) for side in divides[0])):
+            raise ValueError("ambiguous native divided unit")
+    numerator = direct or unit.findall(f"{{{XBRLI}}}divide/{{{XBRLI}}}unitNumerator/{{{XBRLI}}}measure")
+    denominator = unit.findall(f"{{{XBRLI}}}divide/{{{XBRLI}}}unitDenominator/{{{XBRLI}}}measure")
+    _native_element_only(unit, *unit.findall(f"{{{XBRLI}}}divide"),
+                         *unit.findall(f"{{{XBRLI}}}divide/{{{XBRLI}}}unitNumerator"),
+                         *unit.findall(f"{{{XBRLI}}}divide/{{{XBRLI}}}unitDenominator"))
+    if (not numerator or (not direct and not denominator) or (direct and denominator)
+            or any(list(e) for e in (*numerator, *denominator))
+            or tuple(_native_qname(e.text or "", namespaces[id(e)]) for e in numerator) != request.unit_numerator
+            or tuple(_native_qname(e.text or "", namespaces[id(e)]) for e in denominator) != request.unit_denominator):
+        raise ValueError("native unit identity mismatch")
+    if any(not re.fullmatch(r"\{http://www.xbrl.org/2003/iso4217\}[A-Z]{3}", measure)
+           and measure not in {f"{{{XBRLI}}}shares", f"{{{XBRLI}}}pure"}
+           for measure in (*request.unit_numerator, *request.unit_denominator)):
+        raise ValueError("unsupported native measure namespace")
+    lexical = item.text or ""
+    if isinstance(location, NativeInlineOrdinalLocation):
+        transformation = _native_qname(item.get("format") or "", scope) if item.get("format") else None
+        if (transformation != request.transformation or item.get("sign") != request.sign
+                or item.get("sign") not in {None, "-"}
+                or not re.fullmatch(r"[+-]?[0-9]+", item.get("scale", "0"))
+                or int(item.get("scale", "0")) != request.scale):
+            raise ValueError("native transformation identity mismatch")
+        if transformation != "{http://www.xbrl.org/inlineXBRL/transformation/2020-02-12}num-dot-decimal":
+            raise ValueError("unsupported native transformation")
+        text = lexical.strip()
+        if not re.fullmatch(r"(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)(?:\.[0-9]+)?", text):
+            raise ValueError("unsupported native num-dot-decimal text")
+        value = Decimal(text.replace(",", ""))
+        parts = value.as_tuple()
+        value = Decimal((parts.sign, parts.digits, parts.exponent + request.scale))
+        if request.sign == "-":
+            value = value.copy_negate()
+    else:
+        if request.transformation is not None or request.sign is not None or request.scale != 0:
+            raise ValueError("XML numeric occurrence cannot declare inline transformation")
+        text = lexical.strip()
+        if not re.fullmatch(r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?", text):
+            raise ValueError("invalid native XML decimal")
+        value = Decimal(text)
+    if not value.is_finite():
+        raise ValueError("native numeric value must be finite")
+    return NativeNumericInput(copy.deepcopy(request), lexical, str(value), value)
+
+
+def _native_namespace_scopes(payload: bytes) -> list[dict[str, str]]:
+    scopes, stack, pending = [], [], []
+    try:
+        for event, value in ET.iterparse(io.BytesIO(payload), events=("start-ns", "start", "end")):
+            if event == "start-ns":
+                pending.append(value)
+            elif event == "start":
+                scope = dict(stack[-1]) if stack else {}
+                scope.update(pending)
+                pending.clear()
+                stack.append(scope)
+                scopes.append(scope)
+            else:
+                stack.pop()
+    except ET.ParseError as exc:
+        raise ValueError("invalid native namespace document") from exc
+    return scopes
+
+
+def _native_qname(value: str, scope: Mapping[str, str]) -> str:
+    value = value.strip()
+    if not re.fullmatch(r"(?:[A-Za-z_][\w.-]*:)?[A-Za-z_][\w.-]*", value):
+        raise ValueError("invalid native QName")
+    prefix, separator, local = value.partition(":")
+    namespace = scope.get(prefix if separator else "")
+    if not namespace:
+        raise ValueError("unbound native QName")
+    return f"{{{namespace}}}{local if separator else prefix}"
+
+
+def _native_context(item: ET.Element, namespaces: Mapping[int, Mapping[str, str]]) -> NativeContext:
+    identifiers = item.findall(f"{{{XBRLI}}}entity/{{{XBRLI}}}identifier")
+    periods = item.findall(f"{{{XBRLI}}}period")
+    if (len(identifiers) != 1 or len(periods) != 1
+            or len(item.findall(f".//{{{XBRLI}}}identifier")) != 1):
+        raise ValueError("ambiguous native context")
+    if [e.tag for e in item] not in [
+            [f"{{{XBRLI}}}entity", f"{{{XBRLI}}}period"],
+            [f"{{{XBRLI}}}entity", f"{{{XBRLI}}}period", f"{{{XBRLI}}}scenario"]]:
+        raise ValueError("unsupported native context shape")
+    entity = item.find(f"{{{XBRLI}}}entity")
+    if ([e.tag for e in entity] not in [[f"{{{XBRLI}}}identifier"],
+                                       [f"{{{XBRLI}}}identifier", f"{{{XBRLI}}}segment"]]
+            or any(e.tag not in {f"{{{XBRLDI}}}explicitMember", f"{{{XBRLDI}}}typedMember"}
+                   for container in (*item.findall(f"{{{XBRLI}}}entity/{{{XBRLI}}}segment"),
+                                     *item.findall(f"{{{XBRLI}}}scenario")) for e in container)):
+        raise ValueError("unsupported native entity/dimension content")
+    period = periods[0]
+    if ([e.tag for e in period] not in
+            [[f"{{{XBRLI}}}instant"], [f"{{{XBRLI}}}startDate", f"{{{XBRLI}}}endDate"]]):
+        raise ValueError("unsupported native period")
+    containers = (item, entity, period,
+                  *item.findall(f"{{{XBRLI}}}entity/{{{XBRLI}}}segment"),
+                  *item.findall(f"{{{XBRLI}}}scenario"),
+                  *item.iter(f"{{{XBRLDI}}}typedMember"))
+    if any(list(scalar) for scalar in (*identifiers, *period)):
+        raise ValueError("native identifier and dates require scalar content")
+    _native_element_only(*containers)
+    dates = {}
+    for scalar in period:
+        lexical = (scalar.text or "").strip(" \t\r\n")
+        if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", lexical):
+            raise ValueError("native period requires nonempty supported calendar dates")
+        dates[scalar.tag] = date.fromisoformat(lexical)
+    wrapper = ET.Element(f"{{{XBRLI}}}xbrl")
+    wrapper.append(item)
+    context = _contexts(wrapper)[item.get("id")]
+    dimensions = []
+    for member in item.iter():
+        if member.tag == f"{{{XBRLDI}}}explicitMember":
+            if list(member):
+                raise ValueError("invalid native explicit dimension")
+            dimensions.append(NativeDimension(
+                _native_qname(member.get("dimension") or "", namespaces[id(member)]), "explicit",
+                _native_qname(member.text or "", namespaces[id(member)])))
+        elif member.tag == f"{{{XBRLDI}}}typedMember":
+            if len(member) != 1:
+                raise ValueError("ambiguous native typed dimension")
+            dimensions.append(NativeDimension(
+                _native_qname(member.get("dimension") or "", namespaces[id(member)]), "typed",
+                ET.tostring(member[0], encoding="unicode")))
+    if len({d.axis for d in dimensions}) != len(dimensions):
+        raise ValueError("duplicate native dimension axis")
+    result = NativeContext(context.identifier, identifiers[0].get("scheme") or "",
+                           dates.get(f"{{{XBRLI}}}instant"),
+                           dates.get(f"{{{XBRLI}}}startDate"),
+                           dates.get(f"{{{XBRLI}}}endDate"),
+                           tuple(sorted(dimensions, key=lambda d: (d.axis, d.kind, d.member))))
+    if result.start is not None and result.end is not None and result.start > result.end:
+        raise ValueError("unordered native period")
+    return result
+
+
+def _native_element_only(*containers: ET.Element) -> None:
+    if any((container.text or "").strip()
+           or any((child.tail or "").strip() for child in container) for container in containers):
+        raise ValueError("native scalar resource has unsupported mixed content")

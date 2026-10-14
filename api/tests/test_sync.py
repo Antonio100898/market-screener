@@ -176,9 +176,9 @@ def test_production_derivation_keeps_strict_row_and_attaches_assumed_quality(mon
 
     def fake_derive(*args, assume_absent_zero=False, **kwargs):
         calls.append(assume_absent_zero)
-        return "ok", assumed if assume_absent_zero else strict
+        return sync.DeriveResult("ok", assumed if assume_absent_zero else strict)
 
-    monkeypatch.setattr(sync, "_derive", fake_derive)
+    monkeypatch.setattr(sync, "_derive_result", fake_derive)
     bundle = SimpleNamespace(
         cik="0000000001", ticker="TEST", facts={}, dimensioned=None, receipt=None)
 
@@ -518,7 +518,8 @@ def test_historical_multiples_use_the_exchange_rate_at_each_fiscal_end():
     sync._price_the_ratio_history(
         priced,
         [(date(2025, 12, 20), 20.0)],
-        [(date(2025, 12, 19), 150.0)],
+        {"base": "USD", "counter": "JPY",
+         "closes": [(date(2025, 12, 19), 150.0)]},
     )
 
     cell = priced["annual_ratios"][2025]

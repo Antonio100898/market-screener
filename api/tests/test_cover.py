@@ -181,6 +181,39 @@ def test_all_direct_relations_must_agree():
     ) is None
 
 
+@pytest.mark.parametrize("title,expected", [
+    ("American depositary shares, each of which represents two shares of common stock", Decimal("2")),
+    ("American Depositary Receipts, each of which represents one half of one ordinary share", Decimal("0.5")),
+    ("American Depositary Shares, each of which represents two (2) Class A ordinary shares", Decimal("2")),
+    ("American Depositary Shares, each of which represents two (3) ordinary shares", None),
+    ("American Depositary Shares, each of which represents zero ordinary shares", None),
+    ("American Depositary Shares, each of which represents -2 ordinary shares", None),
+    ("American Depositary Shares, each of which represents two preferred shares", None),
+    ("American Depositary Shares, each of which represents two CPOs", None),
+    ("American Depositary Shares, some of which represent two ordinary shares", None),
+    ("American Depositary Shares, each of which may represent two ordinary shares", None),
+    ("American Depositary Shares, each of which represents two ordinary shares. Each ADS represents three ordinary shares.", None),
+])
+def test_distributive_depositary_relation_keeps_positive_unique_direct_basis(title, expected):
+    assert cover.depositary_ratio(title) == expected
+
+
+@pytest.mark.parametrize("title,expected", [
+    ("Common Shares (including Rights under Shareholder Rights Plan) of TC Energy Corporation", True),
+    ("Common Stock, including Rights under the Shareholder Rights Plan", True),
+    ("Ordinary Shares (including Rights under Shareholder Rights Plan)", True),
+    ("Rights under Shareholder Rights Plan to purchase Common Shares", False),
+    ("Common Share Rights under Shareholder Rights Plan", False),
+    ("Preferred Shares (including Rights under Shareholder Rights Plan)", False),
+    ("Warrants to Purchase Common Shares (including Rights under Shareholder Rights Plan)", False),
+    ("Common Shares (including Subscription Rights under Shareholder Rights Plan)", False),
+    ("Common Shares (including Rights under Shareholder Rights Plan and warrants)", False),
+    ("Common Shares (including Rights under Shareholder Rights Plan), Preferred Shares", False),
+])
+def test_attached_shareholder_plan_rights_do_not_change_the_primary_class(title, expected):
+    assert cover.is_common_equity_security(title) is expected
+
+
 def test_cover_keeps_continued_title_with_its_symbol_and_not_the_next_class():
     page = _table(
         ("Security 12b Title", "American depositary"),

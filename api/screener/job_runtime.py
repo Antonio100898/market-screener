@@ -11,6 +11,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
+from sqlalchemy.engine import Connection
+
 from .durable_jobs import (
     ClaimedJob,
     DurableJobItemRecord,
@@ -52,11 +54,23 @@ class JobContext:
     def lease(self) -> LeaseToken:
         return self._lease
 
-    def save_checkpoint(self, checkpoint: Mapping[str, Any]) -> DurableJobRecord:
+    def save_checkpoint(self, checkpoint: Mapping[str, Any], *, _raw_work_budget=None) -> DurableJobRecord:
         return self._repository.save_checkpoint(
             self._lease,
             checkpoint,
-            now=self._clock(),
+            now=self._clock,
+            **({} if _raw_work_budget is None else dict(_raw_work_budget=_raw_work_budget)),
+        )
+
+    def save_checkpoint_on_connection(
+        self, connection: Connection, checkpoint: Mapping[str, Any], *, _raw_work_budget=None
+    ) -> DurableJobRecord:
+        return self._repository.save_checkpoint_on_connection(
+            connection,
+            self._lease,
+            checkpoint,
+            now=self._clock,
+            **({} if _raw_work_budget is None else {"_raw_work_budget": _raw_work_budget}),
         )
 
     def record_item_outcome(
@@ -73,7 +87,7 @@ class JobContext:
             status=status,
             outcome=outcome,
             error_summary=error_summary,
-            now=self._clock(),
+            now=self._clock,
         )
 
 
@@ -142,31 +156,44 @@ class DurableJobRuntime:
             return any(thread.is_alive() for thread in self._threads)
 
     def start(self) -> bool:
-        with self._lifecycle_lock:
-            if any(thread.is_alive() for thread in self._threads):
-                return False
-            self._stop_requested.clear()
-            self._claim_gate_closed.clear()
-            self._runtime_id = uuid4().hex
-            threads = [
-                threading.Thread(
-                    target=self._coordinator_loop,
-                    name=f"durable-coordinator-{self._runtime_id[:8]}",
-                    daemon=True,
+        try:
+            with self._lifecycle_lock:
+                if any(thread.is_alive() for thread in self._threads):
+                    return False
+                self._stop_requested.clear()
+                self._claim_gate_closed.clear()
+                self._runtime_id = uuid4().hex
+                threads = [
+                    threading.Thread(
+                        target=self._coordinator_loop,
+                        name=f"durable-coordinator-{self._runtime_id[:8]}",
+                        daemon=True,
+                    )
+                ]
+                threads.extend(
+                    threading.Thread(
+                        target=self._worker_loop,
+                        args=(index,),
+                        name=f"durable-worker-{self._runtime_id[:8]}-{index}",
+                        daemon=True,
+                    )
+                    for index in range(self._worker_count)
                 )
-            ]
-            threads.extend(
-                threading.Thread(
-                    target=self._worker_loop,
-                    args=(index,),
-                    name=f"durable-worker-{self._runtime_id[:8]}-{index}",
-                    daemon=True,
-                )
-                for index in range(self._worker_count)
-            )
-            self._threads = tuple(threads)
-            for thread in self._threads:
-                thread.start()
+                self._threads = tuple(threads)
+                try:
+                    for thread in self._threads:
+                        thread.start()
+                except Exception as error:
+                    self._claim_gate_closed.set()
+                    self._stop_requested.set()
+                    self._threads = tuple(
+                        thread for thread in threads if thread.ident is not None
+                    )
+                    self._record_error("start", error)
+                    raise
+        except Exception:
+            self.stop(0)
+            raise
         return True
 
     def stop(self, timeout: float | None = None) -> bool:
@@ -229,7 +256,7 @@ class DurableJobRuntime:
                 return self._repository.claim_next(
                     owner=owner,
                     lease_duration=self._lease_duration,
-                    now=self._clock(),
+                    now=self._clock,
                     allowed_kinds=self._allowed_kinds,
                 )
             except Exception as error:
@@ -255,7 +282,13 @@ class DurableJobRuntime:
         handler_error: Exception | None = None
         deferred: JobDeferred | None = None
         final_checkpoint: Mapping[str, Any] | None = None
-        heartbeat.start()
+        try:
+            heartbeat.start()
+        except Exception as error:
+            heartbeat_stop.set()
+            self._record_error("heartbeat-start", error)
+            self._fail(claimed.lease, error)
+            return
         try:
             final_checkpoint = _checkpoint(
                 self._handlers[claimed.job.kind](context)
@@ -283,7 +316,7 @@ class DurableJobRuntime:
             self._repository.complete(
                 claimed.lease,
                 final_checkpoint=final_checkpoint,
-                now=self._clock(),
+                now=self._clock,
             )
         except LeaseLost:
             return
@@ -302,7 +335,7 @@ class DurableJobRuntime:
                 self._repository.renew(
                     lease,
                     lease_duration=self._lease_duration,
-                    now=self._clock(),
+                    now=self._clock,
                 )
             except LeaseLost:
                 lease_lost.set()
@@ -316,7 +349,7 @@ class DurableJobRuntime:
             self._repository.fail(
                 lease,
                 error_summary=summary,
-                now=self._clock(),
+                now=self._clock,
             )
         except LeaseLost:
             return
@@ -326,7 +359,7 @@ class DurableJobRuntime:
     def _defer(self, lease: LeaseToken, error: JobDeferred) -> None:
         summary = f"{type(error).__name__}: {error}"[:2000]
         try:
-            self._repository.defer(lease, reason=summary, now=self._clock())
+            self._repository.defer(lease, reason=summary, now=self._clock)
         except LeaseLost:
             return
         except Exception as defer_error:

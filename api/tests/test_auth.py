@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from screener import api
+from screener.research_api import workspace_repository
 
 
 @pytest.fixture
@@ -40,6 +41,47 @@ def test_unset_token_leaves_localhost_open(monkeypatch):
     c = TestClient(api.app)
     assert c.get("/config").json() == {"write_protected": False}
     assert c.post("/sync", json={"command": "nope"}).status_code == 409   # not 401
+
+
+@pytest.mark.parametrize("shared_token,supplied", [(None, None), ("s3cret", None),
+                                                   ("s3cret", "guess"), ("s3cret", "s3cret")])
+def test_mounted_research_routes_require_identity_before_private_storage(monkeypatch, shared_token, supplied):
+    if shared_token is None:
+        monkeypatch.delenv("SCREENER_TOKEN", raising=False)
+    else:
+        monkeypatch.setenv("SCREENER_TOKEN", shared_token)
+
+    def forbidden_factory():
+        raise AssertionError("anonymous request opened private storage")
+
+    monkeypatch.setitem(api.app.dependency_overrides, workspace_repository, forbidden_factory)
+    client = TestClient(api.app)
+    headers = {"X-Owner-Id": "1", "Authorization": "Bearer unverified"}
+    if supplied:
+        headers["X-Screener-Token"] = supplied
+    for method, path in [("get", "/research/workspaces/default"),
+                         ("get", "/research/workspaces/1"),
+                         ("get", "/research/workspaces/1/revisions"),
+                         ("put", "/research/workspaces/1"),
+                         ("post", "/research/workspaces/1/runs"),
+                         ("get", "/research/workspaces/1/runs/1"),
+                         ("post", "/research/workspaces/1/runs/1/cancel"),
+                         ("get", "/research/workspaces/1/runs/1/events"),
+                         ("get", "/research/workspaces/1/runs/1/stream")]:
+        kwargs = {"headers": headers}
+        if method == "put":
+            kwargs["json"] = {"expected_revision": 1, "request_key": "edit", "configuration": {}}
+        response = getattr(client, method)(path, **kwargs)
+        assert response.status_code == 401
+        assert response.headers["cache-control"] == "private, no-store"
+
+
+def test_research_routing_errors_are_private_on_main_app(monkeypatch):
+    monkeypatch.delenv("SCREENER_TOKEN", raising=False)
+    client = TestClient(api.app)
+    for response in [client.get("/research/missing"), client.post("/research/workspaces/default")]:
+        assert response.status_code in (404, 405)
+        assert response.headers["cache-control"] == "private, no-store"
 
 
 def test_assumption_detail_failure_returns_strict_row_not_http_500(monkeypatch):

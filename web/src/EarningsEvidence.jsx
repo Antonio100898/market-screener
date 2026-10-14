@@ -6,8 +6,8 @@ const W = 76;
 const H = 21;
 
 /** Visualizes Graham's defensive ten-year EPS evidence without mixing in TTM. */
-export default function EarningsEvidence({ annual, fcf }) {
-  const evidence = epsEvidence(annual);
+export default function EarningsEvidence({ annual, fcf, latestFy }) {
+  const evidence = epsEvidence(annual, latestFy);
   if (!evidence) return <span className="dim">—</span>;
   const { years, values, present, positive, stable, growth } = evidence;
   const fcfValues = years.map((year) => (fcf && Object.hasOwn(fcf, year) ? fcf[year] : null));

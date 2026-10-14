@@ -15,8 +15,9 @@ from .job_runtime import JobContext
 from .object_store import ImmutableObjectStore
 from .shared_companies import SharedCompanyRepository, SnapshotArtifact
 from .source_observations import SourceItemIdentity, SourceObservationRepository
-from .sources.edinet import EdinetClient, EdinetHttpError, validate_xbrl_archive
-from .sources.edinet_mapper import build_edinet_companyfacts
+from .sources import edinet
+from .sources.edinet import EdinetClient, EdinetHttpError, EdinetInputCeilingError, validate_xbrl_archive
+from .sources.edinet_mapper import build_edinet_companyfacts, rebuild_companyfacts
 
 
 _DOCUMENT_ID = re.compile(r"S[0-9A-Z]{7}")
@@ -378,7 +379,7 @@ class EdinetListDiscoveryHandler:
             },
             due_at=scheduled,
             priority=context.job.priority,
-            now=self._clock(),
+            now=self._clock,
         )
 
 
@@ -468,7 +469,7 @@ class EdinetResourceFetchHandler:
         if completed is None:
             completed = archive_checkpoint
             context.save_checkpoint(completed)
-        facts, prior_artifacts = self._merge_current(ticker, edinet_code, mapped)
+        facts, prior_artifacts = self._merge_current(ticker, edinet_code, mapped, archive_bytes)
         facts_artifact = store_evidence(
             _canonical_json(facts),
             "application/json",
@@ -647,12 +648,14 @@ class EdinetResourceFetchHandler:
         ):
             raise ValueError("EDINET archive observation does not match its filing")
         artifact = self._artifacts.get(observation.artifact_sha256)
+        if artifact.byte_size > edinet._XBRL_INPUT_LIMIT:
+            raise EdinetInputCeilingError("retained EDINET archive exceeds the 16 MiB source ceiling")
         payload = self._object_store.read_verified(
             artifact.object_key, artifact.content_sha256, artifact.byte_size
         )
         return artifact, payload
 
-    def _merge_current(self, ticker: str, edinet_code: str, mapped: dict):
+    def _merge_current(self, ticker: str, edinet_code: str, mapped: dict, incoming_archive: bytes):
         current = self._companies.current_by_ticker(ticker)
         if current is None:
             return sync._merge_edinet_facts(None, mapped), ()
@@ -686,7 +689,52 @@ class EdinetResourceFetchHandler:
         raw = tuple(
             artifact for artifact in current.artifacts if artifact.role == "raw_filing"
         )
-        return sync._merge_edinet_facts(previous, mapped), raw
+        merged = sync._merge_edinet_facts(previous, mapped)
+        incoming_document = mapped["_adapter"]["reports"][0]["document"]
+        retained_hashes = {artifact.content_sha256 for artifact in raw}
+        security_code = merged["_adapter"].get("security_code")
+        bindings = {}
+        surviving_hashes = set()
+        for report in merged["_adapter"]["reports"]:
+            document = report["document"]
+            if document == incoming_document:
+                continue
+            stored = self._observations.latest_item("EDINET", "resource", f"{document}/xbrl")
+            if (stored is None or stored.observation.state != "present"
+                    or stored.observation.artifact_sha256 not in retained_hashes):
+                raise ValueError(f"{document}: no exact retained current EDINET archive binding")
+            metadata = stored.observation.canonical_metadata
+            parent_id = metadata.get("parent_observation_id") if isinstance(metadata, Mapping) else None
+            if type(parent_id) is not int or parent_id <= 0:
+                raise ValueError(f"{document}: no exact retained parent filing observation")
+            parent = self._observations.latest_edinet_filing(parent_id)
+            row = _validate_parent_filing(parent, document_id=document, edinet_code=edinet_code,
+                security_code=security_code, observation_id=parent_id)
+            if (row.get("periodStart") != report.get("period_start")
+                    or row.get("periodEnd") != report.get("period_end")
+                    or str(row.get("submitDateTime", ""))[:10] != report.get("published")):
+                raise ValueError(f"{document}: retained report differs from its current source record")
+            record = report.get("mapping_record")
+            if record is not None and (not isinstance(record, Mapping) or any(record.get(key) != row.get(key) for key in
+                    ("docID", "edinetCode", "secCode", "docTypeCode", "xbrlFlag", "periodStart", "periodEnd"))):
+                raise ValueError(f"{document}: retained mapping record differs from its current source")
+            report["mapping_record"] = dict(row)
+            bindings[document] = (stored.observation.observation_sha256, parent, parent_id)
+            surviving_hashes.add(stored.observation.artifact_sha256)
+
+        def load_archive(document):
+            if document == incoming_document:
+                return incoming_archive
+            digest, parent, parent_id = bindings[document]
+            artifact, payload = self._load_archive(digest, parent=parent, document_id=document,
+                edinet_code=edinet_code, security_code=security_code, observation_id=parent_id)
+            if artifact.content_sha256 not in retained_hashes:
+                raise ValueError(f"{document}: resolved archive is not retained by the current snapshot")
+            validate_xbrl_archive(payload, document)
+            return payload
+
+        rebuilt = rebuild_companyfacts(merged, load_archive)
+        return rebuilt, tuple(artifact for artifact in raw if artifact.content_sha256 in surviving_hashes)
 
 
 def _resource_parameters(

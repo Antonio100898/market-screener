@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Iterable
 
+from .profiles import _latest_eps_label
+
 
 ZERO = Decimal("0")
 CENT = Decimal("0.01")
@@ -64,16 +66,8 @@ def _float(value: Decimal | None) -> float | None:
 
 
 def _price_on_reporting_basis(row: dict, price: Decimal) -> Decimal | None:
-    reporting = row.get("reporting_currency") or row.get("currency") or "USD"
-    quote = row.get("quote_currency") or row.get("currency") or "USD"
-    if reporting == quote:
-        return price
-    fx = row.get("fx") or {}
-    rate = _number(fx.get("rate"))
-    if (fx.get("base") != quote or fx.get("counter") != reporting
-            or rate is None or rate <= 0):
-        return None
-    return price * rate
+    from .sync import _valuation_price
+    return _valuation_price(row, price)
 
 
 def _quote_after_trade(price_asof: str | None, executed_at: str | None) -> bool | None:
@@ -94,6 +88,8 @@ def _pe3(row: dict, price: Decimal) -> Decimal | None:
     annual = row.get("annual_eps") or {}
     years = sorted((int(year) for year in annual), reverse=True)[:3]
     if len(years) < 3:
+        return None
+    if _latest_eps_label(row, dict.fromkeys(years)) > years[0]:
         return None
     values = [_number(annual.get(str(year), annual.get(year))) for year in years]
     if any(value is None for value in values):

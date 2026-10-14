@@ -235,13 +235,22 @@ def _criterion_status(row: dict, number: int) -> str:
     return "INSUFFICIENT_DATA"
 
 
+def _latest_eps_label(row: dict, eps: dict[int, Decimal]) -> int | None:
+    """Keep the row's selected year even when its numeric EPS is unavailable."""
+    selected = (row.get("ch13") or {}).get("latest_fy")
+    labels = list(eps)
+    if type(selected) is int:
+        labels.append(selected)
+    return max(labels, default=None)
+
+
 def _pe3(row: dict) -> Decimal | None:
     """Current price over the three latest consecutive fiscal-year EPS values."""
     price = _valuation_price(row)
     eps = _eps_series(row)
     if price is None or not eps:
         return None
-    latest = max(eps)
+    latest = _latest_eps_label(row, eps)
     years = (latest - 2, latest - 1, latest)
     if any(year not in eps for year in years):
         return None
@@ -277,9 +286,9 @@ def _enterprising(row: dict, profile: str) -> dict:
         "tangible_assets": _criterion_status(row, 7),
     }
     eps = _eps_series(row)
-    latest = max(eps) if eps else None
+    latest = _latest_eps_label(row, eps)
     base = latest - 4 if latest is not None else None
-    if latest is None or base not in eps:
+    if latest not in eps or base not in eps:
         growth = {"status": "INSUFFICIENT_DATA", "label": "Modern 4-FY EPS comparison", "base_fy": base, "latest_fy": latest}
     else:
         growth = {
@@ -401,8 +410,12 @@ def acquisition_book_note(row: dict) -> str | None:
     intangibles = row.get("intangibles") or 0
     if assets is None or liabilities is None or goodwill + intangibles <= 0:
         return None
-    equity = (assets - liabilities - (row.get("preferred_stock") or 0)
+    qualified = row.get("asset_quality") or {}
+    equity = (qualified["common_equity"] if "common_equity" in qualified else
+              assets - liabilities - (row.get("preferred_stock") or 0)
               - (row.get("noncontrolling_interest") or 0) - (row.get("temporary_equity") or 0))
+    if equity is None:
+        return None
     if equity <= 0 or goodwill + intangibles < equity:
         return None
     return (f"Goodwill and intangibles of {(goodwill + intangibles) / 1e6:,.0f}M stand against "
@@ -620,7 +633,7 @@ def _no_dividend_years_inside_the_window(row: dict, record: dict) -> bool:
 def _defensive(row: dict, profile: str) -> dict:
     """Summarize defensive evidence without claiming a 20-year history that XBRL cannot prove."""
     eps = _eps_series(row)
-    latest = max(eps) if eps else None
+    latest = _latest_eps_label(row, eps)
     first = min(eps) if eps else None
     recent10 = [eps.get(year) for year in range(latest - 9, latest + 1)] if latest else []
     # A record that only begins after full XBRL coverage belongs to a company with
@@ -632,9 +645,10 @@ def _defensive(row: dict, profile: str) -> dict:
     # since 2004 — without the corroboration it would earn unearned passes.
     first_filed = row.get("first_filed")
     listed_after_xbrl = bool(first_filed) and int(str(first_filed)[:4]) > _XBRL_FULL_COVERAGE
-    span = latest - first + 1 if latest is not None else 0
+    span = latest - first + 1 if latest is not None and first is not None else 0
     short_history = (
         latest is not None
+        and first is not None
         and first > _XBRL_FULL_COVERAGE
         and listed_after_xbrl
         and all(year in eps for year in range(first, latest + 1))

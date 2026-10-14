@@ -65,6 +65,8 @@ class ImmutableObjectStore:
             except ClientError as upload_error:
                 if not _is_precondition_failed(upload_error):
                     raise
+        else:
+            return VerifiedObject(digest, key, len(data), datetime.now(timezone.utc))
 
         self._read_verified(key, digest, len(data))
         return VerifiedObject(digest, key, len(data), datetime.now(timezone.utc))
@@ -75,10 +77,15 @@ class ImmutableObjectStore:
         return self._read_verified(key, expected_sha256, expected_size)
 
     def _read_verified(self, key: str, expected_sha256: str, expected_size: int) -> bytes:
+        if type(expected_size) is not int or expected_size < 0:
+            raise ObjectVerificationError("Expected object byte size must be a nonnegative integer")
         response = self.client.get_object(Bucket=self.bucket, Key=key)
         body = response["Body"]
         try:
-            data = body.read()
+            data = body.read(expected_size + 1)
+            if len(data) == expected_size:
+                # The EOF read retains StreamingBody's Content-Length validation.
+                data += body.read(1)
         finally:
             close = getattr(body, "close", None)
             if close is not None:

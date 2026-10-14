@@ -127,3 +127,14 @@ def test_claim_kind_filter_validates_and_empty_filter_skips_sql():
             now=NOW,
             allowed_kinds={" "},
         )
+
+
+@pytest.mark.parametrize("value", [{"bad": object()}, {"bad": float("nan")}, [], None])
+@pytest.mark.parametrize("caller", ["wrapper", "connection"])
+def test_checkpoint_json_admission_precedes_sql_and_connection_use(value, caller):
+    repository = DurableJobRepository(NoDatabaseEngine())
+    with pytest.raises(ValueError, match="checkpoint must"):
+        if caller == "wrapper":
+            repository.save_checkpoint(object(), value)
+        else:
+            repository.save_checkpoint_on_connection(object(), object(), value)

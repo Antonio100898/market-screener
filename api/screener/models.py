@@ -5,6 +5,10 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .figure_history import ActionEvidence, DocumentEvidence, ShareBasis
 
 
 class Status(str, Enum):
@@ -50,12 +54,259 @@ class Provenance:
     annual_accession: str | None = None
     annual_form: str | None = None
     annual_filed: date | None = None
+    source_file: str | None = None
+    native_xml_location: NativeXmlOrdinalLocation | None = None
+    source_entity: str | None = None
+    source_entity_scheme: str | None = None
+    source_artifact_sha256: str | None = None
+    equity_class_evidence: tuple[IssuerClassEvidence, ...] = ()
+
+
+@dataclass(frozen=True)
+class CapturedSource:
+    role: str
+    artifact_sha256: str
+    source_document: str
+    source_item_id: int
+    source_observation_id: int
+    occurrence_id: int | None = None
+    fidelity: str = "UNKNOWN"
+
+
+@dataclass(frozen=True)
+class RawFactOrigin:
+    source: CapturedSource
+    pointer: str
+    lexical_text: str
+    namespace: str
+    concept: str
+    unit: str
+    start: str | None
+    end: str | None
+    accession: str | None
+    form: str | None
+    filed: str | None
+
+
+@dataclass(frozen=True)
+class NativeInlineOrdinalLocation:
+    """Zero-based original namespace-resolved nonFraction start ordinal."""
+    element_ordinal: int
+    fact_qname: str
+    context_ref: str
+    unit_ref: str
+    fact_id: str | None = None
+
+
+@dataclass(frozen=True)
+class NativeXmlOrdinalLocation:
+    """Zero-based direct child ordinal in the original XBRL instance."""
+    element_ordinal: int
+    fact_qname: str
+    context_ref: str
+    unit_ref: str
+    fact_id: str | None = None
+
+
+@dataclass(frozen=True)
+class NativeSource:
+    artifact_sha256: str
+    byte_size: int
+    cik: str
+    accession: str
+    form: str
+    filed: date
+    source_document: str
+    annual_accession: str
+    annual_form: str
+    annual_filed: date
+    # Local verified bytes do not invent registered source/check identities.
+    captured_source: CapturedSource | None = None
+
+
+@dataclass(frozen=True)
+class NativeDimension:
+    axis: str
+    kind: str
+    member: str
+
+    def __post_init__(self):
+        if any(type(v) is not str for v in (self.axis, self.kind, self.member)):
+            raise ValueError("native dimension requires immutable strings")
+
+
+@dataclass(frozen=True)
+class NativeContext:
+    entity_identifier: str
+    entity_scheme: str
+    instant: date | None
+    start: date | None
+    end: date | None
+    dimensions: tuple[NativeDimension, ...] = ()
+
+    def __post_init__(self):
+        object.__setattr__(self, "dimensions", tuple(self.dimensions))
+        if any(not isinstance(v, NativeDimension) for v in self.dimensions):
+            raise ValueError("native context requires typed dimensions")
+
+
+@dataclass(frozen=True)
+class NativeNumericRequest:
+    source: NativeSource
+    location: NativeInlineOrdinalLocation | NativeXmlOrdinalLocation
+    context: NativeContext
+    unit_numerator: tuple[str, ...]
+    unit_denominator: tuple[str, ...] = ()
+    decimals: str | None = None
+    transformation: str | None = None
+    sign: str | None = None
+    scale: int = 0
+
+    def __post_init__(self):
+        object.__setattr__(self, "unit_numerator", tuple(self.unit_numerator))
+        object.__setattr__(self, "unit_denominator", tuple(self.unit_denominator))
+        if any(type(v) is not str for v in (*self.unit_numerator, *self.unit_denominator)):
+            raise ValueError("native unit measures require immutable strings")
+
+
+@dataclass(frozen=True)
+class NativeNumericInput:
+    request: NativeNumericRequest
+    lexical_text: str
+    decoded_text: str
+    value: Decimal
+
+
+@dataclass(frozen=True)
+class XmlTextBlockTableLocation:
+    """Physical class table inside an original XML text block; not a numeric fact."""
+    source_file: str
+    fact_qname: str
+    element_ordinal: int
+    context_ref: str
+    table: int
+    header_row: int
+    class_rows: tuple[int, ...]
+    total_row: int
+    column: int
+
+    def __post_init__(self):
+        object.__setattr__(self, "class_rows", tuple(self.class_rows))
+        if any(type(n) is not int or n < 0 for n in
+               (self.element_ordinal, self.table, self.header_row, self.total_row,
+                self.column, *self.class_rows)) or not self.class_rows:
+            raise ValueError("class table requires physical source positions")
+        if (tuple(sorted(set(self.class_rows))) != self.class_rows
+                or not self.header_row < min(self.class_rows)
+                or not max(self.class_rows) < self.total_row or self.column == 0):
+            raise ValueError("class table requires distinct ordered header/class/total roles")
+        if (not self.source_file.startswith("XBRL/PublicDoc/")
+                or ".." in self.source_file.split("/")
+                or not self.fact_qname.startswith("{http://disclosure.edinet-fsa.go.jp/")
+                or not self.context_ref):
+            raise ValueError("class table requires an original EDINET text block")
+
+
+@dataclass(frozen=True)
+class IssuerClassEvidence:
+    artifact_sha256: str
+    member_sha256: str
+    document: str
+    entity: str
+    entity_scheme: str
+    context_start: str | None
+    context_end: str
+    as_of: str
+    outcome: str
+    classes: tuple[tuple[str, str], ...]
+    total_lexical: str
+    header_lexical: str
+    location: XmlTextBlockTableLocation
+    registration_status: str = "UNREGISTERED_NATIVE_MEMBER"
+
+    def __post_init__(self):
+        object.__setattr__(self, "classes", tuple(tuple(row) for row in self.classes))
+        if (self.outcome not in {"ORDINARY_ONLY", "PREFERRED_MONETARY_CLAIM_REQUIRED", "UNRESOLVED"}
+                or self.registration_status != "UNREGISTERED_NATIVE_MEMBER"
+                or any(len(value) != 64 or any(c not in "0123456789abcdef" for c in value)
+                       for value in (self.artifact_sha256, self.member_sha256))
+                or not self.entity_scheme or not self.entity or not self.document
+                or not self.classes or any(len(row) != 2 for row in self.classes)):
+            raise ValueError("issuer class evidence is incomplete")
+        date.fromisoformat(self.as_of)
+        date.fromisoformat(self.context_end)
+        if date.fromisoformat(self.as_of) > date.fromisoformat(self.context_end):
+            raise ValueError("issuer class endpoint is after its source context")
+        if self.context_start is not None:
+            date.fromisoformat(self.context_start)
+
+    @classmethod
+    def from_record(cls, record):
+        location = dict(record["location"])
+        location["class_rows"] = tuple(location["class_rows"])
+        return cls(**{**record, "classes": tuple(tuple(row) for row in record["classes"]),
+                      "location": XmlTextBlockTableLocation(**location)})
+
+
+@dataclass(frozen=True)
+class PrimaryInputMapping:
+    key: str
+    canonical_namespace: str
+    canonical_tag: str
+    original: NativeNumericRequest
+    replacement: NativeNumericRequest | None = None
+    unary_factor_text: str | None = None
+    documents: tuple["DocumentEvidence", ...] = ()
+    actions: tuple["ActionEvidence", ...] = ()
+    share_basis: "ShareBasis | None" = None
+    target_origin: RawFactOrigin | None = None
+
+    def __post_init__(self):
+        object.__setattr__(self, "documents", tuple(self.documents))
+        object.__setattr__(self, "actions", tuple(self.actions))
+
+
+@dataclass(frozen=True)
+class AdmittedPrimaryInput:
+    mapping: PrimaryInputMapping
+    original: NativeNumericInput
+    replacement: NativeNumericInput | None
+
+
+@dataclass(frozen=True)
+class UnavailablePrimaryInput:
+    key: str
+    canonical_namespace: str
+    canonical_tag: str
+    reason: str
+    original: NativeNumericRequest
+    target_origin: RawFactOrigin | None = None
 
 
 @dataclass(frozen=True)
 class Fact:
     value: Decimal
     provenance: Provenance
+    exact_origin: RawFactOrigin | None = field(default=None, compare=False, repr=False)
+    exact_unassessed_reason: str | None = field(default=None, compare=False, repr=False)
+    primary_input: AdmittedPrimaryInput | None = field(default=None, compare=False, repr=False)
+    derived_eps_inputs: DerivedEpsInputs | None = field(default=None, compare=False, repr=False)
+    operation_inputs: tuple[Fact, ...] = field(default=(), compare=False, repr=False)
+
+    def __post_init__(self):
+        object.__setattr__(self, "operation_inputs", tuple(self.operation_inputs))
+
+
+@dataclass(frozen=True)
+class DerivedEpsInputs:
+    income: Fact
+    count: Fact
+    preferred: Fact | None
+    absent_preferred_reason: str | None
+    roles: tuple[str, ...] = ("income", "count", "preferred")
+
+    def __post_init__(self):
+        object.__setattr__(self, "roles", tuple(self.roles))
 
 
 @dataclass(frozen=True)
@@ -91,13 +342,13 @@ class AnnualOwnerEarnings:
     maintenance≈D&A estimate therefore remain separate; neither is serialized as
     a definitive owner-earnings figure.
     """
-    reported_earnings: Fact
-    depreciation_and_amortisation: Fact
-    total_capital_expenditure: Fact
+    reported_earnings: Fact | None
+    depreciation_and_amortisation: Fact | None
+    total_capital_expenditure: Fact | None
     operating_cash_flow: Fact | None
     other_operating_cash_flow_adjustments: Fact | None
-    all_capex_floor: Fact
-    maintenance_estimate: Fact
+    all_capex_floor: Fact | None
+    maintenance_estimate: Fact | None
     free_cash_flow: Fact | None
     free_cash_flow_after_stock_compensation: Fact | None
     free_cash_flow_after_acquisitions: Fact | None
@@ -171,8 +422,8 @@ class OwnerEarnings:
     flow as three separately labelled observations instead of pretending one is exact.
     """
     fiscal_year: int
-    all_capex_floor: Fact
-    maintenance_estimate: Fact
+    all_capex_floor: Fact | None
+    maintenance_estimate: Fact | None
     free_cash_flow: Fact | None
     cash_taxes_paid: Fact | None
     free_cash_flow_after_stock_compensation: Fact | None
@@ -323,10 +574,38 @@ class FinancialSnapshot:
     # Currency of every monetary statement figure. USD remains the default for
     # SEC Company Facts; foreign canonical adapters must state this explicitly.
     reporting_currency: str = "USD"
+    # Supplementary reported history, excluded from current calculation inputs.
+    prior_accounting_history: tuple[dict, ...] = field(default=(), compare=False, repr=False)
     # The filing intentionally has no current/noncurrent balance-sheet split
     # (banks and similar filers). Keep this structural fact even when one stale
     # current total is withheld from display for a cross-period mismatch.
     unclassified_balance_sheet: bool = False
+    debt_unavailable: tuple[UnavailablePrimaryInput, ...] = field(default=(), compare=False, repr=False)
+
+    senior_claims_unavailable: tuple[UnavailablePrimaryInput, ...] = field(default=(), compare=False, repr=False)
+    parent_equity: Fact | None = None
+    common_equity: Fact | None = None
+    common_equity_required: bool = False
+    common_equity_unavailable: str | None = None
+
+    def __post_init__(self):
+        object.__setattr__(self, "debt_unavailable", tuple(self.debt_unavailable))
+        object.__setattr__(self, "senior_claims_unavailable", tuple(self.senior_claims_unavailable))
+
+    def current_senior_claims_available(self) -> bool:
+        return not getattr(self, "senior_claims_unavailable", ())
+
+    def common_equity_value(self) -> Decimal | None:
+        if getattr(self, "common_equity_required", False):
+            fact = getattr(self, "common_equity", None)
+            return fact.value if fact is not None else None
+        if not FinancialSnapshot.current_senior_claims_available(self):
+            return None
+        if self.total_assets is None or self.total_liabilities is None:
+            return None
+        other = sum(f.value for f in (self.preferred_stock, self.noncontrolling_interest,
+                                      self.temporary_equity) if f is not None)
+        return self.total_assets.value - self.total_liabilities.value - other
 
 
 @dataclass(frozen=True)

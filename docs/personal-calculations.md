@@ -49,8 +49,9 @@ Before choosing providers, verify available API/authentication methods, whether
 account authorization is supported for this application, billing responsibility,
 data handling, and supported tool interactions. A chat subscription, API key,
 and third-party account connection are different possibilities; do not promise
-they are interchangeable. OpenAI, Anthropic, and other providers are candidates,
-not implemented or guaranteed integrations.
+they are interchangeable. P-15 excludes OpenAI models for the product agent.
+Non-OpenAI models and providers remain candidates, not implemented or guaranteed
+integrations.
 
 Store any provider secret separately with restricted server access; workspace JSON
 holds only a connection reference. Never expose secrets to the model, browser

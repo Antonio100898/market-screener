@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sqlite3
 from dataclasses import dataclass
 from decimal import Decimal
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable, Iterable, Mapping
@@ -17,9 +19,10 @@ from .evidence import EvidenceBundle, EvidenceLoader
 from .object_store import ImmutableObjectStore, create_s3_client
 from .postgres import create_postgres_engine
 from .shared_companies import SharedCompanyRepository, SnapshotArtifact, StoredCompany
-from .sources import cover, dera, inline_xbrl
-from .sources.edinet_mapper import ADAPTER_KIND as EDINET_ADAPTER
-from .sources.edinet import EdinetError, validate_xbrl_archive
+from .sources import cover, dera, inline_xbrl, edinet
+from .sources.edinet_mapper import ADAPTER_KIND as EDINET_ADAPTER, rebuild_companyfacts
+from .sources.edinet import EdinetError, EdinetInputCeilingError, validate_xbrl_archive
+from .sources import ifrs_workbook
 from .storage_config import StorageSettings
 
 
@@ -29,6 +32,18 @@ class CompanyImportError(RuntimeError):
 
 class RetainedInputError(CompanyImportError):
     pass
+
+
+class RetainedInputMissing(RetainedInputError):
+    def __init__(self, path):
+        super().__init__(f"missing retained input: {path}")
+        self.input_name = Path(path).name
+
+
+class RetainedInputCeiling(RetainedInputError):
+    def __init__(self, reason, *, inputs=()):
+        super().__init__(reason)
+        self.inputs = tuple(inputs)
 
 
 class DerivationError(CompanyImportError):
@@ -49,6 +64,8 @@ class ImportedCompany:
     security_identifier: str
     stored: StoredCompany
     artifacts: tuple[RetainedArtifact, ...]
+    data_status: str = "AVAILABLE"
+    unavailability_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -62,6 +79,7 @@ class BulkImportSummary:
     imported: tuple[str, ...]
     reused: tuple[str, ...]
     failed: tuple[ImportFailure, ...]
+    unavailable: tuple[ImportFailure, ...] = ()
 
     def as_dict(self) -> dict:
         return {
@@ -71,6 +89,8 @@ class BulkImportSummary:
                 {"ticker": failure.ticker, "reason": failure.reason}
                 for failure in self.failed
             ],
+            **({"unavailable": [{"ticker": item.ticker, "reason": item.reason}
+                                 for item in self.unavailable]} if self.unavailable else {}),
         }
 
 
@@ -101,6 +121,7 @@ class CompanyImporter:
         artifact_repository: SqlArtifactRepository,
         company_repository: SharedCompanyRepository,
         derive: Callable[[EvidenceBundle], tuple[str, dict | None]] = sync._derive_evidence,
+        *, company_adapter_declaration: str | Path | None = None,
     ):
         self.sqlite = sqlite_connection
         self.cache_dir = Path(cache_dir)
@@ -108,41 +129,80 @@ class CompanyImporter:
         self.artifacts = artifact_repository
         self.companies = company_repository
         self.derive = derive
+        self.company_adapter_declaration = (
+            Path(company_adapter_declaration) if company_adapter_declaration is not None else None)
         self._sec_ticker_mapping: tuple[dict, RetainedArtifact] | None = None
         self.loader = EvidenceLoader(
             sqlite_connection,
             SimpleNamespace(cache_dir=self.cache_dir),
         )
 
-    def import_tickers(self, tickers: Iterable[str]) -> list[ImportedCompany]:
+    def import_tickers(self, tickers: Iterable[str], *, preserve_unavailable: bool = False) -> list[ImportedCompany]:
+        if type(preserve_unavailable) is not bool:
+            raise TypeError("preserve_unavailable must be a boolean")
         requested = [ticker.strip() for ticker in tickers]
         if not requested or any(not ticker for ticker in requested):
             raise ValueError("at least one non-empty ticker is required")
-        return [self.import_ticker(ticker) for ticker in requested]
+        return [self.import_ticker(ticker, **({"preserve_unavailable": True} if preserve_unavailable else {})) for ticker in requested]
 
-    def import_dashboard(self) -> BulkImportSummary:
+    def import_dashboard(self, *, preserve_unavailable: bool = False) -> BulkImportSummary:
+        if type(preserve_unavailable) is not bool:
+            raise TypeError("preserve_unavailable must be a boolean")
         imported = []
         reused = []
         failed = []
+        unavailable = []
         for ticker in self._dashboard_tickers():
             try:
-                result = self.import_ticker(ticker)
+                result = self.import_ticker(ticker, **({"preserve_unavailable": True} if preserve_unavailable else {}))
             except Exception as exc:
                 reason = str(exc) or type(exc).__name__
                 failed.append(ImportFailure(ticker, reason))
             else:
                 (imported if result.stored.created else reused).append(ticker)
-        return BulkImportSummary(tuple(imported), tuple(reused), tuple(failed))
+                if getattr(result, "data_status", "AVAILABLE") == "UNAVAILABLE":
+                    unavailable.append(ImportFailure(ticker, result.unavailability_reason))
+        return BulkImportSummary(tuple(imported), tuple(reused), tuple(failed), tuple(unavailable))
 
-    def import_ticker(self, ticker: str) -> ImportedCompany:
+    def import_ticker(self, ticker: str, *, preserve_unavailable: bool = False) -> ImportedCompany:
+        if type(preserve_unavailable) is not bool:
+            raise TypeError("preserve_unavailable must be a boolean")
         row = self._company(ticker)
-        prepared = (
-            self._prepare_edinet(row)
-            if re.fullmatch(r"E\d{5}", row["cik"])
-            else self._prepare_sec(row)
-        )
+        try:
+            source = _issuer_source(str(row["cik"]))
+            if source == "COMPANY_ADAPTER":
+                prepared = self._prepare_company_adapter(row)
+            elif source == "EDINET":
+                prepared = self._prepare_edinet(row)
+            else:
+                prepared = self._prepare_sec(row)
+        except RetainedInputMissing as error:
+            if not preserve_unavailable:
+                raise
+            return self._store_unavailable(row, "LOCAL_INPUT_MISSING",
+                f"Retained input {error.input_name} is missing locally; remote availability was not checked.")
+        except RetainedInputCeiling as error:
+            if not preserve_unavailable:
+                raise
+            return self._store_unavailable(row, "NORMALIZATION_UNSUPPORTED",
+                f"Retained EDINET evidence exceeded a supported input ceiling: {error}. "
+                "The filing was not fully validated; remote availability was not checked.",
+                inputs=error.inputs)
         status, payload = self.derive(prepared.bundle)
-        if status != "ok" or payload is None:
+        pending_row = status == "pending_facts" and payload is not None and (
+            "cik" in payload or "ticker" in payload
+        )
+        if pending_row and (
+            (payload.get("cik"), payload.get("ticker")) != (prepared.issuer_identifier, prepared.ticker)
+            or not isinstance(payload.get("data_pending"), Mapping) or not payload["data_pending"]
+        ):
+            raise DerivationError(f"{prepared.ticker}: pending row identity or warning is invalid")
+        if (status != "ok" and not pending_row) or payload is None:
+            if preserve_unavailable and status in {"foreign", "pending_facts"}:
+                return self._store_unavailable(row,
+                    "FILING_FACTS_PENDING" if status == "pending_facts" else "NORMALIZATION_UNSUPPORTED",
+                    "Retained evidence does not support a current normalized financial snapshot.",
+                    inputs=prepared.artifacts)
             raise DerivationError(
                 f"{prepared.ticker}: retained evidence derived as {status}, not ok"
             )
@@ -172,6 +232,74 @@ class CompanyImporter:
             stored=stored,
             artifacts=prepared.artifacts,
         )
+
+    def import_source_unavailable(self, ticker: str, *, observation_ids: Iterable[int], reason: str) -> ImportedCompany:
+        """Keep an actual captured unavailable result, without making a source request."""
+        from .company_availability import REMOTE_KIND, validate_source_rows
+        from .publication import PublicationRepository
+        row = self._company(ticker)
+        ids = tuple(observation_ids)
+        assessment = self._unavailable_assessment(row, "REMOTE_SOURCE_UNAVAILABLE", reason,
+            (), kind=REMOTE_KIND, observation_ids=ids)
+        with self.companies.engine.connect() as connection:
+            actual = PublicationRepository._source_rows(connection, ids)
+        validate_source_rows(assessment, "0" * 64, actual)
+        return self._store_unavailable(row, "REMOTE_SOURCE_UNAVAILABLE", reason,
+            kind=REMOTE_KIND, observation_ids=ids)
+
+    def record_unavailability(self, imported: ImportedCompany, lease, observations, *, item_outcome_key: str) -> tuple[int, ...]:
+        """Bind a real local assessment to the existing source-generation ledger."""
+        from .company_availability import (ARTIFACT_ROLE, REMOTE_KIND, load_assessment,
+            local_observation_metadata, local_source_item, local_source_url)
+        diagnostic = next(item.artifact for item in imported.artifacts if item.role == ARTIFACT_ROLE)
+        raw = self.objects.read_verified(diagnostic.object_key, diagnostic.content_sha256, diagnostic.byte_size)
+        assessment = load_assessment(json.loads(raw))
+        if assessment.kind == REMOTE_KIND:
+            return assessment.remote_observation_ids
+        recorded = observations.record(lease, item=local_source_item(assessment),
+            item_outcome_key=item_outcome_key, state="present",
+            metadata=local_observation_metadata(assessment, diagnostic.content_sha256),
+            source_url=local_source_url(assessment), artifact_sha256=diagnostic.content_sha256,
+            detected_at=assessment.assessed_at)
+        return (recorded.observation.source_observation_id,)
+
+    @staticmethod
+    def _unavailable_assessment(row, code, reason, inputs, *, kind=None, observation_ids=()):
+        from .company_availability import LOCAL_KIND, load_assessment
+        from .shared_companies import _issuer_values
+        cik = str(row["cik"])
+        identity = _issuer_values(_issuer_source(cik), cik)
+        return load_assessment(dict(kind=kind or LOCAL_KIND,
+            issuer_source=identity["source_system"],
+            issuer_identifier=identity["source_identifier"], ticker=str(row["ticker"]).upper(), reason_code=code,
+            reason=reason, assessed_at=datetime.now(timezone.utc).isoformat(),
+            input_artifact_sha256s=sorted({item.artifact.content_sha256 for item in inputs}),
+            remote_observation_ids=list(observation_ids)))
+
+    def _store_unavailable(self, row, code, reason, *, inputs=(), kind=None, observation_ids=()):
+        from .company_availability import ARTIFACT_ROLE, unavailable_row
+        inputs = list(inputs)
+        identity, identity_artifact = self._json_bytes(_canonical_json(dict(
+            kind="RETAINED_COMPANY_IDENTITY", cik=str(row["cik"]), ticker=str(row["ticker"]),
+            name=row["name"], exchange=row["exchange"])), "retained_company_identity")
+        inputs.append(identity_artifact)
+        # Remote IDs were checked before retaining the diagnostic, not inferred from a local read failure.
+        assessment = self._unavailable_assessment(row, code, reason, inputs,
+            kind=kind, observation_ids=observation_ids)
+        _, diagnostic = self._json_bytes(_canonical_json(assessment.json_record()), ARTIFACT_ROLE)
+        payload = unavailable_row(assessment, diagnostic.artifact.content_sha256,
+            name=identity["name"], exchange=identity["exchange"])
+        source, cik = assessment.issuer_source, assessment.issuer_identifier
+        security = (f"company-adapter:{cik}:primary-ordinary" if source == "COMPANY_ADAPTER" else
+                    f"edinet:{cik}:primary-ordinary" if source == "EDINET" else f"sec:{cik}:primary-listed-security")
+        artifacts = (diagnostic, *inputs)
+        stored = self.companies.store_and_select(issuer_source=source, issuer_identifier=cik,
+            security_identifier=security, ticker=assessment.ticker, exchange_code=row["exchange"],
+            quote_currency=None, security_title=None, source_accession=None, security_basis="UNASSESSED",
+            receipt_ratio=None, engine_revision=store.ENGINE_VERSION, canonical_payload=payload,
+            artifacts=(SnapshotArtifact(item.artifact.content_sha256, item.role) for item in artifacts))
+        return ImportedCompany(assessment.ticker, source, cik, security, stored, tuple(artifacts),
+                               "UNAVAILABLE", assessment.reason)
 
     def _company(self, ticker: str) -> sqlite3.Row:
         rows = self.sqlite.execute(
@@ -364,23 +492,52 @@ class CompanyImporter:
         reports = adapter.get("reports") or []
         if not reports:
             raise RetainedInputError(f"{ticker}: retained EDINET report manifest is empty")
+        quote_currency = str(adapter.get("quote_currency") or "").upper()
+        security_basis = str(adapter.get("security_basis") or "")
+        if not quote_currency or security_basis != "PRIMARY_ORDINARY_SHARE":
+            raise RetainedInputError(
+                f"{ticker}: retained EDINET primary-security metadata is incomplete"
+            )
 
-        retained = [facts_artifact]
+        retained = []
+        archives = {}
         for document in sorted({str(report.get("document") or "") for report in reports}):
             if not re.fullmatch(r"[A-Z0-9]+", document):
                 raise RetainedInputError(f"{ticker}: invalid EDINET document in manifest")
-            raw, artifact = self._file_bytes(
-                self.cache_dir / "edinet" / f"{document}.zip",
-                "application/zip",
-                "raw_filing",
-            )
             try:
+                path = self.cache_dir / "edinet" / f"{document}.zip"
+                try:
+                    with path.open("rb") as source:
+                        raw = source.read(edinet._XBRL_INPUT_LIMIT + 1)
+                except FileNotFoundError as exc:
+                    raise RetainedInputMissing(path) from exc
+                if len(raw) > edinet._XBRL_INPUT_LIMIT:
+                    raise EdinetInputCeilingError("EDINET archive exceeds the 16 MiB source ceiling")
                 validate_xbrl_archive(raw, document)
+            except EdinetInputCeilingError as exc:
+                raise RetainedInputCeiling(f"{ticker}: {exc}",
+                    inputs=(facts_artifact, *retained)) from exc
             except EdinetError as exc:
                 raise RetainedInputError(
                     f"{ticker}: retained EDINET filing is invalid: {exc}"
                 ) from exc
+            artifact, verified = self._retain(raw, "application/zip", "raw_filing")
+            if verified != raw:
+                raise RetainedInputError(f"{ticker}: retained EDINET archive readback differs")
             retained.append(artifact)
+            archives[document] = verified
+
+        try:
+            facts = rebuild_companyfacts(facts, archives.__getitem__)
+        except EdinetInputCeilingError as exc:
+            raise RetainedInputCeiling(f"{ticker}: {exc}",
+                inputs=(facts_artifact, *retained)) from exc
+        except (EdinetError, ValueError) as exc:
+            raise RetainedInputError(f"{ticker}: {exc}") from exc
+        facts, facts_artifact = self._json_bytes(_canonical_json(facts), "canonical_edinet_facts")
+        retained.insert(0, facts_artifact)
+        adapter = facts["_adapter"]
+        reports = adapter["reports"]
 
         latest = max(
             reports,
@@ -389,12 +546,6 @@ class CompanyImporter:
                 str(report.get("document") or ""),
             ),
         )
-        quote_currency = str(adapter.get("quote_currency") or "").upper()
-        security_basis = str(adapter.get("security_basis") or "")
-        if not quote_currency or security_basis != "PRIMARY_ORDINARY_SHARE":
-            raise RetainedInputError(
-                f"{ticker}: retained EDINET primary-security metadata is incomplete"
-            )
         return _PreparedCompany(
             ticker=ticker,
             issuer_source="EDINET",
@@ -409,6 +560,103 @@ class CompanyImporter:
             bundle=EvidenceBundle(entity_id, ticker, facts, None, None),
             artifacts=tuple(retained),
         )
+
+    def _prepare_company_adapter(self, row: Mapping[str, str | None]) -> _PreparedCompany:
+        entity = ifrs_workbook.DEFAULT_ENTITY_ID
+        ticker = ifrs_workbook.DEFAULT_TICKER
+        if row["cik"] != entity or row["ticker"] != ticker:
+            raise RetainedInputError("company adapter must identify its configured Adidas security")
+        cached, original = self._json_file(self.cache_dir / f"companyfacts_{entity}.json",
+                                          "retained_company_adapter_facts")
+        adapter = cached.get("_adapter") or {}
+        if (cached.get("cik") != entity or adapter.get("kind") != ifrs_workbook.ADAPTER_KIND
+                or adapter.get("ticker") != ticker or adapter.get("security_basis") != "PRIMARY_ORDINARY_SHARE"
+                or adapter.get("reporting_currency") != "EUR"):
+            raise RetainedInputError("retained Adidas adapter/security metadata is invalid")
+        retained = [original]
+        declared_quote = None
+        if self.company_adapter_declaration is not None:
+            declared_quote, declaration_inputs = self._company_adapter_security()
+            retained.extend(declaration_inputs)
+        cached_quote = adapter.get("quote_currency")
+        if cached_quote is not None and cached_quote != "EUR":
+            raise RetainedInputError("retained Adidas quote currency conflicts with its configured security")
+        quote_currency = cached_quote if cached_quote is not None else declared_quote
+        if quote_currency != "EUR":
+            raise RetainedInputError("Adidas requires an explicit retained EUR quote declaration")
+        reports = adapter.get("reports")
+        if not isinstance(reports, list) or not reports:
+            raise RetainedInputError("retained Adidas report manifest is empty")
+        directory = self.cache_dir / "adapters" / entity
+        names, originals = set(), {}
+        for report in reports:
+            if not isinstance(report, dict):
+                raise RetainedInputError("invalid Adidas report manifest")
+            document, expected = report.get("document"), report.get("sha256")
+            if (not isinstance(document, str) or Path(document).name != document
+                    or not re.fullmatch(r"[A-Za-z0-9_-]*adidas[A-Za-z0-9_-]*ar\d{2}\.(?:xls|xlsx)", document)
+                    or document in names or not isinstance(expected, str)
+                    or not re.fullmatch(r"[a-f0-9]{64}", expected)):
+                raise RetainedInputError("invalid Adidas document/hash in report manifest")
+            names.add(document)
+            media = ("application/vnd.ms-excel" if document.endswith(".xls") else
+                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            raw, artifact = self._file_bytes(directory / document, media, "raw_filing")
+            if hashlib.sha256(raw).hexdigest() != expected:
+                raise RetainedInputError(f"Adidas retained report hash differs: {document}")
+            originals[document] = expected
+            retained.append(artifact)
+        # The existing owner scans its directory; every consumed workbook must be declared.
+        consumed = {path.name for path in directory.iterdir() if path.is_file()
+            and path.suffix.lower() in {".xls", ".xlsx"}
+            and re.search(r"adidas.*ar\d{2}", path.name, re.IGNORECASE)}
+        if consumed != names:
+            raise RetainedInputError("Adidas workbook directory differs from retained report manifest")
+        facts = ifrs_workbook.build_adidas_companyfacts(directory, entity_id=entity, ticker=ticker)
+        mapped = facts["_adapter"]
+        if ({report["document"]: report["sha256"] for report in mapped["reports"]} != originals
+                or any(hashlib.sha256((directory / name).read_bytes()).hexdigest() != digest
+                       for name, digest in originals.items())):
+            raise RetainedInputError("Adidas source workbooks changed during remapping")
+        mapped["security_basis"] = adapter["security_basis"]
+        mapped["quote_currency"] = quote_currency
+        facts, generated = self._json_bytes(_canonical_json(facts), "canonical_company_adapter_facts")
+        retained.append(generated)
+        latest = max(mapped["reports"], key=lambda report: (report["published"], report["document"]))
+        return _PreparedCompany(ticker, "COMPANY_ADAPTER", entity,
+            f"company-adapter:{entity}:primary-ordinary", row["exchange"], quote_currency,
+            adapter["security_basis"], f"adidas-ar{str(latest['fiscal_year'])[-2:]}-{latest['sha256'][:12]}",
+            adapter["security_basis"], None, EvidenceBundle(entity, ticker, facts, None, None), tuple(retained))
+
+    def _company_adapter_security(self):
+        declaration, artifact = self._json_file(self.company_adapter_declaration,
+                                               "company_adapter_security_declaration")
+        expected = dict(issuer_source="COMPANY_ADAPTER", issuer_identifier=ifrs_workbook.DEFAULT_ENTITY_ID,
+            adapter_kind=ifrs_workbook.ADAPTER_KIND, ticker=ifrs_workbook.DEFAULT_TICKER,
+            security_identifier=f"company-adapter:{ifrs_workbook.DEFAULT_ENTITY_ID}:primary-ordinary",
+            security_basis="PRIMARY_ORDINARY_SHARE", quote_currency="EUR")
+        if set(declaration) != {*expected, "sources"} or any(declaration.get(key) != value for key, value in expected.items()):
+            raise RetainedInputError("invalid explicit Adidas security declaration")
+        sources = declaration["sources"]
+        if not isinstance(sources, list) or not sources:
+            raise RetainedInputError("Adidas security declaration requires retained source documents")
+        from .source_observations import _canonical_url
+        retained = [artifact]
+        seen = set()
+        for source in sources:
+            if not isinstance(source, dict) or set(source) != {"path", "sha256", "source_url"}:
+                raise RetainedInputError("invalid Adidas security source pointer")
+            if not isinstance(source["path"], str) or not Path(source["path"]).is_absolute():
+                raise RetainedInputError("Adidas security source must be an exact retained absolute path")
+            url = _canonical_url(source["source_url"])
+            if url in seen:
+                raise RetainedInputError("duplicate Adidas security source")
+            seen.add(url)
+            raw, source_artifact = self._file_bytes(Path(source["path"]), "text/html", "company_adapter_security_source")
+            if source["sha256"] != hashlib.sha256(raw).hexdigest():
+                raise RetainedInputError("Adidas security source hash differs from declaration")
+            retained.append(source_artifact)
+        return declaration["quote_currency"], tuple(retained)
 
     def _json_file(self, path: Path, role: str) -> tuple[dict, RetainedArtifact]:
         raw, artifact = self._file_bytes(path, "application/json", role)
@@ -427,7 +675,7 @@ class CompanyImporter:
         try:
             raw = path.read_bytes()
         except FileNotFoundError as exc:
-            raise RetainedInputError(f"missing retained input: {path}") from exc
+            raise RetainedInputMissing(path) from exc
         artifact, verified = self._retain(raw, media_type, role)
         return verified, artifact
 
@@ -444,6 +692,16 @@ class CompanyImporter:
             artifact.byte_size,
         )
         return RetainedArtifact(role, artifact), verified
+
+
+def _issuer_source(identifier: str) -> str:
+    if identifier == ifrs_workbook.DEFAULT_ENTITY_ID:
+        return "COMPANY_ADAPTER"
+    if re.fullmatch(r"E\d{5}", identifier):
+        return "EDINET"
+    if identifier.isdigit():
+        return "SEC"
+    raise RetainedInputError("retained issuer has no supported explicit source kind")
 
 
 def _canonical_json(value: Mapping) -> bytes:
@@ -502,6 +760,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--sqlite", type=Path, default=store.DEFAULT_DB)
     parser.add_argument("--cache-dir", type=Path)
+    parser.add_argument("--preserve-unavailable", action="store_true",
+                        help="retain explicit diagnoses for missing or unsupported inputs, without financial figures")
+    parser.add_argument("--company-adapter-declaration", type=Path,
+                        help="explicit retained Adidas security declaration and official source hashes")
     args = parser.parse_args(argv)
     if args.all_dashboard and args.tickers:
         parser.error("--all-dashboard cannot be combined with named tickers")
@@ -518,13 +780,15 @@ def main(argv: list[str] | None = None) -> int:
             ImmutableObjectStore(create_s3_client(settings), settings.s3_bucket),
             SqlArtifactRepository(engine),
             SharedCompanyRepository(engine),
+            **({"company_adapter_declaration": args.company_adapter_declaration}
+               if args.company_adapter_declaration is not None else {}),
         )
         if args.all_dashboard:
-            summary = importer.import_dashboard()
+            summary = importer.import_dashboard(**({"preserve_unavailable": True} if args.preserve_unavailable else {}))
             print(json.dumps(summary.as_dict(), sort_keys=True))
             return 1 if summary.failed else 0
 
-        imported = importer.import_tickers(args.tickers)
+        imported = importer.import_tickers(args.tickers, **({"preserve_unavailable": True} if args.preserve_unavailable else {}))
         for result in imported:
             print(
                 json.dumps(
@@ -540,6 +804,8 @@ def main(argv: list[str] | None = None) -> int:
                             }
                             for retained in result.artifacts
                         ],
+                        **({"data_status": result.data_status, "unavailability_reason": result.unavailability_reason}
+                           if result.data_status == "UNAVAILABLE" else {}),
                     },
                     sort_keys=True,
                 )

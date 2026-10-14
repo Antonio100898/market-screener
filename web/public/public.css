@@ -1,0 +1,27 @@
+.public-page { max-width: 960px; margin: auto; padding: 24px; color: #16191d;
+  background: #fff; font: 16px/1.65 system-ui, sans-serif; }
+.public-page nav { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 32px; }
+.public-page a { color: #1a3d7c; }
+.public-page h1 { font-size: 30px; line-height: 1.2; margin: 20px 0; }
+.public-page h2 { font-size: 22px; margin-top: 32px; }
+.public-page p { max-width: 75ch; }
+.public-page .notice { padding: 12px 16px; background: #fdf3dd; border: 1px solid #8a6100; }
+.public-page table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.public-page th, .public-page td { text-align: left; vertical-align: top;
+  padding: 10px; border-bottom: 1px solid #e4e7ec; overflow-wrap: anywhere; }
+.public-page .table-scroll { overflow-x: auto; }
+.public-page footer { margin-top: 36px; border-top: 1px solid #e4e7ec; padding-top: 16px; font-size: 13px; }
+@media (prefers-color-scheme: dark) {
+  .public-page { color: #e6e8eb; background: #14171a; }
+  .public-page a { color: #7aa7f0; }
+  .public-page .notice { background: #33260a; border-color: #e0b04a; }
+}
+
+.captured-history { margin: 1.5rem 0; padding: 1rem; border: 1px solid #8893a5; border-radius: 8px; }
+.captured-history article, .figure-history-dialog article { border-top: 1px solid #8893a5; padding: 1rem 0; }
+.captured-history h4, .captured-history dd, .figure-history-dialog dd { overflow-wrap: anywhere; margin: .3rem 0 .7rem; }
+.captured-history dt, .figure-history-dialog dt { font-weight: 600; }
+.history-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: .7rem 0; }
+.figure-history-dialog { position: fixed; inset: 2vh 3vw; z-index: 10000; background: #fff; color: #18202e; border: 2px solid #8893a5; border-radius: 8px; padding: 1rem; overflow: auto; box-shadow: 0 0 0 100vmax #0008; }
+.figure-history-dialog dl { padding-left: .6rem; border-left: 1px solid #ccc; }
+.figure-history-dialog button, .captured-history button { cursor: pointer; }

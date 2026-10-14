@@ -1,6 +1,21 @@
 /** Payload caveats that must remain beside the figures they qualify. */
 export function payloadWarnings(row = {}) {
   const warnings = [];
+  const publication = row.publication_inputs;
+  if (publication?.capture_mode === "regression_import") {
+    const limitations = (publication.limitations ?? [])
+      .filter((text) => typeof text === "string" && text.trim());
+    if (limitations.length) {
+      warnings.push({ kind: "Saved-data preview", text: limitations.join(" ") });
+    }
+  }
+  const availability = row.data_availability;
+  if (availability?.status === "UNAVAILABLE") {
+    warnings.push({
+      kind: "Financial data unavailable",
+      text: availability.assessment?.reason ?? "Retained evidence cannot support financial figures. Values and price ratios are withheld.",
+    });
+  }
   const pending = row.data_pending;
   if (pending) {
     warnings.push({

@@ -745,6 +745,7 @@ def _resource_payloads(*, revision=1):
                         "filingDate": ["2026-09-28"],
                         "reportDate": ["2025-12-31"],
                         "primaryDocument": ["annual.htm"],
+                        "items": [""],
                     }
                 },
             }

@@ -169,7 +169,7 @@ class FakeRepository:
         self.checkpoints = []
 
     def save_checkpoint(self, _lease, checkpoint, *, now):
-        assert now == NOW
+        assert callable(now) and now() == NOW
         self.checkpoints.append(dict(checkpoint))
         return object()
 
@@ -543,6 +543,7 @@ def _mapped_facts(record, _archive, *, ticker):
         "_adapter": {
             "kind": "edinet_xbrl",
             "statement_basis": "canonical",
+            "accounting_standard": "IFRS",
             "reporting_currency": "JPY",
             "quote_currency": "JPY",
             "ticker": ticker,
@@ -753,54 +754,17 @@ def test_corrupt_archive_is_not_checkpointed_and_corrected_retry_refetches(
 
 
 def test_resource_fetch_merges_current_canonical_history(monkeypatch):
-    old_row = _row(
-        "S100OLD1",
-        submitDateTime="2025-06-20 10:30",
-        periodStart="2024-04-01",
-        periodEnd="2025-03-31",
-    )
-    previous = _mapped_facts(old_row, b"old", ticker="6752.T")
-    previous["_adapter"]["reports"][0]["published"] = "2025-06-20"
-    objects = ResourceObjects()
-    artifacts = ResourceArtifacts()
-    encoded = json.dumps(
-        previous, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode()
-    verified = objects.put_verified(encoded, "application/json")
-    artifacts.add_verified(verified, "application/json")
-    current = SimpleNamespace(
-        issuer_source="EDINET",
-        issuer_identifier="E01772",
-        security_identifier="edinet:E01772:primary-ordinary",
-        artifacts=(
-            SnapshotArtifact(verified.content_sha256, "canonical_edinet_facts"),
-            SnapshotArtifact("9" * 64, "raw_filing"),
-        ),
-    )
-    companies = ResourceCompanies(current)
-    observations = ResourceObservations()
-    monkeypatch.setattr(
-        "screener.edinet_ingestion.build_edinet_companyfacts", _mapped_facts
-    )
-    seen = []
-    handler = EdinetResourceFetchHandler(
-        client=ResourceClient(),
-        object_store=objects,
-        artifacts=artifacts,
-        observations=observations,
-        companies=companies,
-        listings={"6752": {"name": "Panasonic Holdings Corporation"}},
-        derive=lambda bundle: (seen.append(bundle) or ("ok", {"ticker": bundle.ticker})),
-        clock=lambda: NOW,
-    )
-    context, _repository = _resource_context()
-
+    from test_edinet_retained_resource_replay import _handler_case
+    handler, context, observations, companies, client, derived = _handler_case()
     handler(context)
-
-    reports = seen[0].facts["_adapter"]["reports"]
-    assert [report["document"] for report in reports] == ["S100OLD1", "S100TEST"]
+    canonical = next(artifact for artifact in companies.calls[0]["artifacts"]
+                     if artifact.role == "canonical_edinet_facts")
+    reports = json.loads(handler._object_store.data[canonical.content_sha256])["_adapter"]["reports"]
+    assert [report["document"] for report in reports] == ["S100WQEC", "S100Z2YO"]
     assert {artifact.content_sha256 for artifact in companies.calls[0]["artifacts"]
-            if artifact.role == "raw_filing"} >= {"9" * 64}
+            if artifact.role == "raw_filing"} >= {
+                "845a625d950b8d0798299ed07a73f2bbf0ac2e5b4ef3baa4f1761ab6dbdb927a",
+                "269373de7d467a2babdef75279b9e50c11d1bf55332d00de30acae8a089fc221"}
 
 
 def test_resource_fetch_uses_real_edinet_mapper_before_derivation():

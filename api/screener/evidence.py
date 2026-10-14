@@ -6,11 +6,19 @@ kept beside it (DERA dimensions and the filing-cover security description).
 """
 from __future__ import annotations
 
+import copy
+import hashlib
 import json
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
+from decimal import Decimal
+from typing import Mapping
 
 from . import store
-from .sources import cover, dera, inline_xbrl
+from .models import (AdmittedPrimaryInput, CapturedSource, PrimaryInputMapping, RawFactOrigin,
+                     UnavailablePrimaryInput)
+from .sources import cover, dera, inline_xbrl, sec_json
+from .sources.edinet_mapper import rebuild_companyfacts as rebuild_edinet_companyfacts
 
 
 @dataclass(frozen=True)
@@ -21,6 +29,150 @@ class EvidenceBundle:
     dimensioned: dict | None
     receipt: dict | None
     supplement_state: str | None = None
+    captured_sources: tuple[CapturedSource, ...] = ()
+    original_company_facts: dict | None = None
+    primary_inputs: tuple[AdmittedPrimaryInput | UnavailablePrimaryInput, ...] = field(default=(), repr=False)
+
+
+def admit_primary_inputs(
+    cik: str, mappings: tuple[PrimaryInputMapping, ...], payloads: Mapping[str, bytes],
+) -> tuple[AdmittedPrimaryInput | UnavailablePrimaryInput, ...]:
+    """Copy verified private inputs without altering Company Facts or choosing facts."""
+    if not mappings:
+        return ()
+    return _admit_primary_inputs(cik, mappings, payloads, {})
+
+
+def decode_and_admit_primary_inputs(cik, mappings, payloads, *, company_facts_source):
+    """Own one fresh raw root and copied admission; accept no predecoded tree."""
+    _validate_primary_company_facts_source(company_facts_source)
+    original_facts = sec_json.decode_company_facts(
+        payloads.get(company_facts_source.artifact_sha256), source=company_facts_source)
+    issuer = original_facts.get("cik")
+    if (type(issuer) not in {str, int}
+            or inline_xbrl._cik(str(issuer)) != inline_xbrl._cik(cik)):
+        raise ValueError("primary Company Facts root issuer mismatch")
+    outcomes = _admit_primary_inputs(cik, mappings, payloads, {company_facts_source: original_facts})
+    return original_facts, outcomes
+
+
+def _admit_primary_inputs(cik, mappings, payloads, decoded_targets):
+    from .figure_history import ActionEvidence, DocumentEvidence, ShareBasis, decimal_text
+
+    results = []
+    identities = [(m.original.source.artifact_sha256, m.original.location) for m in mappings]
+    keys = [m.key for m in mappings]
+    targets, target_errors = [], []
+    for mapping in mappings:
+        try:
+            target = mapping.target_origin
+            if target is not None:
+                _validate_primary_target(target)
+            targets.append(None if target is None else (target.source.artifact_sha256, target.pointer))
+            target_errors.append(None)
+        except ValueError as exc:
+            targets.append(None)
+            target_errors.append(str(exc))
+    for mapping, identity, target_identity, target_error in zip(mappings, identities, targets, target_errors, strict=True):
+        try:
+            if target_error is not None:
+                raise ValueError(target_error)
+            if target_identity is not None:
+                if targets.count(target_identity) != 1:
+                    raise ValueError("duplicate primary target artifact/pointer")
+                target = mapping.target_origin
+                if target.source not in decoded_targets:
+                    decoded_targets[target.source] = sec_json.decode_company_facts(
+                        payloads.get(target.source.artifact_sha256), source=target.source)
+                original_facts = decoded_targets[target.source]
+                issuer = original_facts.get("cik")
+                if (type(issuer) not in {str, int}
+                        or inline_xbrl._cik(str(issuer)) != inline_xbrl._cik(cik)):
+                    raise ValueError("primary target body issuer mismatch")
+                sec_json.verify_origin(target, original_facts)
+            if (not mapping.key.strip() or keys.count(mapping.key) != 1
+                    or identities.count(identity) != 1):
+                raise ValueError("duplicate or missing primary mapping identity")
+            if (mapping.canonical_namespace not in {"us-gaap", "ifrs-full"}
+                    or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", mapping.canonical_tag)):
+                raise ValueError("invalid declared canonical role")
+            if inline_xbrl._cik(mapping.original.source.cik) != inline_xbrl._cik(cik):
+                raise ValueError("primary mapping issuer mismatch")
+            if mapping.replacement is not None and mapping.unary_factor_text is not None:
+                raise ValueError("replacement and unary correction must be separate")
+            if mapping.unary_factor_text is not None and Decimal(decimal_text(mapping.unary_factor_text)) == 0:
+                raise ValueError("unary correction requires exact nonzero factor")
+            documents = tuple(DocumentEvidence.model_validate(d.model_dump()) for d in mapping.documents)
+            actions = tuple(ActionEvidence.model_validate(a.model_dump()) for a in mapping.actions)
+            basis = None if mapping.share_basis is None else ShareBasis.model_validate(mapping.share_basis.model_dump())
+            by_key = {d.key: d for d in documents}
+            if len(by_key) != len(documents) or len({a.key for a in actions}) != len(actions):
+                raise ValueError("duplicate primary evidence identity")
+            if len({a.legal_identity for a in actions}) != len(actions):
+                raise ValueError("repeated disclosure is not another legal action")
+            if not any("CORRECTION_EXPLANATION" in d.roles for d in documents):
+                raise ValueError("declared role/correction lacks documentary evidence")
+            for document in documents:
+                reference, span = document.reference, document.reference.location
+                if reference.source_system != "SEC" or inline_xbrl._cik(reference.issuer_source_identifier) != inline_xbrl._cik(cik):
+                    raise ValueError("primary evidence issuer mismatch")
+                body = payloads.get(reference.artifact_sha256)
+                if (type(body) is not bytes or hashlib.sha256(body).hexdigest() != reference.artifact_sha256
+                        or span.end_byte > len(body)
+                        or hashlib.sha256(body[span.start_byte:span.end_byte]).hexdigest() != span.span_sha256):
+                    raise ValueError("primary documentary bytes/span mismatch")
+                body[span.start_byte:span.end_byte].decode(span.encoding, errors="strict")
+                parsed = inline_xbrl.urlparse(reference.source_document)
+                if (parsed.scheme != "https" or parsed.netloc != "www.sec.gov" or parsed.query or parsed.fragment
+                        or not re.fullmatch(rf"/Archives/edgar/data/{int(cik)}/[0-9]{{18}}/[A-Za-z0-9_.-]+", parsed.path)):
+                    raise ValueError("primary evidence document binding mismatch")
+            for action in actions:
+                if any(k not in by_key or "LEGAL_ACTION" not in by_key[k].roles for k in action.evidence_keys):
+                    raise ValueError("legal action lacks actual documentary witness")
+            if basis is not None:
+                by_action = {a.key: a for a in actions}
+                if (any(k not in by_key or "INCORPORATED_BASIS" not in by_key[k].roles for k in basis.evidence_keys)
+                        or any(k not in by_action or by_action[k].security_class != basis.security_class
+                               for k in basis.incorporated_actions)):
+                    raise ValueError("share basis lacks actual class/action witnesses")
+            original = inline_xbrl.read_native_numeric(payloads.get(mapping.original.source.artifact_sha256), mapping.original)
+            replacement = None
+            if mapping.replacement is not None:
+                replacement = inline_xbrl.read_native_numeric(payloads.get(mapping.replacement.source.artifact_sha256), mapping.replacement)
+                if (original.request.context != replacement.request.context
+                        or original.request.unit_numerator != replacement.request.unit_numerator
+                        or original.request.unit_denominator != replacement.request.unit_denominator):
+                    raise ValueError("replacement context/unit mismatch")
+            results.append(AdmittedPrimaryInput(copy.deepcopy(mapping), original, replacement))
+        except (ValueError, UnicodeError) as exc:
+            results.append(UnavailablePrimaryInput(mapping.key, mapping.canonical_namespace,
+                                                   mapping.canonical_tag, str(exc),
+                                                   copy.deepcopy(mapping.original),
+                                                   copy.deepcopy(mapping.target_origin)))
+    return tuple(results)
+
+
+def _validate_primary_target(target: RawFactOrigin) -> None:
+    if (not isinstance(target, RawFactOrigin) or not isinstance(target.source, CapturedSource)
+            or any(type(value) is not str or not value for value in
+                   (target.pointer, target.lexical_text, target.namespace, target.concept, target.unit))
+            or any(value is not None and type(value) is not str for value in
+                   (target.start, target.end, target.accession, target.form, target.filed))):
+        raise ValueError("primary target requires immutable exact origin fields")
+    _validate_primary_company_facts_source(target.source)
+
+
+def _validate_primary_company_facts_source(source):
+    if (not isinstance(source, CapturedSource)
+            or any(type(value) is not str for value in
+            (source.role, source.artifact_sha256, source.source_document, source.fidelity))
+            or source.role != "company_facts"
+            or not re.fullmatch(r"[0-9a-f]{64}", source.artifact_sha256)
+            or not source.source_document.strip()
+            or source.fidelity not in {"EXACT_LEXICAL", "DECODED_DECIMAL", "UNKNOWN"}
+            or any(type(value) is not int or value <= 0 for value in
+                   (source.source_item_id, source.source_observation_id, source.occurrence_id))):
+        raise ValueError("primary target requires exact captured delivery identity")
 
 
 def continuity_security(
@@ -128,10 +280,14 @@ class EvidenceLoader:
         return ticker, receipt
 
     def load(self, cik: str, ticker: str | None,
-             facts: dict | None = None) -> EvidenceBundle:
+             facts: dict | None = None, *, primary_mappings: tuple[PrimaryInputMapping, ...] = (),
+             primary_payloads: Mapping[str, bytes] | None = None) -> EvidenceBundle:
         if facts is None:
             path = self.edgar.cache_dir / f"companyfacts_{cik}.json"
             facts = json.loads(path.read_text()) if path.exists() else self.edgar.company_facts(cik)
+        facts = rebuild_edinet_companyfacts(
+            facts, lambda document: (self.edgar.cache_dir / "edinet" / f"{document}.zip").read_bytes(),
+        )
         facts, supplement_state = inline_xbrl.load_retained_supplement(
             self._inline_cache_dir, cik, facts,
             retained_root=self._inline_retained_root,
@@ -144,4 +300,5 @@ class EvidenceLoader:
             dimensioned=dera.load_sidecar(self.edgar.cache_dir, cik),
             receipt=receipt,
             supplement_state=supplement_state,
+            primary_inputs=admit_primary_inputs(cik, primary_mappings, primary_payloads or {}),
         )

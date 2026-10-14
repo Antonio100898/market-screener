@@ -94,6 +94,38 @@ def test_cover_verified_foreign_ordinary_share_is_supported():
     assert snapshot.balance_sheet_date == date(2026, 3, 31)
 
 
+@pytest.mark.parametrize("cik,ticker,title,accession,annual_form,filed,ratio", [
+    ("0001232384", "TRP", "Common Shares (including Rights under Shareholder Rights Plan) of TC Energy Corporation", "0001232384-26-000015", "40-F", "2026-02-13", 1),
+    ("0001335730", "MFG", "American depositary shares, each of which represents two shares of common stock", "0001193125-26-283791", "20-F", "2026-06-26", 2),
+])
+def test_retained_cover_repair_flows_through_loader_and_foreign_admission(tmp_path, cik, ticker, title, accession, annual_form, filed, ratio):
+    import json
+    from screener import evidence, store
+    gaap = _foreign_gaap()
+    for tag in gaap.values():
+        for entries in tag["units"].values():
+            for entry in entries:
+                if entry["form"] == "20-F":
+                    entry["form"] = annual_form
+                if entry["accn"] == "k25":
+                    entry.update(accn=accession, filed=filed)
+    facts = facts_doc(gaap)
+    (tmp_path / f"companyfacts_{cik}.json").write_text(json.dumps(facts))
+    conn = store.connect(tmp_path / "store.db")
+    store.set_cover(conn, cik, [{"symbol": ticker, "title": title, "ratio": None}], accession)
+    class RetainedEdgar:
+        cache_dir = tmp_path
+        def company_facts(self, _):
+            raise AssertionError("parser repair cannot fetch sources")
+    bundle = evidence.EvidenceLoader(conn, RetainedEdgar()).load(cik, ticker)
+    snapshot = build_snapshot(ticker, cik, bundle.facts, receipt=bundle.receipt, dimensioned=bundle.dimensioned)
+    assert snapshot.ticker == ticker
+    assert snapshot.reporting_currency == "USD"
+    assert snapshot.shares_outstanding.value == Decimal("10000000000") / ratio
+    if ratio != 1:
+        assert f"cover of {accession}" in snapshot.shares_outstanding.provenance.concept
+
+
 def test_foreign_depositary_share_without_a_ratio_is_rejected():
     with pytest.raises(UnsupportedFilerError, match="ratio"):
         build_snapshot(
@@ -291,6 +323,7 @@ def test_incorporated_statement_keeps_annual_selection_and_exact_source_provenan
         "annual_accn": annual_accn,
         "annual_form": "40-F",
         "annual_filed": "2026-03-01",
+        "unit": "USD",
         "document": "statements.htm",
         "canonical_tag": "Assets",
     }

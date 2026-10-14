@@ -103,11 +103,12 @@ def test_state_and_evidence_rules_validate_before_sql():
 
 
 @pytest.mark.parametrize("observation_id", [0, -1, True, "1"])
-def test_latest_sec_filing_validates_observation_id_before_sql(observation_id):
+@pytest.mark.parametrize("getter", ["latest_sec_filing", "sec_filing"])
+def test_latest_sec_filing_validates_observation_id_before_sql(observation_id, getter):
     repository = SourceObservationRepository(NoDatabaseEngine())
 
     with pytest.raises(ValueError, match="positive integer"):
-        repository.latest_sec_filing(observation_id)
+        getattr(repository, getter)(observation_id)
 
 
 def test_canonical_hash_is_stable_for_equivalent_input():
@@ -179,3 +180,33 @@ def test_optional_text_and_times_validate_before_sql():
         _record(source_published_at=NOW.replace(tzinfo=None))
     with pytest.raises(ValueError, match="detected_at must be timezone-aware"):
         _record(detected_at=NOW.replace(tzinfo=None))
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("prior_observation_id", True, "prior observation id"),
+        ("inventory_source_item_id", 0, "inventory source item id"),
+        ("inventory_observation_id", "1", "inventory observation id"),
+        ("item_outcome_key", " ", "item outcome key"),
+        ("quarter", "2026Q5", "quarter"),
+        ("inventory_observation_sha256", "A" * 64, "SHA-256"),
+        ("inventory_artifact_sha256", "invalid", "SHA-256"),
+        ("detected_at", NOW.replace(tzinfo=None), "timezone-aware"),
+    ],
+)
+def test_removal_replay_inputs_validate_before_sql(field, value, message):
+    values = dict(
+        prior_observation_id=1,
+        item_outcome_key="removed",
+        quarter="2026Q3",
+        inventory_source_item_id=2,
+        inventory_observation_id=3,
+        inventory_observation_sha256="a" * 64,
+        inventory_artifact_sha256="b" * 64,
+        detected_at=NOW,
+    )
+    with pytest.raises(ValueError, match=message):
+        SourceObservationRepository(NoDatabaseEngine()).record_witnessed_sec_removal(
+            LeaseToken(1, "worker", 1), **{**values, field: value}
+        )

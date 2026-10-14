@@ -1,0 +1,47 @@
+{
+  "canonical_json": "{\"contract_revision\":1,\"coverage\":[{\"assessment\":\"FULL\",\"earlier_history\":\"CAPTURED_ONLY\",\"metric_family\":\"balance_sheet\",\"metric_paths\":[\"balance_sheet.total_assets\"],\"reason\":null,\"source_fidelity\":\"EXACT_LEXICAL\",\"view\":\"STRICT\"}],\"dependencies\":[],\"engine_revision\":187,\"observations\":[{\"key\":\"assets-source\",\"nil\":false,\"period\":{\"end\":\"2025-12-31\",\"kind\":\"INSTANT\",\"origin\":\"REPORTED\",\"start\":null},\"precision\":null,\"qname\":\"us-gaap:Assets\",\"reference\":{\"annual_wrapper\":null,\"artifact_sha256\":\"05a5a292bcede8be8ce1f8d5c166600e9c29dbee6f36f007f1b6f4a55f8a0d23\",\"extraction_revision\":\"sec-json-exact-v1\",\"fidelity\":\"EXACT_LEXICAL\",\"issuer_source_identifier\":\"0000001800\",\"location\":{\"kind\":\"SEC_JSON\",\"pointer\":\"/facts/us-gaap/Assets/units/USD/0\"},\"source_document\":\"filing-1\",\"source_published_at\":null,\"source_system\":\"SEC\"},\"scope\":{\"accounting_basis\":\"US_GAAP\",\"consolidation\":\"CONSOLIDATED\",\"dimensions\":[],\"dimensions_assessed\":true,\"entity_identifier\":\"0000001800\",\"entity_scheme\":\"http://www.sec.gov/CIK\"},\"source_lexical_text\":\"100.0000\",\"unit\":{\"currency\":\"USD\",\"denominator\":[],\"numerator\":[\"iso4217:USD\"],\"source_unit_ref\":null,\"status\":\"KNOWN\"},\"value_decimal_text\":\"100.0000\"}],\"pipeline_run_key\":\"derive:test\",\"security_id\":1,\"selections\":[{\"definition\":null,\"definition_revision\":null,\"metric_family\":\"balance_sheet\",\"metric_path\":\"balance_sheet.total_assets\",\"node_key\":\"assets\",\"observation_key\":\"assets-source\",\"period\":{\"end\":\"2025-12-31\",\"kind\":\"INSTANT\",\"origin\":\"REPORTED\",\"start\":null},\"reason\":null,\"receipt_ratio_text\":null,\"required_input_roles\":[],\"scope\":{\"accounting_basis\":\"US_GAAP\",\"consolidation\":\"CONSOLIDATED\",\"dimensions\":[],\"dimensions_assessed\":true,\"entity_identifier\":\"0000001800\",\"entity_scheme\":\"http://www.sec.gov/CIK\"},\"security_basis\":\"PRIMARY_COMMON_SHARE\",\"state\":\"REPORTED\",\"unit\":{\"currency\":\"USD\",\"denominator\":[],\"numerator\":[\"iso4217:USD\"],\"source_unit_ref\":null,\"status\":\"KNOWN\"},\"value_decimal_text\":\"100.0000\",\"view\":\"STRICT\"}],\"snapshot_id\":1,\"snapshot_sha256\":\"6bc334664f95b4716a350b41002edf0f9efcfc1fad99557ebaad03fd78ee92b2\",\"sources\":[{\"occurrence_id\":1,\"source_item_id\":1,\"source_observation_id\":1}]}",
+  "bundle_sha256": "0108b7959687584a2780d65a0da5dbf1d2d4b734ed2741201889290bfc77ea07",
+  "observation_record": {
+    "nil": false,
+    "unit": {
+      "status": "KNOWN",
+      "currency": "USD",
+      "numerator": [
+        "iso4217:USD"
+      ],
+      "denominator": [],
+      "source_unit_ref": null
+    },
+    "qname": "us-gaap:Assets",
+    "scope": {
+      "dimensions": [],
+      "consolidation": "CONSOLIDATED",
+      "entity_scheme": "http://www.sec.gov/CIK",
+      "accounting_basis": "US_GAAP",
+      "entity_identifier": "0000001800",
+      "dimensions_assessed": true
+    },
+    "period": {
+      "end": "2025-12-31",
+      "kind": "INSTANT",
+      "start": null,
+      "origin": "REPORTED"
+    },
+    "precision": null,
+    "reference": {
+      "fidelity": "EXACT_LEXICAL",
+      "location": {
+        "kind": "SEC_JSON",
+        "pointer": "/facts/us-gaap/Assets/units/USD/0"
+      },
+      "source_system": "SEC",
+      "annual_wrapper": null,
+      "artifact_sha256": "05a5a292bcede8be8ce1f8d5c166600e9c29dbee6f36f007f1b6f4a55f8a0d23",
+      "source_document": "filing-1",
+      "extraction_revision": "sec-json-exact-v1",
+      "source_published_at": null,
+      "issuer_source_identifier": "0000001800"
+    },
+    "source_lexical_text": "100.0000"
+  }
+}

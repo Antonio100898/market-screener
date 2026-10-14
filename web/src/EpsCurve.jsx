@@ -1,3 +1,5 @@
+import { latestEpsLabel } from "./earningsEvidence.js";
+
 /**
  * The earnings record, drawn at the width of the panel.
  *
@@ -18,10 +20,13 @@ const YEARS = 13;
 const W = 620, H = 190;
 const PAD = { left: 46, right: 16, top: 14, bottom: 24 };
 
-export default function EpsCurve({ annualEps, ttmEps, currency = "USD" }) {
+export default function EpsCurve({ annualEps, ttmEps, currency = "USD", latestFy }) {
   const years = Object.keys(annualEps ?? {})
     .map(Number).filter(Number.isFinite).sort((a, b) => a - b).slice(-YEARS);
-  if (years.length < 3) return null;   // two points are a line, not a record
+  const latest = latestEpsLabel(annualEps, latestFy);
+  const missingCaption = latest != null && (!years.length || latest > years.at(-1))
+    ? <p className="dim">FY{latest} EPS unavailable.</p> : null;
+  if (years.length < 3) return missingCaption;   // two points are a line, not a record
 
   const points = years.map((year) => ({ label: `FY${year}`, short: `'${String(year).slice(2)}`,
                                         value: annualEps[String(year)], audited: true }));
@@ -76,6 +81,7 @@ export default function EpsCurve({ annualEps, ttmEps, currency = "USD" }) {
           <h3>Earnings per share</h3>
         </div>
       </div>
+      {missingCaption}
       <svg className="eps-curve-svg" viewBox={`0 0 ${W} ${H}`} role="img"
            aria-label={points.map((p) => `${p.label} ${fmt(p.value, currency)}`).join(", ")}>
         <line x1={PAD.left} x2={W - PAD.right} y1={y(top)} y2={y(top)} className="eps-grid" />

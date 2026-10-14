@@ -30,20 +30,26 @@ import sys
 import tempfile
 import zipfile
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, asdict
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
+from math import isfinite
 from pathlib import Path
 
 import httpx
 
 from . import ch13, evidence, pricestats, profiles, store
 from . import normalize
+from .models import FinancialSnapshot
 from .normalize import PendingFilingFactsError, UnsupportedFilerError, build_snapshot
 from .screens.enterprising import (PE_MAX, PRICE_TO_TBV_MAX, STALE_FOR_PRICING_DAYS,
                                    YIELD_IMPLAUSIBLE, evaluate, settled_debt)
 from .sources import cover, dera, indexes, ifrs_workbook, inline_xbrl, jpx
 from .sources.edinet import EdinetClient, annual_filings
-from .sources.edinet_mapper import ADAPTER_KIND as EDINET_ADAPTER, build_edinet_companyfacts
+from .sources.edinet_mapper import (
+    ADAPTER_KIND as EDINET_ADAPTER, build_edinet_companyfacts,
+    merge_companyfacts as _merge_edinet_facts, rebuild_companyfacts as rebuild_edinet_companyfacts,
+)
 from .sources.edgar import EdgarClient, EdgarError, NoXbrlDataError
 from .sources.prices import YahooPriceProvider
 
@@ -63,6 +69,8 @@ def _statement_source_namespace(snap) -> str:
         ) if fact is not None),
         None,
     )
+    if statement_anchor is not None and statement_anchor.primary_input is not None:
+        return statement_anchor.primary_input.mapping.target_origin.namespace
     return (statement_anchor.provenance.tag.partition(":")[0]
             if statement_anchor is not None else "us-gaap")
 
@@ -83,8 +91,11 @@ def _derive_cached_worker(task: tuple):
     fp = cache / f"companyfacts_{cik}.json"
     if not fp.exists():
         return cik, None
+    cached_facts = rebuild_edinet_companyfacts(
+        json.loads(fp.read_text()), lambda document: (cache / "edinet" / f"{document}.zip").read_bytes(),
+    )
     facts, supplement_state = inline_xbrl.load_retained_supplement(
-        cache, cik, json.loads(fp.read_text()),
+        cache, cik, cached_facts,
     )
     bundle = evidence.EvidenceBundle(
         cik=cik,
@@ -99,14 +110,15 @@ def _derive_cached_worker(task: tuple):
 
 
 def _source(fact) -> dict | None:
+    return _provenance_source(fact.provenance) if fact is not None else None
+
+
+def _provenance_source(p) -> dict:
     """Compact provenance for the payload: enough to open the exact filing.
 
     A summed or derived figure carries each component, because its own filing
     metadata belongs to whichever component was newest and describes none of the
     others."""
-    if fact is None:
-        return None
-
     def annual_identity(p):
         if not p.components:
             return ((p.annual_accession, p.annual_form, p.annual_filed)
@@ -119,6 +131,8 @@ def _source(fact) -> dict | None:
         src = {"tag": p.tag, "form": p.form, "accn": p.accession,
                "end": p.period_end.isoformat() if p.period_end else None,
                "filed": p.filed.isoformat() if p.filed else None}
+        if p.period_start:
+            src["start"] = p.period_start.isoformat()
         annual = annual_identity(p)
         if annual is not None:
             annual_accession, annual_form, annual_filed = annual
@@ -133,6 +147,14 @@ def _source(fact) -> dict | None:
             src["document"] = p.document
         if p.canonical_tag and p.document:
             src["canonical_tag"] = p.canonical_tag
+        if p.native_xml_location is not None:
+            src.update(source_file=p.source_file,
+                       native_xml_location=asdict(p.native_xml_location),
+                       source_entity=p.source_entity,
+                       source_entity_scheme=p.source_entity_scheme,
+                       source_artifact_sha256=p.source_artifact_sha256)
+        if p.equity_class_evidence:
+            src["equity_class_evidence"] = [asdict(item) for item in p.equity_class_evidence]
         # A fact read on a share-class axis is not the one that tag holds without a
         # dimension: BCSS files 1,500,000 weighted shares dimension-free and
         # 10,000,000 for the class its ticker names. Provenance that omits the axis
@@ -156,7 +178,6 @@ def _source(fact) -> dict | None:
             out.extend(leaves(child) or [child])
         return out
 
-    p = fact.provenance
     src = one(p)
     if (parts := leaves(p)):
         src["components"] = [one(c) for c in parts]
@@ -200,7 +221,7 @@ def _without_filing(companyfacts: dict, filing: tuple[str, str]) -> dict:
         for tag, tagdata in taxonomy.items():
             units = {}
             for unit, entries in (tagdata.get("units") or {}).items():
-                kept = [e for e in entries
+                kept = [normalize.primary_entry_without_filing(e, filing) for e in entries
                         if (e.get("filed"), e.get("accn", "")) != (filed, accn)]
                 if kept:
                     units[unit] = kept
@@ -208,14 +229,31 @@ def _without_filing(companyfacts: dict, filing: tuple[str, str]) -> dict:
                 kept_taxonomy[tag] = {**tagdata, "units": units}
         if kept_taxonomy:
             facts[namespace] = kept_taxonomy
-    return {**companyfacts, "facts": facts}
+    return normalize.preserve_primary_input_context(companyfacts, {**companyfacts, "facts": facts})
+
+
+@dataclass(frozen=True)
+class DeriveResult:
+    status: str
+    row: dict | None
+    snapshot: FinancialSnapshot | None = None
+    rq_result: "DeriveResult | None" = None
 
 
 def _derive(cik: str, ticker: str, facts: dict, quote=None,
+            dimensioned: dict | None = None, receipt: dict | None = None, *,
+            assume_absent_zero: bool = False) -> tuple[str, dict | None]:
+    result = _derive_result(cik, ticker, facts, quote, dimensioned, receipt,
+                            assume_absent_zero=assume_absent_zero)
+    return result.status, result.row
+
+
+def _derive_result(cik: str, ticker: str, facts: dict, quote=None,
             dimensioned: dict | None = None,
             receipt: dict | None = None, *,
-            assume_absent_zero: bool = False) -> tuple[str, dict | None]:
+            assume_absent_zero: bool = False) -> DeriveResult:
     """Snapshot + screen result, flattened for the dashboard."""
+    facts = normalize.prepare_primary_inputs(facts)
     pending: dict | None = None
     try:
         snap = build_snapshot(ticker, cik, facts, assume_absent_zero=assume_absent_zero,
@@ -229,20 +267,21 @@ def _derive(cik: str, ticker: str, facts: dict, quote=None,
             "note": ("A newer annual filing is indexed, but SEC structured statements "
                      "are not complete yet; calculations use the last complete filing."),
         }
+        facts = _without_filing(facts, exc.filing)
         try:
             snap = build_snapshot(
-                ticker, cik, _without_filing(facts, exc.filing),
+                ticker, cik, facts,
                 assume_absent_zero=assume_absent_zero,
                 dimensioned=dimensioned, receipt=receipt,
                 foreign_identity_filing=exc.filing)
         except UnsupportedFilerError:
-            return "pending_facts", {"data_pending": pending}
+            return DeriveResult("pending_facts", {"data_pending": pending})
         except Exception as fallback_exc:
-            return "error", {"error": repr(fallback_exc)[:200], "data_pending": pending}
+            return DeriveResult("error", {"error": repr(fallback_exc)[:200], "data_pending": pending})
     except UnsupportedFilerError:
-        return "foreign", None
+        return DeriveResult("foreign", None)
     except Exception as exc:  # a malformed filing must not stop a 4,000-company run
-        return "error", {"error": repr(exc)[:200]}
+        return DeriveResult("error", {"error": repr(exc)[:200]})
     r = evaluate(snap, quote)
     # A current cross-period balance mismatch can deliberately withhold total
     # assets from the UI. Statement history is independent evidence, so infer its
@@ -253,6 +292,7 @@ def _derive(cik: str, ticker: str, facts: dict, quote=None,
         statement_taxonomy = normalize._with_fiscal_calendar(
             facts.get("facts", {}).get("canonical", {}))
         statement_taxonomy.canonical_adapter = True
+        statement_taxonomy.jgaap_equity_required = (facts.get("_adapter") or {}).get("accounting_standard") == "JGAAP"
     else:
         statement_taxonomy = (
             normalize._ifrs_as_us_gaap(facts.get("facts", {}).get("ifrs-full", {}))
@@ -263,12 +303,15 @@ def _derive(cik: str, ticker: str, facts: dict, quote=None,
     statement_taxonomy.reporting_currency = snap.reporting_currency
     statement_taxonomy.currency_adapter = snap.reporting_currency != "USD" or bool(
         getattr(statement_taxonomy, "canonical_adapter", False))
-    historical_ratios = normalize.annual_ratios(
+    common_equity_facts = {}
+    computed_ratios = normalize.annual_ratios(
         statement_taxonomy, snap.annual_net_income,
         snap.annual_revenue, snap.annual_operating_income,
         annual_eps=snap.annual_eps,
         annual_share_counts=snap.annual_share_counts,
-        annual_gross_profit=snap.annual_gross_profit)
+        annual_gross_profit=snap.annual_gross_profit,
+        round_for_display=False, common_equity_facts=common_equity_facts)
+    historical_ratios = normalize._present_annual_ratios(computed_ratios)
     operating_return_history = _operating_return_history(snap)
     conservative_return_history = _operating_return_history(
         snap, snap.conservative_operating_returns)
@@ -377,9 +420,11 @@ def _derive(cik: str, ticker: str, facts: dict, quote=None,
         "annual_operating_income": {str(y): float(f.value)
                                     for y, f in sorted(snap.annual_operating_income.items())},
         "dividend_record": snap.dividend_record,
-        "ch13": ch13.eps_stats({y: f.value for y, f in snap.annual_eps.items()}),
+        "ch13": ch13.eps_stats(
+            {y: f.value for y, f in snap.annual_eps.items()},
+            latest_fy=max(normalize._series_years(snap.annual_eps), default=None)),
         # profitability: never a criterion, the same way ROIC is not
-        "profitability": _profitability(snap, historical_ratios),
+        "profitability": _profitability(snap, computed_ratios),
         "debt_to_equity": _debt_to_equity(snap),
         # the same ratios at each of the last fiscal year ends, each struck on its
         # own year's report. The price multiples are completed at export, where the
@@ -483,7 +528,8 @@ def _derive(cik: str, ticker: str, facts: dict, quote=None,
                  f"{snap.reporting_currency}/shares")),
             # the newest annual earnings figure: which element stated it, and in
             # which filing — a restatement changes both
-            ("eps", _source(snap.annual_eps[max(snap.annual_eps)]) if snap.annual_eps else None),
+            ("eps", _source(snap.annual_eps.get(
+                max(normalize._series_years(snap.annual_eps), default=None)))),
         ) if src is not None},
         # scope-switch disclosure: annual series stitched from more than one tag
         "series_mix": {name: mix for name, mix in (
@@ -514,11 +560,69 @@ def _derive(cik: str, ticker: str, facts: dict, quote=None,
         )
     if pending is not None:
         row["data_pending"] = pending
-    return ("pending_facts" if pending is not None else "ok"), row
+    if snap.common_equity_required:
+        row["equity_evidence"] = {
+            "current": ({"value": float(snap.common_equity.value), "source": _source(snap.common_equity)}
+                        if snap.common_equity is not None else None),
+            "parent": ({"value": float(snap.parent_equity.value), "source": _source(snap.parent_equity)}
+                       if snap.parent_equity is not None else None),
+            "annual": {str(year): {"value": float(fact.value), "source": _source(fact)}
+                       for year, fact in sorted(common_equity_facts.items())},
+            "unavailable": snap.common_equity_unavailable,
+        }
+    if annual_sources := _annual_sources_row(snap, row):
+        row["annual_sources"] = annual_sources
+    if getattr(snap, "prior_accounting_history", ()):
+        row["prior_accounting_history"] = _prior_accounting_history_row(snap)
+    return DeriveResult("pending_facts" if pending is not None else "ok", row, snap)
+
+
+def _annual_sources_row(snap, row) -> dict:
+    """The selected Fact behind each emitted annual value, not the latest filing."""
+    result = {}
+    for field, series in (
+        ("annual_eps", snap.annual_eps),
+        ("annual_net_income", snap.annual_net_income),
+        ("annual_weighted_shares", snap.annual_share_counts),
+        ("annual_revenue", snap.annual_revenue),
+        ("annual_gross_profit", snap.annual_gross_profit),
+        ("annual_operating_income", snap.annual_operating_income),
+    ):
+        sources = {}
+        for year, fact in sorted(series.items()):
+            if str(year) not in row.get(field, {}):
+                continue
+            source = _duration_source(fact)
+            source.setdefault("concept", fact.provenance.concept)
+            if reason := fact.exact_unassessed_reason:
+                source["operation_unassessed_reason"] = reason
+            sources[str(year)] = source
+        if sources:
+            result[field] = sources
+    return result
+
+
+def _prior_accounting_history_row(snap) -> list[dict]:
+    """Supplementary history uses the same compact source contract as current facts."""
+    return [{
+        **{key: group[key] for key in ("basis", "current_basis", "currency", "share_basis")},
+        **({"unavailable_reason": group["unavailable_reason"]} if group.get("unavailable_reason") else {}),
+        "series": {metric: {
+            str(year): {"value": float(fact.value), "source": _source(fact)}
+            for year, fact in sorted(series.items())
+        } for metric, series in group["series"].items()},
+    } for group in snap.prior_accounting_history]
 
 
 def _derive_evidence(bundle: evidence.EvidenceBundle, quote=None, *,
                      assume_absent_zero: bool = False) -> tuple[str, dict | None]:
+    result = _derive_evidence_result(bundle, quote,
+                                     assume_absent_zero=assume_absent_zero)
+    return result.status, result.row
+
+
+def _derive_evidence_result(bundle: evidence.EvidenceBundle, quote=None, *,
+                            assume_absent_zero: bool = False) -> DeriveResult:
     """The sole production entry point from assembled evidence to a snapshot.
 
     Stored dashboard rows remain filing-strict for every Graham criterion.  They
@@ -526,20 +630,22 @@ def _derive_evidence(bundle: evidence.EvidenceBundle, quote=None, *,
     the Return Quality discovery column, matching the detail panel's default
     assumption mode without allowing those assumptions into a verdict.
     """
-    result = _derive(
-        bundle.cik, bundle.ticker, bundle.facts, quote=quote,
+    facts = normalize.prepare_primary_inputs(bundle.facts, getattr(bundle, "primary_inputs", ()))
+    result = _derive_result(
+        bundle.cik, bundle.ticker, facts, quote=quote,
         dimensioned=bundle.dimensioned, receipt=bundle.receipt,
         assume_absent_zero=assume_absent_zero,
     )
-    status, row = result
+    status, row = result.status, result.row
     if assume_absent_zero or row is None or status not in {"ok", "pending_facts"}:
         return result
 
-    assumed_status, assumed_row = _derive(
-        bundle.cik, bundle.ticker, bundle.facts, quote=quote,
+    assumed = _derive_result(
+        bundle.cik, bundle.ticker, facts, quote=quote,
         dimensioned=bundle.dimensioned, receipt=bundle.receipt,
         assume_absent_zero=True,
     )
+    assumed_status, assumed_row = assumed.status, assumed.row
     if assumed_row is not None and assumed_status in {"ok", "pending_facts"}:
         row["return_quality_assumption"] = _return_quality_assumption(assumed_row)
     else:
@@ -548,7 +654,7 @@ def _derive_evidence(bundle: evidence.EvidenceBundle, quote=None, *,
             "applied": [],
             "note": "The zero-assumption Return Quality calculation was unavailable.",
         }
-    return status, row
+    return DeriveResult(status, row, result.snapshot, assumed)
 
 
 def _return_quality_assumption(row: dict) -> dict:
@@ -652,7 +758,7 @@ def _profitability(snap, historical_ratios: dict | None = None) -> dict | None:
         "on_net_tangible_assets": on_net_tangible_assets,
         "revenue": float(revenue[latest].value),
         "net_income": float(income[latest].value),
-        "book_value": float(equity) if equity else None,
+        "book_value": float(equity) if equity is not None else None,
         "average_common_equity": average_equity,
         "net_tangible_assets": float(tangible) if tangible is not None else None,
         # the direction matters more than the level: Graham's warning is a margin
@@ -664,11 +770,7 @@ def _profitability(snap, historical_ratios: dict | None = None) -> dict | None:
 def _common_equity(snap):
     """What the common shareholders own — the same deductions every per-share figure
     on this page makes: preferred, the minority's share, and mezzanine."""
-    if snap.total_assets is None or snap.total_liabilities is None:
-        return None
-    other = sum(f.value for f in (snap.preferred_stock, snap.noncontrolling_interest,
-                                  snap.temporary_equity) if f)
-    return snap.total_assets.value - snap.total_liabilities.value - other
+    return FinancialSnapshot.common_equity_value(snap)
 
 
 def _net_tangible_assets(snap):
@@ -770,7 +872,10 @@ def _asset_quality(snap, gaap: dict) -> tuple[dict, dict]:
             ("short_term_investments", investments),
         ) if fact is not None
     }
-    return {key: value for key, value in values.items() if value is not None}, sources
+    return {key: value for key, value in values.items()
+            if value is not None or (key == "common_equity"
+                and (getattr(snap, "common_equity_required", False)
+                     or not FinancialSnapshot.current_senior_claims_available(snap)))}, sources
 
 
 def _fcf_reconciliation(snap, oe) -> dict:
@@ -781,10 +886,11 @@ def _fcf_reconciliation(snap, oe) -> dict:
     A mismatch is disclosed; no value is adjusted to make the equations agree.
     """
     year = oe.fiscal_year
-    target = oe.all_capex_floor.provenance
+    anchor = oe.all_capex_floor or oe.free_cash_flow or oe.maintenance_estimate
+    target = anchor.provenance if anchor is not None else None
 
     def aligned(fact):
-        return (fact if fact is not None
+        return (fact if fact is not None and target is not None
                 and fact.provenance.period_start == target.period_start
                 and fact.provenance.period_end == target.period_end else None)
 
@@ -1050,28 +1156,6 @@ def _owner_earnings_row(snap) -> dict | None:
     if oe is None:
         return None
 
-    def source_row(provenance) -> dict:
-        source = {
-            "tag": provenance.tag,
-            "form": provenance.form,
-            "accn": provenance.accession,
-            "end": (provenance.period_end.isoformat()
-                    if provenance.period_end else None),
-            "filed": provenance.filed.isoformat() if provenance.filed else None,
-        }
-        if provenance.annual_accession:
-            source.update({
-                "annual_accn": provenance.annual_accession,
-                "annual_form": provenance.annual_form,
-                "annual_filed": (provenance.annual_filed.isoformat()
-                                 if provenance.annual_filed else None),
-            })
-        if provenance.unit:
-            source["unit"] = provenance.unit
-        if provenance.document:
-            source["document"] = provenance.document
-        return source
-
     def fact_value(fact) -> float | None:
         return float(fact.value) if fact is not None else None
 
@@ -1083,7 +1167,7 @@ def _owner_earnings_row(snap) -> dict | None:
             "end": (fact.provenance.period_end.isoformat()
                     if fact.provenance.period_end else None),
             "formula": fact.provenance.tag,
-            "sources": [source_row(source)
+            "sources": [_provenance_source(source)
                         for source in fact.provenance.components],
         }
     # Keep the latest eleven fiscal-year slots in the payload. The panel displays
@@ -1092,16 +1176,23 @@ def _owner_earnings_row(snap) -> dict | None:
     # farther into the past to fill the quota.
     years = [year for year in sorted(oe.annual)
              if oe.fiscal_year - 10 <= year <= oe.fiscal_year]
-    floor_sources = oe.all_capex_floor.provenance.components
+    floor_sources = (oe.all_capex_floor.provenance.components
+                     if oe.all_capex_floor is not None else ())
     owner_sources = {}
     for name, provenance in zip(
         ("reported_earnings", "depreciation_and_amortisation", "total_capex"),
         floor_sources,
     ):
-        owner_sources[name] = source_row(provenance)
+        owner_sources[name] = _provenance_source(provenance)
+    if not floor_sources and (current := oe.annual.get(oe.fiscal_year)) is not None:
+        for name, fact in (("reported_earnings", current.reported_earnings),
+                           ("depreciation_and_amortisation", current.depreciation_and_amortisation),
+                           ("total_capex", current.total_capital_expenditure)):
+            if fact is not None:
+                owner_sources[name] = _provenance_source(fact.provenance)
     if oe.free_cash_flow is not None and oe.free_cash_flow.provenance.components:
         provenance = oe.free_cash_flow.provenance.components[0]
-        owner_sources["operating_cash_flow"] = source_row(provenance)
+        owner_sources["operating_cash_flow"] = _provenance_source(provenance)
     for name, fact in (
         ("stock_compensation", oe.stock_compensation),
         ("cash_acquisitions", oe.cash_acquisitions),
@@ -1116,7 +1207,7 @@ def _owner_earnings_row(snap) -> dict | None:
             # fallback is a reconciled subtotal, so retain every filed component
             # instead of reducing its provenance to the newest component alone.
             owner_sources[name] = (_source(fact) if name == "operating_income"
-                                   else source_row(fact.provenance))
+                                   else _provenance_source(fact.provenance))
 
     def annual_cell(year: int) -> dict:
         item = oe.annual[year]
@@ -1131,23 +1222,25 @@ def _owner_earnings_row(snap) -> dict | None:
             if fact is None:
                 return None
             value = abs(fact.value) if absolute else fact.value
-            source = source_row(fact.provenance)
-            # This structure occurs hundreds of thousands of times in the UI
-            # payload. Keep the required provenance without repeating JSON keys:
-            # [value, tag, form, accession, period end].
+            source = _provenance_source(fact.provenance)
+            source.setdefault("concept", fact.provenance.concept)
+            # Preserve the compact prefix for older consumers; the complete source
+            # also identifies duration contexts and mapped cash-outflow concepts.
             point = [float(value), source.get("tag"), source.get("form"),
-                     source.get("accn"), source.get("end")]
-            if source.get("unit") or source.get("document"):
-                point.extend([source.get("unit"), source.get("document")])
+                     source.get("accn"), source.get("end"),
+                     source.get("unit"), source.get("document"), source]
             return point
 
+        anchor = (item.maintenance_estimate or item.free_cash_flow
+                  or item.reported_earnings or item.depreciation_and_amortisation
+                  or item.total_capital_expenditure)
         cell = {
             # Compatibility names are retained while the clearer display names
             # keep consumers from treating either proxy as definitive owner earnings.
-            "all_capex_floor": float(item.all_capex_floor.value),
-            "maintenance_estimate": float(item.maintenance_estimate.value),
-            "earnings_after_total_capex": float(item.all_capex_floor.value),
-            "reported_earnings_assumption": float(item.maintenance_estimate.value),
+            "all_capex_floor": fact_value(item.all_capex_floor),
+            "maintenance_estimate": fact_value(item.maintenance_estimate),
+            "earnings_after_total_capex": fact_value(item.all_capex_floor),
+            "reported_earnings_assumption": fact_value(item.maintenance_estimate),
             "free_cash_flow": fact_value(item.free_cash_flow),
             "free_cash_flow_after_stock_compensation": fact_value(
                 item.free_cash_flow_after_stock_compensation),
@@ -1199,8 +1292,8 @@ def _owner_earnings_row(snap) -> dict | None:
                     item.share_repurchases, absolute=True),
             }.items() if value is not None},
             "diluted_shares": float(shares) if shares is not None else None,
-            "end": (item.maintenance_estimate.provenance.period_end.isoformat()
-                    if item.maintenance_estimate.provenance.period_end
+            "end": (anchor.provenance.period_end.isoformat()
+                    if anchor is not None and anchor.provenance.period_end
                     else None),
         }
         # Preserve the original three per-share keys even when FCF is unavailable;
@@ -1226,8 +1319,8 @@ def _owner_earnings_row(snap) -> dict | None:
         "all_capex_label": "Earnings after total capital expenditure",
         "maintenance_estimate_label": (
             "Reported earnings — maintenance capex assumed equal to D&A"),
-        "all_capex_floor": float(oe.all_capex_floor.value),
-        "maintenance_estimate": float(oe.maintenance_estimate.value),
+        "all_capex_floor": fact_value(oe.all_capex_floor),
+        "maintenance_estimate": fact_value(oe.maintenance_estimate),
         "free_cash_flow": fact_value(oe.free_cash_flow),
         "fcf_reconciliation": _fcf_reconciliation(snap, oe),
         "free_cash_flow_after_stock_compensation": fact_value(
@@ -1345,6 +1438,8 @@ def _ncavps(snap) -> float | None:
     current assets less every liability, ignoring fixed assets entirely, divided by
     shares. Distinct from the net current assets in criterion 3, which subtracts
     only current liabilities."""
+    if not FinancialSnapshot.current_senior_claims_available(snap):
+        return None
     need = (snap.current_assets, snap.total_liabilities, snap.shares_outstanding)
     if any(f is None for f in need) or snap.shares_outstanding.value <= 0:
         return None
@@ -1361,13 +1456,11 @@ def _bvps(snap) -> float | None:
     """Plain book value per share — intangibles included, unlike criterion 7's
     tangible variant, because chapter 13's P/B and earnings-on-book use the full
     equity. Preferred and minority interest are deducted the same way _tbvps does."""
-    need = (snap.total_assets, snap.total_liabilities, snap.shares_outstanding)
+    need = (snap.shares_outstanding,)
     if any(f is None for f in need) or snap.shares_outstanding.value <= 0:
         return None
-    optional = sum(f.value for f in (snap.preferred_stock, snap.noncontrolling_interest,
-                                     snap.temporary_equity) if f)
-    book = snap.total_assets.value - snap.total_liabilities.value - optional
-    return float(book / snap.shares_outstanding.value)
+    book = _common_equity(snap)
+    return float(book / snap.shares_outstanding.value) if book is not None else None
 
 
 def _tbvps(snap) -> float | None:
@@ -2536,36 +2629,6 @@ def import_ifrs_workbooks(
     return result
 
 
-def _merge_edinet_facts(previous: dict | None, incoming: dict) -> dict:
-    """Keep earlier filings while later annual reports can restate their years."""
-    if not previous or (previous.get("_adapter") or {}).get("kind") != EDINET_ADAPTER:
-        return incoming
-    if previous.get("cik") != incoming.get("cik"):
-        raise ValueError("EDINET company identity changed during import")
-    out = previous
-    prior_reports = (out.get("_adapter") or {}).get("reports") or []
-    new_report = incoming["_adapter"]["reports"][0]
-    prior_reports = [report for report in prior_reports
-                     if report["document"] != new_report["document"]]
-    for tagdata in out.get("facts", {}).get("canonical", {}).values():
-        for unit, entries in tagdata.get("units", {}).items():
-            tagdata["units"][unit] = [entry for entry in entries
-                                      if entry.get("accn") != new_report["document"]]
-    for tag, tagdata in incoming["facts"]["canonical"].items():
-        target = out.setdefault("facts", {}).setdefault("canonical", {}) \
-            .setdefault(tag, {"units": {}})["units"]
-        for unit, entries in tagdata["units"].items():
-            target.setdefault(unit, []).extend(entries)
-    out["_adapter"]["reports"] = sorted(
-        [*prior_reports, new_report], key=lambda report: report["published"])
-    if new_report["published"] >= out["_adapter"]["reports"][-1]["published"]:
-        out["_adapter"]["reporting_currency"] = incoming["_adapter"]["reporting_currency"]
-        out["_adapter"]["quote_currency"] = incoming["_adapter"]["quote_currency"]
-        out["_adapter"]["ticker"] = incoming["_adapter"]["ticker"]
-        out["entityName"] = incoming["entityName"]
-    return out
-
-
 def import_edinet(conn, start: date, end: date, *, client: EdinetClient | None = None,
                   listings: dict | None = None, progress=_print_progress,
                   limit: int | None = None, only_code: str | None = None,
@@ -2703,6 +2766,10 @@ def apply_price(row: dict, price: float | None) -> dict:
     criteria are settled here — pure arithmetic over ttm_eps and tbvps, no I/O.
     Portfolio execution snapshots mirror these two thresholds server-side; the
     browser only displays settled criteria."""
+    if "data_availability" in row:
+        from .company_availability import validate_unavailable_row
+        if validate_unavailable_row(row) is not None:
+            return row
     # A symbol absent from SEC's current company/ticker mapping has no verified
     # security identity.  Yahoo may still return a stale quote, or may later reuse
     # the symbol for another issuer; neither may be joined to this CIK's filings.
@@ -2979,7 +3046,7 @@ def _equity_awards(snap) -> dict:
     return {"equity_awards": float(total), "awards_basis": basis}
 
 
-def _price_the_ratio_history(row: dict, closes, fx_closes=()) -> None:
+def _price_the_ratio_history(row: dict, closes, fx_record=None) -> None:
     """Turn each past year's book figures into the multiples the panel shows.
 
     The price of that year comes from the stored weekly closes, and the earnings
@@ -3000,10 +3067,13 @@ def _price_the_ratio_history(row: dict, closes, fx_closes=()) -> None:
         return
     vintage = row.get("ttm_eps_vintage") or {}
     by_date = sorted((d.isoformat() if hasattr(d, "isoformat") else str(d), c) for d, c in closes)
-    cross_currency = _quote_currency(row) != _reporting_currency(row)
+    quote, reporting = _quote_currency(row), _reporting_currency(row)
+    cross_currency = quote != reporting
+    qualified = (isinstance(fx_record, dict) and fx_record.get("base") == quote
+                 and fx_record.get("counter") == reporting)
     fx_by_date = sorted(
         (day.isoformat() if hasattr(day, "isoformat") else str(day), rate)
-        for day, rate in fx_closes
+        for day, rate in ((fx_record.get("closes") or ()) if qualified else ())
     )
     for year, values in ratios.items():
         # the fiscal year end this row's figures were struck at; only a December
@@ -3018,9 +3088,11 @@ def _price_the_ratio_history(row: dict, closes, fx_closes=()) -> None:
             prior_fx = [rate for day, rate in fx_by_date if day <= cutoff]
             if not prior_fx:
                 continue
-            rate = float(prior_fx[-1])
-            if not rate > 0:
+            exact_rate = _fx_rate({"base": quote, "counter": reporting,
+                                   "rate": prior_fx[-1]}, quote, reporting)
+            if exact_rate is None:
                 continue
+            rate = float(exact_rate)
             price = quote_price * rate
             values["quote_price"] = round(quote_price, 4)
             values["fx_rate"] = round(rate, 8)
@@ -3166,18 +3238,67 @@ def _quote_currency(row: dict) -> str:
     return (row.get("quote_currency") or row.get("currency") or "USD").upper()
 
 
+def _fx_rate(record: dict | None, base: str, counter: str) -> Decimal | None:
+    if not record or record.get("base") != base or record.get("counter") != counter:
+        return None
+    try:
+        rate = Decimal(str(record.get("rate")))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    return rate if rate.is_finite() and rate > 0 and isfinite(float(rate)) and float(rate) > 0 else None
+
+
+def _fx_pairs(row: dict) -> set[tuple[str, str]]:
+    quote, reporting = _quote_currency(row), _reporting_currency(row)
+    return ({("USD", reporting)} if reporting != "USD" else set()) | (
+        {(quote, reporting)} if quote != reporting else set())
+
+
 def _set_fx(row: dict, record: dict | None) -> None:
-    """Attach an explicit USD-to-reporting-currency rate to one payload row."""
-    reporting = _reporting_currency(row)
-    if reporting == "USD" or record is None:
+    """Keep USD size evidence distinct from a nonUSD valuation conversion."""
+    quote, reporting = _quote_currency(row), _reporting_currency(row)
+    if record is None or _fx_rate(record, record.get("base"), reporting) is None:
         return
-    row["fx"] = {
+    field = ("fx" if reporting != "USD" and record["base"] == "USD" else
+             "valuation_fx" if quote != reporting and record["base"] == quote else None)
+    if field is None:
+        return
+    row[field] = {
         "base": record["base"],
         "counter": record["counter"],
         "rate": float(record["rate"]),
         "asof": record["asof"],
         "source": record["source"],
     }
+
+
+def _set_fx_records(row: dict, records: dict) -> None:
+    for field in ("fx", "valuation_fx", "fx_warning"):
+        row.pop(field, None)
+    missing = []
+    quote, reporting = _quote_currency(row), _reporting_currency(row)
+    for pair in sorted(_fx_pairs(row)):
+        record = records.get(pair)
+        if _fx_rate(record, *pair) is None:
+            purposes = []
+            if pair == ("USD", reporting) and reporting != "USD":
+                purposes.append("USD size comparison is unavailable")
+            if pair == (quote, reporting) and quote != reporting:
+                purposes.append("price-based valuation is withheld")
+            missing.append(f"No {pair[0]} to {pair[1]} exchange rate was available; " + "; ".join(purposes))
+        else:
+            _set_fx(row, record)
+    if missing:
+        row["fx_warning"] = {"kind": "FX_UNAVAILABLE", "note": ". ".join(missing)}
+
+
+def _valuation_fx_history(conn, row: dict) -> dict | None:
+    quote, reporting = _quote_currency(row), _reporting_currency(row)
+    return store.fx_history(conn, quote, reporting) if quote != reporting else None
+
+
+def _valuation_fx_record(row: dict) -> dict | None:
+    return row.get("valuation_fx") if "valuation_fx" in row else row.get("fx")
 
 
 def _valuation_price(row: dict, price) -> Decimal | None:
@@ -3192,13 +3313,8 @@ def _valuation_price(row: dict, price) -> Decimal | None:
     reporting_currency = _reporting_currency(row)
     if quote_currency == reporting_currency:
         return value
-    fx = row.get("fx") or {}
-    try:
-        rate = Decimal(str(fx.get("rate")))
-    except (InvalidOperation, TypeError, ValueError):
-        return None
-    if (fx.get("base") != quote_currency or fx.get("counter") != reporting_currency
-            or not rate.is_finite() or rate <= 0):
+    rate = _fx_rate(_valuation_fx_record(row), quote_currency, reporting_currency)
+    if rate is None:
         return None
     return value * rate
 
@@ -3209,7 +3325,7 @@ def _retain_previous_quote(row: dict, previous: dict | None) -> bool:
     for field in _QUOTE_FIELDS:
         if field in previous:
             row[field] = previous[field]
-    for field in ("fx", "price_reporting_currency", "fx_warning"):
+    for field in ("fx", "valuation_fx", "price_reporting_currency", "fx_warning"):
         if field in previous:
             row[field] = previous[field]
     return True
@@ -3230,6 +3346,7 @@ def export(conn, with_prices: bool = True, progress=_print_progress,
         derive(conn, progress=progress)
     rows = store.dashboard_rows(conn)
     previous_rows = _previous_dashboard_rows()
+    fx_records = {}
     quote_updated = 0
     quote_failed = 0
     if with_prices:
@@ -3284,47 +3401,34 @@ def export(conn, with_prices: bool = True, progress=_print_progress,
                     if done % 25 == 0 or done == len(futures):
                         progress(f"fetching {label}", done, len(futures))
 
-                reporting_currencies = sorted({
-                    _reporting_currency(row) for row in priceable
-                    if _reporting_currency(row) != "USD"
-                })
+                pairs = sorted({pair for row in priceable for pair in _fx_pairs(row)})
                 fx_futures = {
-                    pool.submit(prices.exchange_rate_history, "USD", currency): currency
-                    for currency in reporting_currencies
+                    pool.submit(prices.exchange_rate_history, *pair): pair
+                    for pair in pairs
                 }
-                fx_records = {}
                 for future in as_completed(fx_futures):
-                    currency = fx_futures[future]
+                    base, counter = pair = fx_futures[future]
                     try:
                         history = future.result()
                     except Exception:
                         history = None
                     if history is not None:
-                        store.set_fx_history(conn, "USD", currency, history)
-                        fx_records[currency] = {
-                            "base": "USD", "counter": currency,
+                        record = {
+                            "base": base, "counter": counter,
                             "rate": float(history.quote.price),
                             "asof": history.quote.asof.isoformat(),
                             "source": history.quote.source,
                             "closes": list(history.closes),
                         }
+                        if _fx_rate(record, base, counter) is not None:
+                            store.set_fx_history(conn, base, counter, history)
+                            fx_records[pair] = record
+                        else:
+                            fx_records[pair] = store.fx_history(conn, base, counter)
                     else:
-                        cached = store.fx_history(conn, "USD", currency)
-                        if cached is not None:
-                            fx_records[currency] = cached
+                        fx_records[pair] = store.fx_history(conn, base, counter)
                 for row in rows:
-                    reporting = _reporting_currency(row)
-                    if reporting == "USD":
-                        continue
-                    record = fx_records.get(reporting)
-                    _set_fx(row, record)
-                    if record is None:
-                        row["fx_warning"] = {
-                            "kind": "FX_UNAVAILABLE",
-                            "note": (f"No USD to {reporting} exchange rate was available; "
-                                     "accounting ratios remain usable, but price-based "
-                                     "valuation is withheld"),
-                        }
+                    _set_fx_records(row, fx_records)
         finally:
             prices.close()
         # the series is written once per company, so a later `derive` can rebuild
@@ -3377,12 +3481,13 @@ def export(conn, with_prices: bool = True, progress=_print_progress,
     for row in rows:
         row.update(profiles.enrich(row))
     for row in rows:
-        reporting = _reporting_currency(row)
-        fx_record = (store.fx_history(conn, "USD", reporting)
-                     if reporting != "USD" else None)
+        quote, reporting = _quote_currency(row), _reporting_currency(row)
+        pair = (quote, reporting)
+        if quote != reporting and pair not in fx_records:
+            fx_records[pair] = _valuation_fx_history(conn, row)
         _price_the_ratio_history(
             row, closes_by_cik.get(row["cik"]) or [],
-            (fx_record or {}).get("closes") or [])
+            fx_records.get(pair))
     for row in rows:  # engine-internal series with no reader in the payload
         row.pop("ttm_eps_vintage", None)
         _strip_detail_only_evidence(row)

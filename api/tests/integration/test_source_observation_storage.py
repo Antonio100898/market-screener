@@ -8,6 +8,7 @@ from uuid import uuid4
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from alembic.runtime.migration import MigrationContext
 from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.engine import make_url
@@ -709,6 +710,59 @@ def test_failed_or_mismatched_upload_cannot_create_observation(
         ) == 0
 
 
+def test_present_pending_identical_present_recurrence_is_latest(repositories):
+    engine, jobs, observations = repositories
+    lease = _claim(jobs, "recurrence")
+    settings = StorageSettings.from_env()
+    artifact = store_evidence(b'source recurrence A', 'application/json',
+        ImmutableObjectStore(create_s3_client(settings), settings.s3_bucket), SqlArtifactRepository(engine))
+    item = SourceItemIdentity("SEC", "resource", "recurrence.json", "0000001800")
+    values = dict(item=item, metadata={"role": "companyfacts"}, source_url="https://data.sec.gov/recurrence.json")
+    first = observations.record(lease, item_outcome_key="A1", state="present", artifact_sha256=artifact.content_sha256,
+                                detected_at=NOW, **values)
+    observations.record(lease, item_outcome_key="B", state="pending", detected_at=NOW + timedelta(seconds=1), **values)
+    repeated = observations.record(lease, item_outcome_key="A2", state="present", artifact_sha256=artifact.content_sha256,
+                                   detected_at=NOW + timedelta(seconds=2), **values)
+    assert repeated.observation.source_observation_id == first.observation.source_observation_id
+    latest = observations.latest_item("SEC", "resource", "recurrence.json")
+    assert latest.observation.state == "present"
+    assert latest.observation.source_observation_id == first.observation.source_observation_id
+
+
+def test_exact_sec_filing_read_keeps_cited_revision_and_current_admission(repositories, monkeypatch):
+    engine, jobs, observations = repositories
+    lease = _claim(jobs, "exact-parent")
+    item = SourceItemIdentity("SEC", "filing", "0000001800-26-000001", "0000001800")
+    original = _pending(observations, lease, item, "original", metadata={"form": "10-K", "revision": 1})
+    changed = _pending(observations, lease, item, "changed", metadata={"form": "10-K", "revision": 2},
+                       detected_at=NOW + timedelta(seconds=1))
+    assert observations.latest_sec_filing(changed.observation.source_observation_id).observation == changed.observation
+    with pytest.raises(ValueError, match="not latest"):
+        observations.latest_sec_filing(original.observation.source_observation_id)
+    # The immutable read never reaches the shared current-pointer owner.
+    monkeypatch.setattr("screener.source_observations.current_observation_id",
+        lambda *a, **k: pytest.fail("immutable source read consulted current"))
+    found = SourceObservationRepository(engine).sec_filing(original.observation.source_observation_id)
+    assert found.item == original.item and found.observation == original.observation and not found.created
+    assert found.delivery is None
+
+
+@pytest.mark.parametrize("system,kind", [("SEC", "inventory"), ("SEC", "aggregate"),
+                                         ("EDINET", "filing"), ("EDINET", "resource")])
+def test_exact_sec_filing_read_rejects_other_source_or_kind(repositories, system, kind):
+    _, jobs, observations = repositories
+    stored = _pending(observations, _claim(jobs, "wrong-source"),
+        SourceItemIdentity(system, kind, "wrong-kind"), "wrong")
+    with pytest.raises(ValueError, match="not an SEC filing"):
+        observations.sec_filing(stored.observation.source_observation_id)
+
+
+def test_exact_sec_filing_read_rejects_missing_id(repositories):
+    _, _, observations = repositories
+    with pytest.raises(ValueError, match="does not exist"):
+        observations.sec_filing(999999)
+
+
 def test_verified_s3_object_links_to_present_observation(repositories):
     engine, jobs, observations = repositories
     settings = StorageSettings.from_env()
@@ -768,7 +822,7 @@ def test_upgrade_populated_0005_database_to_0006(monkeypatch):
         engine = create_engine(url)
         with engine.connect() as connection:
             assert MigrationContext.configure(connection).get_current_revision() == (
-                "20260929_0006"
+                ScriptDirectory.from_config(alembic).get_current_head()
             )
             assert connection.scalar(
                 select(func.count()).select_from(durable_job).where(

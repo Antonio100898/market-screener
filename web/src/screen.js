@@ -1,4 +1,5 @@
 import { cashFlowEvidence, fcfRevenueHistory, capexOcfHistory } from "./ownerEarnings.js";
+import { latestEpsLabel } from "./earningsEvidence.js";
 
 // Screen semantics shared by the table and the detail panel. The criteria
 // themselves are settled once, at export, by sync.apply_price: nothing here
@@ -39,6 +40,15 @@ export function currentRatio(row) {
   return row.current_assets != null && row.current_liabilities > 0
     ? row.current_assets / row.current_liabilities
     : null;
+}
+
+export function valuationFx(row) {
+  const reporting = row.reporting_currency ?? row.currency ?? "USD";
+  const quote = row.quote_currency ?? row.currency ?? "USD";
+  if (reporting === quote) return null;
+  const fx = Object.hasOwn(row, "valuation_fx") ? row.valuation_fx : row.fx;
+  return fx?.base === quote && fx?.counter === reporting
+    && Number.isFinite(fx.rate) && fx.rate > 0 ? fx : null;
 }
 
 export function valuationPrice(row) {
@@ -264,8 +274,8 @@ export function priceToPass(row) {
   const reporting = row.reporting_currency ?? row.currency ?? "USD";
   const quote = row.quote_currency ?? row.currency ?? "USD";
   if (reporting === quote) return reportingLimit;
-  const rate = row.fx?.base === quote && row.fx?.counter === reporting ? row.fx.rate : null;
-  return rate > 0 ? reportingLimit / rate : null;
+  const fx = valuationFx(row);
+  return fx ? reportingLimit / fx.rate : null;
 }
 
 /** Graham smoothed a lucky or disastrous single year by pricing the average of
@@ -279,6 +289,7 @@ export function pe3(row) {
   if (!eps || !price) return null;
   const years = Object.keys(eps).map(Number).sort((a, b) => b - a).slice(0, 3);
   if (years.length < 3) return null;
+  if (latestEpsLabel(eps, row.ch13?.latest_fy) > years[0]) return null;
   const priceYear = Number((row.price_asof ?? "").slice(0, 4));
   if (priceYear && years[0] < priceYear - 2) return null;
   const avg = (eps[years[0]] + eps[years[1]] + eps[years[2]]) / 3;

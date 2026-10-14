@@ -67,11 +67,11 @@ def _shape(early: float | None, late: float | None,
     return None
 
 
-def eps_stats(eps: dict[int, Decimal]) -> dict | None:
-    """All chapter-13 EPS statistics for one company, or None without a series."""
-    if not eps:
+def eps_stats(eps: dict[int, Decimal], *, latest_fy: int | None = None) -> dict | None:
+    """Statistics anchored to the actual selected year, including unavailable EPS."""
+    if not eps and latest_fy is None:
         return None
-    last = max(eps)
+    last = latest_fy if latest_fy is not None else max(eps)
     avg_recent = _avg3(eps, last)
     avg_middle = _avg3(eps, last - 5)   # Graham's 1968-70 vs 1963-65 spacing
     avg_old = _avg3(eps, last - 10)     # ...vs 1958-60

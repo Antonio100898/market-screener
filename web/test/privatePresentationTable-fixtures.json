@@ -1,0 +1,210 @@
+[
+  {
+    "patch": {},
+    "tracked": false,
+    "headings": [
+      "Ticker↕",
+      "Company↕",
+      "Sector↕",
+      "10Y EPS evidencepositive years · FCF↕",
+      "Return qualityscore · ROE · ROIC · RONTA · D/EFCF/revenue · CapEx/OCF · 10Y medians▼1",
+      "Mkt cap↕",
+      "Price↕",
+      "Off high52w · 3y↕",
+      "P/E▼2",
+      "P/E 3yavg EPS↕",
+      "Dividend yield↕"
+    ],
+    "cells": [
+      "ABTnet-netcheck filingdata warning",
+      "Same-input presentation fixture",
+      "OPERATINGUnclassifiedOTC",
+      "1/1positive",
+      "≈ 31.6— · 5.0% · -3.0% · 1.0×FCF/revenue — · 0/10 yearsCapEx/OCF — · 0/10 yearsMissing OCF/FCF · 3/6 inputs · missing ROE",
+      "$1.23B",
+      "$0.00030◇",
+      "−9% · −12%",
+      "22.7",
+      "37.4",
+      "2.5%"
+    ]
+  },
+  {
+    "patch": {},
+    "tracked": true,
+    "headings": [
+      "",
+      "Ticker↕",
+      "Company↕",
+      "Sector↕",
+      "10Y EPS evidencepositive years · FCF↕",
+      "Return qualityscore · ROE · ROIC · RONTA · D/EFCF/revenue · CapEx/OCF · 10Y medians▼1",
+      "Mkt cap↕",
+      "Price↕",
+      "Off high52w · 3y↕",
+      "P/E▼2",
+      "P/E 3yavg EPS↕",
+      "Dividend yield↕"
+    ],
+    "cells": [
+      "★",
+      "ABT◆net-netcheck filingdata warning",
+      "Same-input presentation fixture",
+      "OPERATINGUnclassifiedOTC",
+      "1/1positive",
+      "≈ 31.6— · 5.0% · -3.0% · 1.0×FCF/revenue — · 0/10 yearsCapEx/OCF — · 0/10 yearsMissing OCF/FCF · 3/6 inputs · missing ROE",
+      "$1.23B",
+      "$0.00030◇",
+      "−9% · −12%",
+      "22.7",
+      "37.4",
+      "2.5%"
+    ]
+  },
+  {
+    "patch": {
+      "price": null,
+      "mcap": null,
+      "pe3": null,
+      "dividendYield": null,
+      "price_stats": null
+    },
+    "tracked": false,
+    "headings": [
+      "Ticker↕",
+      "Company↕",
+      "Sector↕",
+      "10Y EPS evidencepositive years · FCF↕",
+      "Return qualityscore · ROE · ROIC · RONTA · D/EFCF/revenue · CapEx/OCF · 10Y medians▼1",
+      "Mkt cap↕",
+      "Price↕",
+      "Off high52w · 3y↕",
+      "P/E▼2",
+      "P/E 3yavg EPS↕",
+      "Dividend yield↕"
+    ],
+    "cells": [
+      "ABTnet-netcheck filingdata warning",
+      "Same-input presentation fixture",
+      "OPERATINGUnclassifiedOTC",
+      "1/1positive",
+      "≈ 31.6— · 5.0% · -3.0% · 1.0×FCF/revenue — · 0/10 yearsCapEx/OCF — · 0/10 yearsMissing OCF/FCF · 3/6 inputs · missing ROE",
+      "—",
+      "—⊘",
+      "—",
+      "22.7",
+      "—",
+      "—"
+    ]
+  },
+  {
+    "patch": {
+      "price": null,
+      "mcap": null,
+      "pe3": null,
+      "dividendYield": null,
+      "price_stats": null
+    },
+    "tracked": true,
+    "headings": [
+      "",
+      "Ticker↕",
+      "Company↕",
+      "Sector↕",
+      "10Y EPS evidencepositive years · FCF↕",
+      "Return qualityscore · ROE · ROIC · RONTA · D/EFCF/revenue · CapEx/OCF · 10Y medians▼1",
+      "Mkt cap↕",
+      "Price↕",
+      "Off high52w · 3y↕",
+      "P/E▼2",
+      "P/E 3yavg EPS↕",
+      "Dividend yield↕"
+    ],
+    "cells": [
+      "★",
+      "ABT◆net-netcheck filingdata warning",
+      "Same-input presentation fixture",
+      "OPERATINGUnclassifiedOTC",
+      "1/1positive",
+      "≈ 31.6— · 5.0% · -3.0% · 1.0×FCF/revenue — · 0/10 yearsCapEx/OCF — · 0/10 yearsMissing OCF/FCF · 3/6 inputs · missing ROE",
+      "—",
+      "—⊘",
+      "—",
+      "22.7",
+      "—",
+      "—"
+    ]
+  },
+  {
+    "patch": {
+      "price": 123.45,
+      "currency": "JPY",
+      "recurring_dividend_per_share": 2.3,
+      "dividend_per_share": 3.5
+    },
+    "tracked": false,
+    "headings": [
+      "Ticker↕",
+      "Company↕",
+      "Sector↕",
+      "10Y EPS evidencepositive years · FCF↕",
+      "Return qualityscore · ROE · ROIC · RONTA · D/EFCF/revenue · CapEx/OCF · 10Y medians▼1",
+      "Mkt cap↕",
+      "Price↕",
+      "Off high52w · 3y↕",
+      "P/E▼2",
+      "P/E 3yavg EPS↕",
+      "Dividend yield↕"
+    ],
+    "cells": [
+      "ABTnet-netcheck filingdata warning",
+      "Same-input presentation fixture",
+      "OPERATINGUnclassifiedOTC",
+      "1/1positive",
+      "≈ 31.6— · 5.0% · -3.0% · 1.0×FCF/revenue — · 0/10 yearsCapEx/OCF — · 0/10 yearsMissing OCF/FCF · 3/6 inputs · missing ROE",
+      "¥1.23B",
+      "¥123.45◇",
+      "−9% · −12%",
+      "22.7",
+      "37.4",
+      "2.5%"
+    ]
+  },
+  {
+    "patch": {
+      "price": 123.45,
+      "currency": "JPY",
+      "recurring_dividend_per_share": 2.3,
+      "dividend_per_share": 3.5
+    },
+    "tracked": true,
+    "headings": [
+      "",
+      "Ticker↕",
+      "Company↕",
+      "Sector↕",
+      "10Y EPS evidencepositive years · FCF↕",
+      "Return qualityscore · ROE · ROIC · RONTA · D/EFCF/revenue · CapEx/OCF · 10Y medians▼1",
+      "Mkt cap↕",
+      "Price↕",
+      "Off high52w · 3y↕",
+      "P/E▼2",
+      "P/E 3yavg EPS↕",
+      "Dividend yield↕"
+    ],
+    "cells": [
+      "★",
+      "ABT◆net-netcheck filingdata warning",
+      "Same-input presentation fixture",
+      "OPERATINGUnclassifiedOTC",
+      "1/1positive",
+      "≈ 31.6— · 5.0% · -3.0% · 1.0×FCF/revenue — · 0/10 yearsCapEx/OCF — · 0/10 yearsMissing OCF/FCF · 3/6 inputs · missing ROE",
+      "¥1.23B",
+      "¥123.45◇",
+      "−9% · −12%",
+      "22.7",
+      "37.4",
+      "2.5%"
+    ]
+  }
+]

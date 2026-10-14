@@ -261,7 +261,12 @@ def _edinet(connection, cache, documents=("S100OLD", "S100NEW")):
         ("E01772", "6752.T", "Panasonic Holdings Corporation", "TSE"),
     )
     reports = [
-        {"document": document, "published": f"202{index + 5}-06-19"}
+        {"document": document, "published": f"202{index + 5}-06-19",
+         "period_start": f"202{index + 4}-04-01", "period_end": f"202{index + 5}-03-31",
+         "mapping_record": {"docID": document, "edinetCode": "E01772", "secCode": "67520",
+                            "docTypeCode": "120", "xbrlFlag": "1",
+                            "submitDateTime": f"202{index + 5}-06-19",
+                            "periodStart": f"202{index + 4}-04-01", "periodEnd": f"202{index + 5}-03-31"}}
         for index, document in enumerate(documents)
     ]
     facts = {
@@ -281,10 +286,17 @@ def _edinet(connection, cache, documents=("S100OLD", "S100NEW")):
     }
     (cache / "companyfacts_E01772.json").write_text(json.dumps(facts))
     (cache / "edinet").mkdir()
-    for document in documents:
+    for index, document in enumerate(documents):
         output = io.BytesIO()
         with zipfile.ZipFile(output, "w") as archive:
-            archive.writestr("report.xbrl", document)
+            archive.writestr("XBRL/PublicDoc/report.xbrl", f'''<xbrli:xbrl
+              xmlns:xbrli="http://www.xbrl.org/2003/instance"
+              xmlns:jppfs_cor="http://disclosure.edinet-fsa.go.jp/taxonomy/jppfs_cor">
+              <xbrli:context id="balance"><xbrli:entity><xbrli:identifier>E01772-000</xbrli:identifier></xbrli:entity>
+                <xbrli:period><xbrli:instant>202{index + 5}-03-31</xbrli:instant></xbrli:period></xbrli:context>
+              <xbrli:unit id="JPY"><xbrli:measure>JPY</xbrli:measure></xbrli:unit>
+              <jppfs_cor:Assets contextRef="balance" unitRef="JPY">{(index + 1) * 100}</jppfs_cor:Assets>
+            </xbrli:xbrl>''')
         (cache / "edinet" / f"{document}.zip").write_bytes(output.getvalue())
 
 
@@ -705,7 +717,9 @@ def test_edinet_import_verifies_canonical_facts_and_every_manifest_zip(retained)
         "raw_filing",
         "raw_filing",
     ]
-    assert len(objects.reads) == 3
+    canonical = result.artifacts[0].artifact
+    remapped = json.loads(objects.data[canonical.object_key])
+    assert [entry["val"] for entry in remapped["facts"]["canonical"]["Assets"]["units"]["JPY"]] == ["100", "200"]
     saved = companies.calls[0]
     assert saved["quote_currency"] == "JPY"
     assert saved["security_basis"] == "PRIMARY_ORDINARY_SHARE"

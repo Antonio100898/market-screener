@@ -333,6 +333,25 @@ def test_loader_reinterprets_a_stored_cover_title_without_refetching(tmp_path):
     assert bundle.receipt["ratio"] == "20"
 
 
+@pytest.mark.parametrize("cik,ticker,title,accession,expected_ratio", [
+    ("0001232384", "TRP", "Common Shares (including Rights under Shareholder Rights Plan) of TC Energy Corporation", "0001232384-26-000015", None),
+    ("0001335730", "MFG", "American depositary shares, each of which represents two shares of common stock", "0001193125-26-283791", "2"),
+])
+def test_loader_repairs_retained_current_cover_grammar_without_rewriting_evidence(tmp_path, cik, ticker, title, accession, expected_ratio):
+    conn = store.connect(tmp_path / "store.db")
+    store.set_cover(conn, cik, [{"symbol": ticker, "title": title, "ratio": None}], accession)
+    facts = {"facts": {"us-gaap": {}}}
+    facts_path = tmp_path / f"companyfacts_{cik}.json"
+    facts_path.write_text(json.dumps(facts))
+    before = dict(store.cover_for(conn, cik, ticker))
+    bundle = evidence.EvidenceLoader(conn, EdgarStub(tmp_path)).load(cik, ticker)
+    assert bundle.receipt["title"] == title
+    assert bundle.receipt["accn"] == accession
+    assert bundle.receipt["ratio"] == expected_ratio
+    assert dict(store.cover_for(conn, cik, ticker)) == before
+    assert json.loads(facts_path.read_text()) == facts
+
+
 def test_store_prefers_the_priced_equity_when_cover_rows_share_a_symbol(tmp_path):
     conn = store.connect(tmp_path / "store.db")
     store.set_cover(conn, "0000000001", [

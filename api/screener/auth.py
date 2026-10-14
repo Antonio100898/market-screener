@@ -22,6 +22,7 @@ def token() -> str | None:
 
 
 async def require_token(request: Request, call_next):
+    private_research = request.url.path == "/research" or request.url.path.startswith("/research/")
     expected = token()
     if expected and request.method not in SAFE_METHODS:
         supplied = request.headers.get(HEADER) or request.query_params.get("token") or ""
@@ -30,5 +31,9 @@ async def require_token(request: Request, call_next):
             return JSONResponse(
                 {"detail": "this instance is shared; changes need the access token"},
                 status_code=401,
+                headers={"Cache-Control": "private, no-store"} if private_research else None,
             )
-    return await call_next(request)
+    response = await call_next(request)
+    if private_research:
+        response.headers["Cache-Control"] = "private, no-store"
+    return response

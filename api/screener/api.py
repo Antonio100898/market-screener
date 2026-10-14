@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import asyncio
 import sqlite3
 from contextlib import asynccontextmanager
 from dataclasses import replace
@@ -20,9 +21,14 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from . import auth, evidence, jobs, portfolio, pricestats, profiles, store, sync
+from .automatic_ingestion import start_automatic_ingestion, stop_automatic_ingestion
+from .company_query_api import router as company_query_router
+from .captured_metadata import latest_quarterly_from_submissions
 from .models import CriterionResult, Fact, FinancialSnapshot, ScreenResult
 from .normalize import UnsupportedFilerError, build_snapshot
 from .postgres import create_postgres_engine
+from .research_api import router as research_router
+from .research_run_api import router as research_run_router
 from .screens.enterprising import evaluate
 from .shared_companies import (
     AmbiguousCurrentTicker,
@@ -34,16 +40,50 @@ from .sources.crypto import CoinbaseCryptoProvider
 from .sources.prices import YahooPriceProvider
 
 
+async def _owned_thread_call(function, *args):
+    task = asyncio.create_task(asyncio.to_thread(function, *args))
+    cancellation = None
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError as error:
+            cancellation = error
+    return task.result(), cancellation
+
+
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
-    jobs.start_hourly_quotes()
+    automatic, cancellation = await _owned_thread_call(start_automatic_ingestion)
+    if cancellation is not None:
+        await _owned_thread_call(stop_automatic_ingestion, automatic)
+        raise cancellation
+    legacy_started = False
     try:
+        legacy_started = True
+        jobs.start_hourly_quotes()
         yield
     finally:
-        jobs.stop_hourly_quotes()
+        cleanups = [(stop_automatic_ingestion, (automatic,))]
+        if legacy_started:
+            cleanups.append((jobs.stop_hourly_quotes, ()))
+        failure = None
+        cancellation = None
+        for function, args in cleanups:
+            try:
+                _, cancelled = await _owned_thread_call(function, *args)
+                cancellation = cancelled or cancellation
+            except BaseException as error:
+                failure = failure or error
+        if failure is not None:
+            raise failure
+        if cancellation is not None:
+            raise cancellation
 
 
 app = FastAPI(title="Graham Enterprising Screener", version="1.0", lifespan=_lifespan)
+app.include_router(research_router)
+app.include_router(research_run_router)
+app.include_router(company_query_router)
 # no-op unless SCREENER_TOKEN is set, which is how a tunnelled instance is run
 app.middleware("http")(auth.require_token)
 # The dashboard payload is one 35MB JSON document of mostly repeated keys; it
@@ -55,9 +95,6 @@ _prices = YahooPriceProvider()
 _crypto = CoinbaseCryptoProvider()
 
 
-_QUARTERLY_FORMS = frozenset({"10-Q", "10-Q/A", "6-K", "6-K/A"})
-
-
 def _latest_quarterly_filing(cik: str) -> dict | None:
     """Return the newest interim/quarterly filing from the SEC submissions index."""
     if not str(cik).isdigit():
@@ -66,27 +103,7 @@ def _latest_quarterly_filing(cik: str) -> dict | None:
         submissions = _edgar.submissions(cik)
     except Exception:
         return None
-    recent = (submissions.get("filings") or {}).get("recent") or {}
-    fields = (recent.get("form") or [], recent.get("filingDate") or [],
-              recent.get("reportDate") or [], recent.get("accessionNumber") or [],
-              recent.get("primaryDocument") or [])
-    candidates = []
-    for form, filed, period, accession, document in zip(*fields):
-        if form not in _QUARTERLY_FORMS or not accession or not filed:
-            continue
-        candidates.append({
-            "form": form, "filed": filed, "period": period or None,
-            "accession": accession, "document": document or None,
-        })
-    if not candidates:
-        return None
-    latest = max(candidates, key=lambda item: (item["filed"], item["accession"]))
-    if str(cik).isdigit():
-        latest["url"] = (
-            f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/"
-            f"{latest['accession'].replace('-', '')}/{latest['accession']}-index.htm"
-        )
-    return latest
+    return latest_quarterly_from_submissions(cik, submissions)
 
 
 def _snapshot_for(ticker: str, assume_absent_zero: bool = False) -> FinancialSnapshot:
@@ -456,10 +473,9 @@ def company_dashboard(ticker: str, assume_absent_zero: bool = True):
             (base["cik"],),
         )]
         closes = store.price_history(conn, base["cik"])
-        reporting_currency = (
-            derived.get("reporting_currency") or derived.get("currency") or "USD")
-        fx_record = (store.fx_history(conn, "USD", reporting_currency)
-                     if reporting_currency != "USD" else None)
+        fx_row = {**base, **derived}
+        fx_records = {pair: store.fx_history(conn, *pair)
+                      for pair in sync._fx_pairs(fx_row)}
     finally:
         conn.close()
 
@@ -468,10 +484,10 @@ def company_dashboard(ticker: str, assume_absent_zero: bool = True):
     row["last_filing"] = company["last_filing"] if company else None
     row["events_from"] = company["events_from"] if company else None
     row["filing_events"] = filing_events
-    sync._set_fx(row, fx_record)
+    sync._set_fx_records(row, fx_records)
     sync.apply_price(row, row.get("price"))
     sync._price_the_ratio_history(
-        row, closes, (fx_record or {}).get("closes") or [])
+        row, closes, fx_records.get((sync._quote_currency(row), sync._reporting_currency(row))))
     for key in ("graham_profile", "graham_profile_meta", "analysis_routes",
                 "prose_gaps", "alignment"):
         row.pop(key, None)

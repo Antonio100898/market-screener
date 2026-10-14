@@ -1,3 +1,6 @@
+import { normalizeSort } from "./sort.js";
+import { TOTAL_CRITERIA } from "./screen.js";
+
 // Filters, sort and scroll position survive a refresh. Kept in localStorage rather
 // than the URL: this is a working view you return to, not something you link to,
 // and Sets serialise badly as query strings.
@@ -53,6 +56,42 @@ const DEFAULTS = {
   sort: { key: "fit", dir: 1 },
   scroll: 0,
 };
+
+const TABLE_SORT_KEYS = new Set([
+  "ticker", "name", "sector", "eps10", "returns", "mcap", "price", "offhigh",
+  "pe", "pe3", "dividend",
+]);
+
+export function legacyViewSort(value) {
+  return normalizeSort(normalizeSort(value)
+    .map((item) => ["grade", "ptbv", "fit"].includes(item.key) ? { key: "n_pass", dir: 1 } : item)
+    .filter((item) => TABLE_SORT_KEYS.has(item.key)));
+}
+
+export function readSavedBrowserView(storage = localStorage) {
+  let raw;
+  try { raw = storage.getItem(KEY); }
+  catch { throw new Error("This browser's saved view could not be read."); }
+  if (raw === null) throw new Error("No saved browser view was found.");
+  if (typeof raw !== "string" || new TextEncoder().encode(raw).length > 65536)
+    throw new Error("This browser's saved view is too large or unsupported.");
+  let saved;
+  try { saved = JSON.parse(raw); }
+  catch { throw new Error("This browser's saved view is not valid JSON."); }
+  if (saved === null || typeof saved !== "object" || Array.isArray(saved)
+    || Object.keys(saved).some((key) => !Object.hasOwn(DEFAULTS, key)))
+    throw new Error("This browser's saved view has unsupported fields.");
+  if (Object.hasOwn(saved, "scroll") && (!Number.isFinite(saved.scroll) || saved.scroll < 0))
+    throw new Error("This browser's saved scroll position is invalid.");
+  const { scroll, ...view } = { ...DEFAULTS, ...saved };
+  if (Number.isInteger(view.minMet) && view.minMet >= 0) view.minMet = Math.min(view.minMet, TOTAL_CRITERIA);
+  const sorts = Array.isArray(view.sort) ? view.sort : [view.sort];
+  if (!sorts.length || sorts.some((item) => !item || typeof item !== "object" || Array.isArray(item)
+    || Object.keys(item).length !== 2 || !Object.hasOwn(item, "key") || !Object.hasOwn(item, "dir")
+    || ![...TABLE_SORT_KEYS, "grade", "ptbv", "fit", "n_pass"].includes(item.key) || ![1, -1].includes(item.dir)))
+    throw new Error("This browser's saved sort is unsupported.");
+  return { view: { ...view, sort: legacyViewSort(view.sort) }, excludedScroll: Object.hasOwn(saved, "scroll") };
+}
 
 export function loadView() {
   try {

@@ -134,7 +134,7 @@ _DIRECT_RELATIONS = (
         re.I,
     ),
     re.compile(
-        rf"\b{_RECEIPT}[^.;]{{0,120}}?\beach\s+{_REPRESENT}\s+"
+        rf"\b{_RECEIPT}[^.;]{{0,120}}?\beach\s+(?:of\s+which\s+)?{_REPRESENT}\s+"
         rf"(?P<shares>{_NUMBER})\s+(?:of\s+)?{_OF_ONE}{_SHARE}",
         re.I,
     ),
@@ -164,7 +164,8 @@ _NONCOMMON_SECURITY = re.compile(
 _ATTACHED_RIGHTS_SUFFIX = re.compile(
     r"(?:,\s*|\s*\(\s*|\s+)(?:including|together\s+with)\s+"
     r"(?:the\s+)?(?:associated\s*)?"
-    r"(?:(?:common|ordinary|preferred)\s+)?(?:stock|share)\s+purchase\s+rights?\b"
+    r"(?:(?:(?:common|ordinary|preferred)\s+)?(?:stock|share)\s+purchase\s+rights?\b|"
+    r"rights?\s+under\s+(?:the\s+)?shareholder\s+rights?\s+plan\b)"
     r"(?P<tail>.*)$",
     re.I,
 )

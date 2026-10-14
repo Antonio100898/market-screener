@@ -8,6 +8,7 @@ from uuid import uuid4
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from alembic.runtime.migration import MigrationContext
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import IntegrityError
@@ -78,7 +79,7 @@ def test_upgrade_evidence_revision_retry_and_restart(monkeypatch, starting_revis
         engine = create_engine(database_url)
         with engine.connect() as connection:
             assert MigrationContext.configure(connection).get_current_revision() == (
-                "20260929_0006"
+                ScriptDirectory.from_config(alembic).get_current_head()
             )
         repository = SharedCompanyRepository(engine)
 
@@ -362,23 +363,31 @@ def _seed_0003_company(engine):
                 verified_at=datetime.now(timezone.utc),
             )
         )
-    stored = SharedCompanyRepository(engine).store_and_select(
-        issuer_source="SEC",
-        issuer_identifier="0000000002",
-        security_identifier="sec:0000000002:legacy",
-        ticker="LEGACY3",
-        exchange_code="NYSE",
-        quote_currency="USD",
-        security_title="Legacy American Depositary Shares",
-        source_accession="legacy-cover-accession",
-        security_basis="PRIMARY_DEPOSITARY_RECEIPT",
-        receipt_ratio=Decimal("8"),
-        engine_revision=181,
-        canonical_payload={"legacy": True},
-        artifacts=(SnapshotArtifact(digest, "raw_filing"),),
-    )
+    # Seed the historical schema itself; current runtime requires later migrations.
+    payload = json.dumps({"legacy": True}, sort_keys=True, separators=(",", ":"))
+    payload_sha256 = hashlib.sha256(payload.encode()).hexdigest()
+    security = {
+        "ticker": "LEGACY3", "exchange_code": "NYSE", "quote_currency": "USD",
+        "security_title": "Legacy American Depositary Shares", "source_accession": "legacy-cover-accession",
+        "security_basis": "PRIMARY_DEPOSITARY_RECEIPT", "receipt_ratio": "8",
+    }
+    identity = {"engine_revision": 181, "payload_sha256": payload_sha256, "security": security,
+                "artifacts": [{"content_sha256": digest, "role": "raw_filing"}]}
+    snapshot_sha256 = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    with engine.begin() as connection:
+        issuer_id = connection.scalar(text("INSERT INTO issuer (source_system, source_identifier) VALUES ('SEC', '0000000002') RETURNING issuer_id"))
+        security_id = connection.scalar(text("INSERT INTO priced_security (issuer_id, security_identifier) VALUES (:issuer_id, 'sec:0000000002:legacy') RETURNING security_id"), {"issuer_id": issuer_id})
+        snapshot_id = connection.scalar(text("""INSERT INTO company_snapshot
+            (security_id, engine_revision, payload_sha256, snapshot_sha256, canonical_payload,
+             ticker, exchange_code, quote_currency, security_title, source_accession, security_basis, receipt_ratio)
+            VALUES (:security_id, 181, :payload_sha256, :snapshot_sha256, CAST(:payload AS jsonb),
+                    :ticker, :exchange_code, :quote_currency, :security_title, :source_accession, :security_basis, :receipt_ratio)
+            RETURNING snapshot_id"""), {"security_id": security_id, "payload_sha256": payload_sha256,
+                                        "snapshot_sha256": snapshot_sha256, "payload": payload, **security})
+        connection.execute(text("INSERT INTO company_snapshot_artifact (snapshot_id, content_sha256, role) VALUES (:snapshot_id, :digest, 'raw_filing')"), {"snapshot_id": snapshot_id, "digest": digest})
+        connection.execute(text("INSERT INTO current_company_snapshot (security_id, snapshot_id) VALUES (:security_id, :snapshot_id)"), {"security_id": security_id, "snapshot_id": snapshot_id})
     return {
-        "security_id": stored.security_id,
-        "snapshot_id": stored.snapshot_id,
+        "security_id": security_id,
+        "snapshot_id": snapshot_id,
         "digest": digest,
     }

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -19,6 +19,7 @@ from screener.shared_companies import (
     IdentityConflict,
     SharedCompanyRepository,
     SnapshotArtifact,
+    StoredCompany,
 )
 from screener.durable_jobs import LeaseToken
 
@@ -140,6 +141,9 @@ def test_snapshot_write_is_canonical_and_idempotent(repository):
     assert first.created is True
     assert repeated.created is False
     assert first.payload_sha256 == repeated.payload_sha256
+    assert first.snapshot_sha256 == repository.snapshot(first.snapshot_id).snapshot.snapshot_sha256
+    assert first.snapshot_sha256 == repeated.snapshot_sha256
+    assert first.snapshot_sha256 != first.payload_sha256
     assert _count(repository, company_snapshot) == 1
     assert repository.current(first.security_id).canonical_payload == {
         "assets": 100,
@@ -147,15 +151,60 @@ def test_snapshot_write_is_canonical_and_idempotent(repository):
     }
 
 
+def test_stored_company_old_positional_constructor_stays_compatible():
+    old = StoredCompany(1, 2, 3, "a" * 64, 187, False)
+    assert old.created is False and old.snapshot_sha256 is None
+
+
+@pytest.mark.parametrize("invalid", [None, "connection", "idle", "closed", "committed", "other_engine"])
+def test_caller_candidate_requires_own_live_transaction_before_writes(repository, invalid):
+    other = None
+    connection = None
+    try:
+        if invalid in {"idle", "closed", "committed"}:
+            connection = repository.engine.connect()
+            if invalid == "closed":
+                connection.close()
+            elif invalid == "committed":
+                connection.begin().commit()
+        elif invalid == "other_engine":
+            other = create_engine("sqlite://")
+            connection = other.connect()
+            connection.begin()
+        else:
+            connection = invalid
+        with pytest.raises(ValueError, match="live transaction"):
+            repository.store_candidate_on_connection(connection, LeaseToken(1, "worker", 1), **_company())
+        assert _count(repository, issuer) == 0
+    finally:
+        if hasattr(connection, "close"):
+            connection.close()
+        if other is not None:
+            other.dispose()
+
+
+def test_caller_candidate_requires_lease_before_writes(repository):
+    with repository.engine.begin() as connection:
+        with pytest.raises(TypeError, match="lease token"):
+            repository.store_candidate_on_connection(connection, None, **_company())
+        assert connection.scalar(select(func.count()).select_from(issuer)) == 0
+
+
 def test_candidate_write_reuses_snapshot_owner_without_changing_current(repository):
     selected = repository.store_and_select(
         **_company(canonical_payload={"ticker": "ABT", "assets": 100})
     )
     locks = []
+    first_check = datetime(2026, 10, 4, tzinfo=timezone.utc)
+    second_check = first_check + timedelta(seconds=1)
+    times = iter((first_check, second_check))
+    repository._clock = lambda: next(times)
 
     class LiveJobs:
-        def _lock_live_lease(self, _connection, lease, _now):
-            locks.append(lease)
+        def _lock_live_lease(self, _connection, lease, clock):
+            assert callable(clock)
+            assert clock is repository._clock
+            locks.append((lease, clock()))
 
     repository._jobs = LiveJobs()
     candidate = repository.store_candidate(
@@ -163,7 +212,10 @@ def test_candidate_write_reuses_snapshot_owner_without_changing_current(reposito
         **_company(canonical_payload={"ticker": "ABT", "assets": 125}),
     )
 
-    assert locks == [LeaseToken(7, "worker", 3)]
+    assert locks == [
+        (LeaseToken(7, "worker", 3), first_check),
+        (LeaseToken(7, "worker", 3), second_check),
+    ]
     assert candidate.snapshot_id != selected.snapshot_id
     assert repository.current(selected.security_id).snapshot_id == selected.snapshot_id
     assert [row.snapshot_id for row in repository.snapshots(selected.security_id)] == [

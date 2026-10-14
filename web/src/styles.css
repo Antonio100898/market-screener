@@ -922,3 +922,16 @@ table.grid { font-size: 14px; }
   .intrinsic-toolbar-simple { align-items: flex-start; flex-direction: column; }
   .intrinsic-toolbar-simple button.quiet { margin-left: 0; }
 }
+
+.captured-history { margin: 1.5rem 0; padding: 1rem; border: 1px solid #8893a5; border-radius: 8px; }
+.captured-history article, .figure-history-dialog article { border-top: 1px solid #8893a5; padding: 1rem 0; }
+.captured-history h4, .captured-history dd, .figure-history-dialog dd { overflow-wrap: anywhere; margin: .3rem 0 .7rem; }
+.captured-history dt, .figure-history-dialog dt { font-weight: 600; }
+.history-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: .7rem 0; }
+.figure-history-dialog { position: fixed; inset: 2vh 3vw; z-index: 10000; background: #fff; color: #18202e; border: 2px solid #8893a5; border-radius: 8px; padding: 1rem; overflow: auto; box-shadow: 0 0 0 100vmax #0008; }
+.figure-history-dialog dl { padding-left: .6rem; border-left: 1px solid #ccc; }
+.figure-history-dialog button, .captured-history button { cursor: pointer; }
+
+.app > section[aria-label="Private presentation"] { margin: 1rem 0; padding: 1rem; border: 1px solid #8893a5; border-radius: 8px; }
+.app > section[aria-label="Private presentation"] fieldset { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+.app > section[aria-label="Private presentation"] pre { max-height: 16rem; overflow: auto; }

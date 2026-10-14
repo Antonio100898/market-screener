@@ -46,14 +46,14 @@ def test_regression_reuses_export_fx_history_for_foreign_statements(monkeypatch)
 
     def fake_fx_history(conn, base, counter):
         calls.append((conn, base, counter))
-        return {"closes": [{"date": "2025-12-31", "close": 0.8}]}
+        return {"base": base, "counter": counter,
+                "closes": [("2025-12-31", 0.8)]}
 
     monkeypatch.setattr("screener.regress.store.fx_history", fake_fx_history)
 
     conn = object()
-    assert _fx_history_for_row(conn, {"reporting_currency": "USD"}) == []
+    assert _fx_history_for_row(conn, {"reporting_currency": "USD"}) is None
     assert calls == []
-    assert _fx_history_for_row(conn, {"reporting_currency": "GBP"}) == [
-        {"date": "2025-12-31", "close": 0.8}
-    ]
+    assert _fx_history_for_row(conn, {"reporting_currency": "GBP"}) == {
+        "base": "USD", "counter": "GBP", "closes": [("2025-12-31", 0.8)]}
     assert calls == [(conn, "USD", "GBP")]

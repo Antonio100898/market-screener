@@ -2,13 +2,16 @@ import { useEffect, useState } from "react";
 import { fetchJson } from "./api.js";
 import { awardOverhang, totalCapitalisation, workingCapitalToDebt } from "./capital.js";
 import { byN, currentRatio as currentRatioOf, pe3, priceToBook as priceToBookOf,
-  recurringDividendPresentation, reportedRate, valuationPrice } from "./screen.js";
+  recurringDividendPresentation, reportedRate, valuationPrice, valuationFx } from "./screen.js";
 import { profileMeta } from "./Alignment.jsx";
+import FigureHistory from "./FigureHistory.jsx";
+import PriorAccountingHistory from "./PriorAccountingHistory.jsx";
 import EpsCurve from "./EpsCurve.jsx";
 import { ownerEarningsTrend, ownerMetricTrend } from "./ownerEarnings.js";
 import { payloadWarnings } from "./warnings.js";
 import { quoteStatus, quoteTitle } from "./quote.js";
 import { companyIntrinsicValuePrefill, openIntrinsicValueCalculator } from "./intrinsicValue.js";
+import { filingUrl as edgarUrl } from "./sourceLink.js";
 
 const ENTERPRISING = {
   1: { label: "Earnings valuation", rule: "P/E < 10.0" },
@@ -21,7 +24,7 @@ const ENTERPRISING = {
 
 /** A compact investment snapshot: current market and financial facts first,
  * then the two Graham frameworks without trend charts or audit-trail clutter. */
-export default function Detail({ row: baseRow, onClose, tracked = false, onToggleTracked, onRecordTrade }) {
+export default function Detail({ row: baseRow, onClose, tracked = false, onToggleTracked, onRecordTrade, loadAssumedRow, historyContext }) {
   const [assumedRow, setAssumedRow] = useState(null);
   const [assumptionEnabled, setAssumptionEnabled] = useState(true);
   const [assumptionLoading, setAssumptionLoading] = useState(true);
@@ -29,7 +32,7 @@ export default function Detail({ row: baseRow, onClose, tracked = false, onToggl
   const [assumptionAttempt, setAssumptionAttempt] = useState(0);
 
   useEffect(() => {
-    const esc = (event) => event.key === "Escape" && onClose();
+    const esc = (event) => event.key === "Escape" && !event.defaultPrevented && onClose();
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
   }, [onClose]);
@@ -42,26 +45,29 @@ export default function Detail({ row: baseRow, onClose, tracked = false, onToggl
       return undefined;
     }
     let cancelled = false;
+    const controller = new AbortController();
     setAssumedRow(null);
     setAssumptionError(null);
     setAssumptionLoading(true);
-    fetchJson(
+    const pending = loadAssumedRow ? loadAssumedRow(baseRow, controller.signal) : fetchJson(
       `/company/${encodeURIComponent(baseRow.ticker)}/dashboard?assume_absent_zero=true`,
       { timeoutMs: 30_000 },
-    ).then((next) => {
+    );
+    pending.then((next) => {
       if (!cancelled) setAssumedRow(next);
     }).catch((error) => {
       if (!cancelled) setAssumptionError(error.message);
     }).finally(() => {
       if (!cancelled) setAssumptionLoading(false);
     });
-    return () => { cancelled = true; };
-  }, [baseRow.cik, baseRow.ticker, assumptionAttempt, assumptionEnabled]);
+    return () => { cancelled = true; controller.abort(); };
+  }, [baseRow.cik, baseRow.ticker, assumptionAttempt, assumptionEnabled, loadAssumedRow]);
 
   const row = assumedRow ?? baseRow;
-  const currency = row.currency ?? "USD";
-  const quoteCurrency = row.quote_currency ?? currency;
+  const currency = row.reporting_currency ?? row.currency ?? "USD";
+  const quoteCurrency = row.quote_currency ?? row.currency ?? "USD";
   const financialPrice = valuationPrice(row);
+  const currencyBridge = valuationFx(row);
   const assumptionActive = (assumedRow != null
     && assumedRow.assumption_mode?.status !== "UNAVAILABLE");
 
@@ -151,6 +157,12 @@ export default function Detail({ row: baseRow, onClose, tracked = false, onToggl
                     value={moneyPrice(financialPrice, currency)} />}
             <Metric label="Working capital" sub="= net current assets, criterion 3's base"
                     value={money(workingCapital, currency)} />
+            {row.equity_evidence && <>
+              <Metric label="Common equity (derived)" sub={row.equity_evidence.current?.source?.end}
+                      value={money(row.equity_evidence.current?.value, currency)} />
+              <Metric label="Parent equity (derived)" sub={row.equity_evidence.parent?.source?.end}
+                      value={money(row.equity_evidence.parent?.value, currency)} />
+            </>}
             <Metric label="Total capitalisation" sub="market value of the common plus its debt"
                     value={money(capitalisation, currency)} />
             <Metric label="Equity awards" sub={row.awards_basis ? `${row.awards_basis}, % of shares` : "options and restricted stock, % of shares"}
@@ -165,16 +177,21 @@ export default function Detail({ row: baseRow, onClose, tracked = false, onToggl
                     value={multiple(row.fixed_charge_coverage)} />
             <Metric label="NCAV / share" value={moneyPrice(row.ncavps, currency)} emphasis={row.ncavps != null && financialPrice != null && financialPrice <= row.ncavps} />
           </div>
-          {quoteCurrency !== currency && row.fx && <p className="criteria-note"><b>Currency bridge:</b>{" "}
-            1 {row.fx.base} = {number(row.fx.rate)} {row.fx.counter} as of {String(row.fx.asof).slice(0, 10)}
-            {row.fx.source ? ` (${row.fx.source})` : ""}. The traded quote and market cap remain in {quoteCurrency};
+          {currencyBridge && <p className="criteria-note"><b>Currency bridge:</b>{" "}
+            1 {currencyBridge.base} = {number(currencyBridge.rate)} {currencyBridge.counter} as of {String(currencyBridge.asof).slice(0, 10)}
+            {currencyBridge.source ? ` (${currencyBridge.source})` : ""}. The traded quote and market cap remain in {quoteCurrency};
             filing totals stay in {currency}; only cross-currency valuation uses this rate.</p>}
+          {row.equity_evidence && <p className="criteria-note"><b>Book-value basis:</b>{" "}
+            {row.equity_evidence.current?.value != null
+              ? "Parent equity includes other comprehensive income and belongs to ordinary shareholders. The reported component lines are shown in Data provenance."
+              : `Common equity is unavailable. ${row.equity_evidence.unavailable ?? "The retained filing does not establish the common-shareholder basis."} Parent equity is shown separately when available.`}
+          </p>}
         </section>
 
         <Ratios row={row} currentRatio={currentRatio} priceToBook={priceToBook}
                 pe3Value={pe3Value} prof={prof} wcToDebt={wcToDebt} awards={awards} />
 
-        <EpsCurve annualEps={row.annual_eps} ttmEps={row.ttm_eps} currency={currency} />
+        <EpsCurve annualEps={row.annual_eps} ttmEps={row.ttm_eps} currency={currency} latestFy={row.ch13?.latest_fy} />
 
         <CriteriaSection
           title="Enterprising criteria"
@@ -193,6 +210,9 @@ export default function Detail({ row: baseRow, onClose, tracked = false, onToggl
                        annualEps={row.annual_eps}
                        annualWeightedShares={row.annual_weighted_shares}
                        currency={currency} />
+        <PriorAccountingHistory history={row.prior_accounting_history}
+                                formatMoney={money} formatEps={moneyPrice}
+                                renderSource={(source) => <SourceCell cik={row.cik} source={source} />} />
         <Notes title="What the multiples do not say"
                subtitle="Cash conversion, dilution, interest cover, leases, receivables and inventory against sales, untaxed profits, tax charged but not paid, valuation allowances, an eroding margin, a foreign listing whose ratio is only on the cover page, a book value made of acquisitions, the shape of the ten-year record, peer efficiency, warrants, debt discount, and the events the company's own filing index proves — context, never part of a grade"
                notes={row.context_notes} />
@@ -201,6 +221,7 @@ export default function Detail({ row: baseRow, onClose, tracked = false, onToggl
                notes={row.earnings_quality} />
         <ProseGaps row={row} />
         <SeriesMix mix={row.series_mix} />
+        <FigureHistory key={`${historyContext?.security_id}:${historyContext?.release_id}:${assumedRow?.assumption_mode?.status ?? "STRICT"}`} context={historyContext} servedView={assumedRow == null || assumedRow.assumption_mode?.status === "UNAVAILABLE" ? "STRICT" : assumedRow.assumption_mode?.status === "APPLIED" ? "ASSUMED" : "UNKNOWN"} />
         <Provenance row={row} />
       </aside>
     </>
@@ -543,7 +564,7 @@ function defensiveRows({ row, defensive, ch13, dividend, currentRatio, workingCa
     : "No verified record";
   const sizeValue = row.graham_profile === "UTILITY" ? money(row.total_assets, currency) : money(row.ttm_revenue, currency);
   const financialValue = row.graham_profile === "UTILITY"
-    ? `LT debt ${money(ltd, currency)} · equity ${money(row.total_assets != null && row.total_liabilities != null ? row.total_assets - row.total_liabilities : null, currency)}`
+    ? `LT debt ${money(ltd, currency)} · total equity ${money(row.total_assets != null && row.total_liabilities != null ? row.total_assets - row.total_liabilities : null, currency)}`
     : `CR ${multiple(currentRatio)} · WC ${money(workingCapital, currency)} · LT debt ${money(ltd, currency)}`;
   const valuationProduct = pe3Value != null && priceToBook != null ? pe3Value * priceToBook : null;
   return [
@@ -611,8 +632,8 @@ function OwnerEarnings({ oe, cik, annualEps, annualWeightedShares, currency = "U
   const bridgePoint = (cell, key) => {
     const point = cell?.cash_flow_bridge?.[key];
     if (Array.isArray(point)) {
-      const [value, tag, form, accn, end, unit, document] = point;
-      return { value, source: { tag, form, accn, end, unit, document } };
+      const [value, tag, form, accn, end, unit, document, fullSource] = point;
+      return { value, source: fullSource ?? { tag, form, accn, end, unit, document } };
     }
     if (typeof point === "number") return { value: point, source: null };
     return point ?? null; // engine <=117 object compatibility
@@ -797,19 +818,13 @@ const SOURCE_LABELS = {
   short_term_investments: "Short-term investments",
   preferred_stock: "Preferred stock", temporary_equity: "Temporary equity",
   noncontrolling_interest: "Noncontrolling interest", shares: "Shares outstanding",
+  common_equity: "Common equity (derived)", parent_equity: "Parent equity (derived)",
   dividend: "Dividend paid (tagged period)",
   recurring_dividend_per_share: "Recurring dividend / share (annualized)",
 };
 
 /** The filing's index page, which names its primary document — not the bare
  * archive folder, which leaves the reader to guess which file is the filing. */
-function edgarUrl(cik, accn) {
-  if (/^E\d{5}$/.test(String(cik)) && /^S[0-9A-Z]{7}$/.test(String(accn)))
-    return `https://disclosure2dl.edinet-fsa.go.jp/searchdocument/pdf/${accn}.pdf`;
-  if (!cik || !accn || !/^\d{10}$/.test(String(cik))) return null;
-  return `https://www.sec.gov/Archives/edgar/data/${Number(cik)}/${accn.replaceAll("-", "")}/${accn}-index.htm`;
-}
-
 function SourceCell({ cik, source }) {
   const url = edgarUrl(cik, source.accn);
   const label = `${source.form} · ${source.end ?? "—"}`;
@@ -824,7 +839,12 @@ function SourceCell({ cik, source }) {
 
 /** Every figure names its tag, filing and date — the audit trail behind the screen. */
 function Provenance({ row }) {
-  const sources = row.sources;
+  const equity = row.equity_evidence;
+  const sources = {
+    ...row.sources,
+    ...(equity?.current?.source ? { common_equity: equity.current.source } : {}),
+    ...(equity?.parent?.source ? { parent_equity: equity.parent.source } : {}),
+  };
   if (!sources || Object.keys(sources).length === 0) return null;
   return (
     <section className="criteria-section provenance-section">
@@ -836,10 +856,14 @@ function Provenance({ row }) {
           <tbody>
             {Object.entries(SOURCE_LABELS).filter(([key]) => sources[key]).flatMap(([key, label]) => {
               const s = sources[key];
-              const stored = row[key] ?? row.asset_quality?.[key];
+              const stored = key === "common_equity" ? equity?.current?.value
+                : key === "parent_equity" ? equity?.parent?.value
+                : row[key] ?? row.asset_quality?.[key];
               const raw = key === "dividend" && stored == null ? undefined : stored;
               const value = key === "shares" ? number(raw)
-                : key === "fixed_charge_coverage" ? multiple(raw) : money(raw, row.currency);
+                : key === "fixed_charge_coverage" ? multiple(raw)
+                  : money(raw, key === "common_equity" || key === "parent_equity"
+                    ? row.reporting_currency ?? row.currency : row.currency);
               const out = [(
                 <tr key={key}>
                   <td><b>{label}</b></td>

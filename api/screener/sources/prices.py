@@ -5,7 +5,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 import re
-from typing import Protocol
+from typing import Any, Callable, Protocol
 
 import httpx
 
@@ -25,13 +25,17 @@ _BAD = (httpx.HTTPError, InvalidOperation, KeyError, IndexError, TypeError, Valu
 
 class YahooPriceProvider:
     # ponytail: free unofficial Yahoo endpoint; swap in a paid PriceProvider impl for production SLAs
-    def __init__(self, timeout: float = 20.0):
-        self._http = httpx.Client(
+    def __init__(self, timeout: float = 20.0, *, http: Any = None,
+                 clock: Callable[[], datetime] | None = None):
+        self._owns_http = http is None
+        self._clock = clock
+        self._http = http if http is not None else httpx.Client(
             timeout=timeout, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0"}
         )
 
     def close(self) -> None:
-        self._http.close()
+        if self._owns_http:
+            self._http.close()
 
     def _chart(self, ticker: str, range_: str, interval: str,
                include_pre_post: bool = False) -> dict | None:
@@ -123,7 +127,8 @@ class YahooPriceProvider:
 
     def quote(self, ticker: str, expected_currency: str = "USD") -> Quote | None:
         result = self._chart(ticker, "1d", "5m", include_pre_post=True)
-        return self._quote_from(result, expected_currency=expected_currency) if result else None
+        return self._quote_from(result, now=self._clock() if self._clock else None,
+                                expected_currency=expected_currency) if result else None
 
     def history(self, ticker: str, expected_currency: str = "USD") -> PriceHistory | None:
         """Five years of weekly closes, and the live quote that comes with them.
@@ -136,7 +141,8 @@ class YahooPriceProvider:
         if not result:
             return None
         quote_result = self._chart(ticker, "1d", "5m", include_pre_post=True)
-        q = self._quote_from(quote_result or result, expected_currency=expected_currency)
+        q = self._quote_from(quote_result or result, now=self._clock() if self._clock else None,
+                             expected_currency=expected_currency)
         if q is None:
             return None
         try:
@@ -184,13 +190,14 @@ class YahooPriceProvider:
                 and re.fullmatch(r"[A-Z]{3}", counter)):
             return None
         if base == counter:
-            now = datetime.now(tz=timezone.utc)
+            now = self._clock() if self._clock else datetime.now(tz=timezone.utc)
             return PriceHistory(
                 quote=Quote(Decimal(1), now, "identity-fx"), closes=())
 
         def read(symbol: str, expected: str) -> PriceHistory | None:
             result = self._chart(symbol, "10y", "1wk")
-            quote = self._quote_from(result, expected_currency=expected) if result else None
+            quote = self._quote_from(result, now=self._clock() if self._clock else None,
+                                     expected_currency=expected) if result else None
             if result is None or quote is None:
                 return None
             try:

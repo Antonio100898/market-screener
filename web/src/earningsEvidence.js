@@ -1,9 +1,14 @@
 /** Pure Graham-oriented earnings-history calculations shared by the table and tests. */
-export function epsEvidence(annual) {
+export function latestEpsLabel(annual, latestFy) {
+  const labels = Object.keys(annual ?? {}).map(Number).filter(Number.isFinite);
+  if (Number.isInteger(latestFy)) labels.push(latestFy);
+  return labels.length ? Math.max(...labels) : null;
+}
+
+export function epsEvidence(annual, latestFy) {
   const byYear = annual ?? {};
-  const known = Object.keys(byYear).map(Number).filter(Number.isFinite).sort((a, b) => a - b);
-  if (!known.length) return null;
-  const latest = known.at(-1);
+  const latest = latestEpsLabel(byYear, latestFy);
+  if (latest == null) return null;
 
   // Defensive stability is a ten-completed-year record, FY(L-9) through FY(L).
   const years = Array.from({ length: 10 }, (_, i) => latest - 9 + i);

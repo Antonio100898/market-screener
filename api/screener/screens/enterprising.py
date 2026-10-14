@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from datetime import date
 
 from ..models import (
     CriterionResult,
@@ -147,6 +148,9 @@ def settled_debt(s: FinancialSnapshot) -> tuple[Decimal | None, tuple[Fact, ...]
     criterion that failed it on debt would be the screen contradicting itself on
     one page. Returns None where the evidence does not settle it, never zero.
     """
+    if unavailable := getattr(s, "debt_unavailable", ()):
+        inputs = tuple(f for f in (s.total_debt, s.long_term_debt, s.short_term_debt) if f is not None)
+        return None, inputs, [f"{item.canonical_tag}: {item.reason}" for item in unavailable]
     if s.total_debt is not None:
         # The rollup and the long+short parts are two representations of one
         # quantity, and where they disagree the larger is the conservative reading
@@ -215,20 +219,27 @@ def _c3_debt(s: FinancialSnapshot) -> CriterionResult:
 
 def _c4_earnings_stability(s: FinancialSnapshot) -> CriterionResult:
     name, threshold = "Earnings stability", "EPS >= 0 in each of the past 5 fiscal years"
-    if not s.annual_eps:
+    unavailable = getattr(s.annual_eps, "unavailable", {})
+    years = set(s.annual_eps) | set(unavailable)
+    if not years:
         return CriterionResult(4, name, Status.INSUFFICIENT_DATA, None, threshold, (),
                                note="no annual EPS available")
-    latest = max(s.annual_eps)
+    latest = max(years)
     # Criteria 1 and 7 both refuse a figure the balance sheet has outrun; this one
     # had no such guard, so Hershey passed on FY2010-FY2014 beside a June 2026
     # balance sheet, and Berkshire on a Class A figure from FY2011. The last five
     # fiscal years are the test, not the last five on file.
-    newest_end = s.annual_eps[latest].provenance.period_end
+    newest = s.annual_eps.get(latest)
+    newest_end = newest.provenance.period_end if newest is not None else None
+    if newest_end is None and latest in unavailable:
+        origin = unavailable[latest].target_origin
+        if origin is not None and origin.end is not None:
+            newest_end = date.fromisoformat(origin.end)
     if (s.balance_sheet_date and newest_end
             and (s.balance_sheet_date - newest_end).days > STALE_ANNUAL_DAYS):
         return CriterionResult(
             4, name, Status.INSUFFICIENT_DATA, None, threshold,
-            (s.annual_eps[latest],),
+            (newest,) if newest is not None else (),
             note=f"newest annual EPS is FY{latest}, "
                  f"{(s.balance_sheet_date - newest_end).days // 365} years before this "
                  "balance sheet; the last five fiscal years cannot be measured")
@@ -247,9 +258,12 @@ def _c4_earnings_stability(s: FinancialSnapshot) -> CriterionResult:
             + (f" (only {len(present)} of 5 years on file)" if len(present) < 5 else ""))
     missing = [y for y in window if y not in s.annual_eps]
     if missing:
+        reasons = "; ".join(f"FY{year}: {unavailable[year].reason}"
+                            for year in missing if year in unavailable)
         return CriterionResult(4, name, Status.INSUFFICIENT_DATA, None, threshold, facts,
                                note="profitable in every year on file, but missing annual EPS "
-                                    "for FY " + ", ".join(map(str, missing)))
+                                    "for FY " + ", ".join(map(str, missing))
+                                    + ("; " + reasons if reasons else ""))
     return CriterionResult(4, name, Status.PASS, min(f.value for f in facts), threshold, facts)
 
 
@@ -302,7 +316,10 @@ def _eps_growth(s: FinancialSnapshot) -> EpsGrowth | None:
     """
     if not s.annual_eps:
         return None
-    latest = max(s.annual_eps)
+    unavailable = getattr(s.annual_eps, "unavailable", {})
+    latest = max(set(s.annual_eps) | set(unavailable))
+    if latest in unavailable or any(latest - 7 <= year <= latest - 4 for year in unavailable):
+        return None
     window = {y: f for y, f in s.annual_eps.items() if latest - 7 <= y <= latest - 4}
     if not window:
         return None
@@ -313,9 +330,10 @@ def _eps_growth(s: FinancialSnapshot) -> EpsGrowth | None:
 
 def _c7_tangible_asset_valuation(s: FinancialSnapshot, q: Quote | None) -> CriterionResult:
     name, threshold = "Tangible-asset valuation", "Price < 1.20 x TBVPS"
+    qualified_common = getattr(s, "common_equity_required", False)
     required = {
-        "total assets": s.total_assets,
-        "total liabilities": s.total_liabilities,
+        **({"common equity": s.common_equity} if qualified_common else {
+            "total assets": s.total_assets, "total liabilities": s.total_liabilities}),
         "goodwill": s.goodwill,  # §5.1: absent goodwill is unknown, never zero
         "intangibles": s.intangibles,
         "shares outstanding": s.shares_outstanding,
@@ -324,14 +342,19 @@ def _c7_tangible_asset_valuation(s: FinancialSnapshot, q: Quote | None) -> Crite
     assumed = [k for k in assumable if required[k] is None and k in s.assumed_zero]
     missing = [k for k, f in required.items()
                if f is None and not (k in assumable and k in s.assumed_zero)]
+    if qualified_common and s.common_equity_unavailable:
+        missing.append(s.common_equity_unavailable)
+    if not qualified_common and not s.current_senior_claims_available():
+        missing.extend(f"{outcome.canonical_tag}: {outcome.reason}"
+                       for outcome in s.senior_claims_unavailable)
     if q is None:
         missing.append("price quote")
     inputs = tuple(f for f in required.values() if f is not None)
-    if s.preferred_stock is not None:
+    if not qualified_common and s.preferred_stock is not None:
         inputs += (s.preferred_stock,)
-    if s.noncontrolling_interest is not None:
+    if not qualified_common and s.noncontrolling_interest is not None:
         inputs += (s.noncontrolling_interest,)
-    if s.temporary_equity is not None:
+    if not qualified_common and s.temporary_equity is not None:
         inputs += (s.temporary_equity,)
     if missing:
         return CriterionResult(7, name, Status.INSUFFICIENT_DATA, None, threshold, inputs,
@@ -350,20 +373,15 @@ def _c7_tangible_asset_valuation(s: FinancialSnapshot, q: Quote | None) -> Crite
         notes.append("assumed 0 for " + ", ".join(sorted(assumed))
                      + " (no evidence in the current annual-report filing window; "
                        "assume_absent_zero opt-in)")
-    if s.preferred_stock is None:
+    if not qualified_common and s.preferred_stock is None:
         notes.append("no preferred-stock value tagged; defaulted to 0 (flagged per §5.1)")
-    if s.temporary_equity is not None:
+    if not qualified_common and s.temporary_equity is not None:
         notes.append("mezzanine (temporary) equity deducted — senior to common, outside the preferred tag")
     value_of = lambda f: f.value if f is not None else Decimal(0)  # noqa: E731
     tangible = (
-        s.total_assets.value
-        - s.total_liabilities.value
+        FinancialSnapshot.common_equity_value(s)
         - value_of(s.goodwill)
         - value_of(s.intangibles)
-        - value_of(s.preferred_stock)
-        # A - L is equity incl. NCI; minority holders' share is not the common's
-        - value_of(s.noncontrolling_interest)
-        - value_of(s.temporary_equity)
     )
     tbvps = tangible / s.shares_outstanding.value
     if tbvps <= 0:

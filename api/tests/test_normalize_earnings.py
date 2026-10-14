@@ -11,6 +11,115 @@ from helpers import EPS, GAAP, build, dur, facts_doc, inst, tagdata, texts
 from helpers import _dimensioned, _reported, _shares, _years, _yr  # underscored, so `import *` skips them
 
 
+@pytest.mark.parametrize('rows,share_rows,events,factors', [
+    ([('2023-03-01', '10'), ('2024-03-01', '1')], [], [('2024-03-01', '10')], ('10', '1')),
+    ([('2023-03-01', '10'), ('2024-03-01', '1'), ('2024-06-01', '0.1')], [], [('2024-03-01', '10')], ('10', '1')),
+    ([('2023-03-01', '10'), ('2024-03-01', '1'), ('2025-05-01', '0.25')], [], [('2024-03-01', '10'), ('2025-05-01', '4')], ('40', '4')),
+    ([('2023-03-01', '0.02'), ('2024-03-01', '0.01')], [], [], ('1', '1')),
+    ([('2023-03-01', '10'), ('2023-03-01', '10'), ('2024-03-01', '1')], [], [('2024-03-01', '10')], ('10', '1')),
+    ([('2023-03-01', '0'), ('2024-03-01', '1')], [], [], ('1', '1')),
+    ([('2023-03-01', '10'), ('2024-03-01', '1')], [('2023-03-01', '100'), ('2024-03-01', '1000')], [('2024-03-01', '10')], ('10', '1')),
+    ([('2023-03-01', '10'), ('2024-03-01', '1')], [('2023-03-01', '100'), ('2024-03-01', '200')], [], ('1', '1')),
+])
+def test_occurrence_metadata_preserves_period_events_and_scalar_factors(rows, share_rows, events, factors):
+    from screener import normalize as current
+    entries = [dict(start='2022-01-01', end='2022-12-31', filed=f, val=v) for f, v in rows]
+    counts = [dict(start='2022-01-01', end='2022-12-31', filed=f, val=v) for f, v in share_rows]
+    periods = current._by_period(entries, tag='eps')
+    shares = current._by_period(counts, tag='shares')
+    assert periods == {('eps', '2022-01-01', '2022-12-31'): sorted((f, Decimal(v)) for f, v in rows)}
+    assert all(len(pair) == 2 for values in periods.values() for pair in values)
+    support = current._DecisionSupport()
+    assert current._split_events(periods, shares, decision_support=support) == [(f, Decimal(k)) for f, k in events]
+    assert current._split_factor(periods, '2023-01-01', shares) == Decimal(factors[0])
+    assert current._split_factor(periods, '2025-01-01', shares) == Decimal(factors[1])
+    assert support.retained()['qualification'] == 'NOT_ASSESSED'
+
+
+@pytest.mark.parametrize('metadata_failure', [False, True])
+def test_occurrence_metadata_retains_duplicate_pointer_identity_and_merge_rejection(monkeypatch, metadata_failure):
+    import hashlib
+    import json
+    from screener import normalize as current
+    from screener.models import CapturedSource
+    from screener.sources.sec_json import decode_company_facts, ORIGIN_KEY
+    entry = dict(start='2020-01-01', end='2020-12-31', filed='2021-03-01', form='10-K', accn='k', val=2)
+    raw = json.dumps({'cik':1234, 'facts':{'us-gaap':{'EarningsPerShareDiluted':tagdata('USD/shares', [entry, entry])}}}).encode()
+    source = CapturedSource('company_facts', hashlib.sha256(raw).hexdigest(), 'https://data.sec.gov/fixture', 1, 2, 3)
+    entries = decode_company_facts(raw, source=source)['facts']['us-gaap']['EarningsPerShareDiluted']['units']['USD/shares']
+    original = current._period_occurrence
+    if metadata_failure:
+        def fail_first(entry):
+            if entry is entries[0]:
+                raise ValueError('metadata failure')
+            return original(entry)
+        monkeypatch.setattr(current, '_period_occurrence', fail_first)
+    periods = current._by_period(entries, tag='EarningsPerShareDiluted')
+    key = ('EarningsPerShareDiluted', '2020-01-01', '2020-12-31')
+    sources = periods.occurrences[key]
+    assert sources[0][:2] == sources[1][:2]
+    if metadata_failure:
+        assert sources[0][2]['origin'] is None
+        assert sources[0][2]['metadata_error'] == 'ValueError'
+        assert sources[0][2]['qualification'] == 'NOT_ASSESSED'
+    else:
+        assert sources[0][2]['origin'] is entries[0][ORIGIN_KEY]
+        assert sources[0][2]['origin'].pointer != sources[1][2]['origin'].pointer
+    assert sources[1][2]['origin'] is entries[1][ORIGIN_KEY]
+    assert periods[key] == [('2021-03-01', Decimal('2')), ('2021-03-01', Decimal('2'))]
+    additional = current._by_period([entries[1], entries[1]], tag='EarningsPerShareDiluted')
+    current._merge_period_values(periods, additional)
+    assert len(periods[key]) == 2 and len(periods.rejected_occurrences) == 2
+    assert all(row['source']['origin'] is entries[1][ORIGIN_KEY] for row in periods.rejected_occurrences)
+    for merge in (False, True):
+        numeric_only = current._PeriodValues()
+        numeric_only[key] = [('2020-03-01', Decimal('20'))]
+        if merge:
+            current._merge_period_values(numeric_only, current._by_period([entries[1]], tag=key[0]))
+        else:
+            current._by_period([entries[1]], tag=key[0], into=numeric_only)
+        assert numeric_only[key] == [('2020-03-01', Decimal('20')), ('2021-03-01', Decimal('2'))]
+        assert current._period_sources(numeric_only, key, 0) is None
+        assert current._period_sources(numeric_only, key, 1)['origin'] is entries[1][ORIGIN_KEY]
+
+
+def test_decision_support_uses_one_numeric_invocation_and_explicit_existing_frontier(monkeypatch):
+    from screener import normalize as current
+    periods = current._by_period([
+        dict(start='2020-01-01', end='2020-12-31', filed='2021-03-01', val=10),
+        dict(start='2020-01-01', end='2020-12-31', filed='2022-03-01', val=1)], tag='eps')
+    original = current._as_split
+    calls = []
+    def counted(ratio):
+        calls.append(ratio)
+        return original(ratio)
+    monkeypatch.setattr(current, '_as_split', counted)
+    monkeypatch.setattr(current._DecisionSupport, 'LIMIT', 2)
+    support = current._DecisionSupport()
+    assert current._split_factor(periods, '2020-01-01', decision_support=support) == Decimal('10')
+    assert len(calls) == 1
+    retained = support.retained()
+    assert len(retained['records']) == 2 and retained['observed_count'] > 2
+    assert not retained['complete'] and retained['qualification'] == 'NOT_ASSESSED'
+
+
+@pytest.mark.parametrize('assume', [False, True])
+def test_private_decision_support_preserves_public_snapshot_and_scalar_callers(assume):
+    from screener import normalize as current
+    import copy
+    from helpers import OE_GAAP
+    document = facts_doc(copy.deepcopy(OE_GAAP))
+    after = current.build_snapshot('TEST', '0000001234', copy.deepcopy(document), assume_absent_zero=assume)
+    assert {year: fact.value for year, fact in after.annual_eps.items()} == {
+        2021: Decimal('3.0'), 2022: Decimal('3.5'), 2023: Decimal('4.1'),
+        2024: Decimal('5.0'), 2025: Decimal('6.0')}
+    assert after.annual_share_counts == {}
+    assert current.vintage_ttm_eps(copy.deepcopy(OE_GAAP)) == {
+        '2022-12-31': Decimal('3.0'), '2023-12-31': Decimal('3.5'),
+        '2024-12-31': Decimal('4.0'), '2025-12-31': Decimal('5.0')}
+    assert getattr(after.annual_eps, 'decision_support', None)
+
+
 def test_filer_that_moved_to_domestic_forms_keeps_foreign_history():
     """Old 20-F facts stay readable once the newest financial filing is domestic."""
     gaap = dict(GAAP)
@@ -972,6 +1081,7 @@ def test_a_lone_share_class_is_the_companys_own_figure_kkr_style():
     s = build_snapshot("TEST", "0000000001", facts_doc(gaap), dimensioned=dim)
     assert float(s.annual_eps[2025].value) == 2.34
     assert s.annual_eps[2025].provenance.segments == "ClassOfStock=CommonStock;"
+    assert s.annual_eps.decision_support[2025]['qualification'] == 'NOT_ASSESSED'
 
 
 def test_a_listed_lp_unit_class_supplies_the_reported_eps_paa_style():
@@ -1246,7 +1356,7 @@ def test_a_real_restatement_moves_the_income_with_it_and_is_kept():
     assert float(_annual_eps(gaap)[2022].value) == 0.03
 
 
-def test_a_common_class_eps_replaces_a_proven_mis_scaled_bare_fact():
+def test_a_common_class_eps_replaces_a_proven_mis_scaled_bare_fact(monkeypatch):
     """MOBX's FY2025 bare EPS is -10.10, but the same filing reports a $46M
     loss on 45.5M shares and -1.01 for listed Class A. The filing's arithmetic,
     not the dimension by itself, proves which same-tag value is usable."""
@@ -1279,6 +1389,14 @@ def test_a_common_class_eps_replaces_a_proven_mis_scaled_bare_fact():
                  filed="2026-01-13"), segments="ClassOfStock=CommonClassA;"),
     ])
 
+    from screener import normalize as current
+    original = current._annual_eps
+    gathered = []
+    def collect(*args, **kwargs):
+        series = original(*args, **kwargs)
+        gathered.append(series)
+        return series
+    monkeypatch.setattr(current, '_annual_eps', collect)
     s = build_snapshot(
         "MOBX", "0001855467", facts_doc(gaap), dimensioned=dim,
         receipt={"title": "Class A Common Stock, par value $0.00001 per share"},
@@ -1287,6 +1405,10 @@ def test_a_common_class_eps_replaces_a_proven_mis_scaled_bare_fact():
     assert float(s.annual_eps[2024].value) == -0.75
     assert float(s.annual_eps[2025].value) == -1.01
     assert s.annual_eps[2025].provenance.segments == "ClassOfStock=CommonClassA;"
+    classed = next(series for series in gathered
+                   if 2025 in series and series[2025].provenance.segments == 'ClassOfStock=CommonClassA;')
+    assert s.annual_eps.decision_support[2025] is classed.decision_support[2025]
+    assert s.annual_eps.decision_support[2025]['qualification'] == 'NOT_ASSESSED'
 
 
 def test_a_preferred_dividend_is_not_a_contradiction():

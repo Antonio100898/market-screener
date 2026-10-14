@@ -67,6 +67,14 @@ recovered from available source documents. If a source overwrote a number before
 we captured it and no earlier copy is available, mark that gap; do not invent the
 old value or claim a complete edit history.
 
+Owner clarification, 2026-10-12: retain older history across a change in accounting
+standards, with explicit labels for the old and new bases. Sony's older US-GAAP
+history may appear alongside newer IFRS history. Current calculations continue to
+use the current IFRS basis. Do not treat different overlapping reported amounts
+as equivalent or claim old-basis figures were restated to the new basis. Disclose
+the reported share basis when earlier per-share values cannot be placed on the
+current share basis with filing-backed evidence.
+
 ## Freshness constraint and proposed interpretation
 
 The owner's requirement is latest adjusted data, never silently stale data.

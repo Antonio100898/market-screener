@@ -6,9 +6,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "dev:next": "next dev --webpack --hostname 127.0.0.1",
+    "build:next": "next build --webpack",
+    "start:next": "next start --hostname 127.0.0.1",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
+    "next": "16.3.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

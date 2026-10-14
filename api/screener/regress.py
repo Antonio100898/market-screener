@@ -33,6 +33,7 @@ from . import profiles
 from .sync import (
     DASHBOARD_JSON, PRICEABLE_LISTINGS, _derive_cached_worker, _index_tickers, _mark_peer_efficiency,
     _price_the_ratio_history, _reporting_currency, _strip_detail_only_evidence,
+    _valuation_fx_history,
     apply_price,
 )
 
@@ -92,13 +93,9 @@ def _price_history_for_row(conn, cik: str, row: dict) -> list:
     return store.price_history(conn, cik)
 
 
-def _fx_history_for_row(conn, row: dict) -> list:
-    """Mirror export's stored FX history for foreign statement currencies."""
-    reporting = _reporting_currency(row)
-    if reporting == "USD":
-        return []
-    record = store.fx_history(conn, "USD", reporting)
-    return (record or {}).get("closes") or []
+def _fx_history_for_row(conn, row: dict) -> dict | None:
+    """Mirror export's exact quote-to-reporting historical evidence."""
+    return _valuation_fx_history(conn, row)
 
 
 def compare(sample: int | None, tickers: set[str] | None, field: str | None,

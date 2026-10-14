@@ -5,6 +5,213 @@ from datetime import date
 from decimal import Decimal
 
 from screener import audit, coverage
+import pytest
+
+
+def physical_views(printed, tagged, headings, unit="USD"):
+    """Statement fixtures include the physical evidence required by callers."""
+    rows = [(label, None, values) for label, values in printed]
+    rows += [(concept, concept, values) for concept, values in tagged.items()]
+    body = ''.join('<tr><td>' + (f'<a href="defref_{concept}">{label}</a>' if concept else label)
+                   + '</td>' + ''.join(f'<td>{"" if value is None else value}</td>' for value in values)
+                   + '</tr>' for label, concept, values in rows)
+    document = '<table><tr><th>' + unit + '</th>' + ''.join(
+        f'<th>12 Months Ended {heading.isoformat()}</th>' for heading in headings) + '</tr>' + body + '</table>'
+    parsed = audit.statements.read(document)
+    return (audit.statements.lines(parsed), audit.statements.elements(parsed)), list(range(len(headings))), headings, None
+
+
+def test_caption_never_flips_a_printed_sign_and_numeric_tolerance_is_unchanged():
+    assert not audit._agrees(-10, 10, "Net loss")
+    assert not audit._agrees(10, -10, "Net income")
+    assert audit._agrees(10, 10, "Net loss")
+    assert audit._agrees(-10, -10, "Net income")
+    assert audit._agrees(100, 100.5, "Income")
+    assert not audit._agrees(100, 102, "Income")
+
+
+def test_native_accession_qualified_qname_resolves_exact_namespace_across_callers():
+    namespace = "ext:0001193125-26-103635"
+    tag = "DepreciationAndAmortizationOfPropertyPlantAndEquipmentAndComputerPrograms"
+    source = {"tag": f"{namespace}:{tag}", "accn": "0001193125-26-103635",
+              "end": "2025-12-31", "unit": "USD"}
+    facts = {"facts": {namespace: {tag: {"units": {"USD": [
+        {"val": 1695000, "accn": source["accn"], "end": source["end"]}], "EUR": [
+        {"val": 1000000, "accn": source["accn"], "end": source["end"]}]}}},
+        "ext": {tag: {"units": {"USD": [{"val": 99, "accn": source["accn"], "end": source["end"]}]}}}}}
+    assert audit._source_qname(source["tag"]) == (namespace, tag)
+    assert audit._source_qname("Assets") == ("us-gaap", "Assets")
+    assert audit._fact_in_filing(facts, source) == 1695000
+    assert audit._source_values(facts, source) == [1695000]
+    assert audit._at_period_end(facts, source["tag"], source["end"]) == 1695000
+    assert audit._same_concept_in_another_filed_unit(facts, source, 1695000, [1000000])
+    assert audit._source_values(facts, {**source, "tag": "ext:unknown:" + tag}) == []
+
+
+def test_native_qname_historical_lookup_requires_supplied_exact_context():
+    namespace = 'ext:0001193125-26-103635'
+    source = {'tag': namespace + ':OperatingIncome', 'accn': 'current', 'end': '2025-12-31'}
+    facts = {'facts': {namespace: {'OperatingIncome': {'units': {'USD': [
+        {'val': 123, 'accn': 'retained-annual', 'start': '2024-01-01', 'end': '2024-12-31', 'form': '10-K', 'filed': '2025-03-01'}]}}},
+        'ext': {'OperatingIncome': {'units': {'USD': [
+        {'val': 123, 'accn': 'wrong-namespace', 'start': '2024-01-01', 'end': '2024-12-31', 'form': '10-K', 'filed': '2026-03-01'}]}}}}}
+    exact = {**source, 'accn': 'retained-annual', 'end': '2024-12-31', 'start': '2024-01-01', 'unit': 'USD'}
+    assert audit._source_values(facts, exact) == [123]
+    assert audit._source_values(facts, {**exact, 'tag': 'ext:unknown:OperatingIncome'}) == []
+
+
+def test_statement_is_parsed_once_and_sparse_cell_does_not_become_next_year(monkeypatch):
+    calls = []
+    owner = audit.statements.read
+    def parse_once(document):
+        calls.append(document)
+        return owner(document)
+    monkeypatch.setattr(audit.statements, "read", parse_once)
+    class Edgar:
+        def _get_text(self, url):
+            if url.endswith("FilingSummary.xml"):
+                return '<Reports><Report><HtmlFileName>R1.htm</HtmlFileName><ShortName>Balance Sheets</ShortName></Report></Reports>'
+            return '''<table><tr><th>USD ($)</th><th>Dec. 31, 2025</th><th>Dec. 31, 2024</th></tr>
+              <tr><td>Total assets</td><td></td><td>12</td></tr>
+              <tr><td>Cash</td><td>3</td><td></td></tr></table>'''
+    row = {"cik": "123", "sources": {"total_assets": {"accn": "a", "end": "2025-12-31"}}}
+    (printed, _), matching, _, why = audit._read_statement(row, Edgar(), "balance_sheet")
+    # Compatibility projections receive the same parsed value; only one string is parsed.
+    assert sum(isinstance(value, str) for value in calls) == 1
+    assert matching == [0] and why is None
+    assert audit.statements.value_for(printed, "Total assets", column=0) is None
+    assert audit.statements.value_for(printed, "Total assets", column=1)[1] == 12
+
+
+def test_undated_statement_is_unavailable_instead_of_assuming_column_zero():
+    class Edgar:
+        def _get_text(self, url):
+            if url.endswith("FilingSummary.xml"):
+                return '<Reports><Report><HtmlFileName>R1.htm</HtmlFileName><ShortName>Balance Sheets</ShortName></Report></Reports>'
+            return '<table><tr><td>Total assets</td><td>12</td></tr></table>'
+    row = {"cik": "123", "total_assets": 12, "sources": {"total_assets": {"accn": "a", "end": "2025-12-31"}}}
+    (printed, _), matching, _, why = audit._read_statement(row, Edgar(), "balance_sheet")
+    assert printed is None and matching is None
+    assert 'not among the identifiable printed table periods' in why
+    assert audit.against_filing(row, Edgar())[0][0] == 'FILING?'
+
+
+@pytest.mark.parametrize('end', [None, '', 'not-a-period'])
+def test_unknown_source_period_is_unavailable_before_any_statement_fetch(end):
+    class Edgar:
+        def _get_text(self, url):
+            raise AssertionError('Missing source period cannot select a statement context')
+    row = {'cik': '123', 'total_assets': 12,
+           'sources': {'total_assets': {'accn': 'a', 'end': end}}}
+    (printed, _), matching, _, why = audit._read_statement(row, Edgar(), 'balance_sheet')
+    assert printed is None and matching is None
+    assert why == 'no identifiable source period for the statement'
+    assert audit.against_filing(row, Edgar())[0][0] == 'FILING?'
+
+
+def test_unknown_printed_column_never_overrides_exact_known_source_period():
+    class Edgar:
+        def _get_text(self, url):
+            if url.endswith('FilingSummary.xml'):
+                return '<Reports><Report><HtmlFileName>R1.htm</HtmlFileName><ShortName>Balance Sheets</ShortName></Report></Reports>'
+            return '''<table><tr><th>USD ($)</th><th>Unknown</th><th>Dec. 31, 2024</th></tr>
+              <tr><td>Total assets</td><td>12</td><td>10</td></tr></table>'''
+    row = {'cik': '123', 'total_assets': 12,
+           'sources': {'total_assets': {'accn': 'a', 'end': '2025-12-31'}}}
+    (printed, _), matching, _, why = audit._read_statement(row, Edgar(), 'balance_sheet')
+    assert printed is None and matching is None and 'not among the identifiable printed table periods' in why
+    assert audit.against_filing(row, Edgar())[0][0] == 'FILING?'
+
+
+def test_table_candidates_cannot_borrow_an_amount_from_another_printed_period():
+    class Edgar:
+        def _get_text(self, url):
+            if url.endswith('FilingSummary.xml'):
+                return '<Reports><Report><HtmlFileName>R1.htm</HtmlFileName><ShortName>Balance Sheets</ShortName></Report></Reports>'
+            return '''<table><tr><th>USD ($)</th><th>Dec. 31, 2025</th></tr>
+            <tr><td><a onclick="defref_us-gaap_Assets">Total assets</a></td><td>7</td></tr></table>
+            <table><tr><th>USD ($)</th><th>Dec. 31, 2024</th></tr>
+            <tr><td><a onclick="defref_us-gaap_Assets">Total assets</a></td><td>9</td></tr></table>'''
+    row = {'cik': '123', 'total_assets': 9,
+           'sources': {'total_assets': {'tag': 'us-gaap:Assets', 'accn': 'a', 'end': '2025-12-31', 'unit': 'USD'}}}
+    result = audit.against_filing(row, Edgar())
+    assert result[0][0] == 'FILING' and result[0][3] == 7
+
+
+def test_same_table_two_years_keeps_exact_period_positive_control():
+    class Edgar:
+        def _get_text(self, url):
+            if url.endswith('FilingSummary.xml'):
+                return '<Reports><Report><HtmlFileName>R1.htm</HtmlFileName><ShortName>Balance Sheets</ShortName></Report></Reports>'
+            return '''<table><tr><th>USD ($)</th><th>Dec. 31, 2025</th><th>Dec. 31, 2024</th></tr>
+            <tr><td><a onclick="defref_us-gaap_Assets">Total assets</a></td><td>7</td><td>9</td></tr></table>'''
+    row = {'cik': '123', 'total_assets': 7,
+           'sources': {'total_assets': {'tag': 'us-gaap:Assets', 'accn': 'a', 'end': '2025-12-31', 'unit': 'USD'}}}
+    assert audit.against_filing(row, Edgar())[0][0] == 'FILING-OK'
+
+
+def test_multiple_eligible_tables_need_a_table_witness_even_if_amount_matches():
+    class Edgar:
+        def _get_text(self, url):
+            if url.endswith('FilingSummary.xml'):
+                return '<Reports><Report><HtmlFileName>R1.htm</HtmlFileName><ShortName>Balance Sheets</ShortName></Report></Reports>'
+            return '''<table><tr><th>USD ($)</th><th>Dec. 31, 2025</th></tr>
+            <tr><td>Total assets</td><td>7</td></tr></table>
+            <table><tr><th>USD ($)</th><th>Dec. 31, 2025</th></tr>
+            <tr><td>Total assets</td><td>9</td></tr></table>'''
+    row = {'cik': '123', 'total_assets': 9,
+           'sources': {'total_assets': {'accn': 'a', 'end': '2025-12-31'}}}
+    result = audit.against_filing(row, Edgar())
+    assert result[0][0] == 'FILING?' and 'multiple printed tables' in result[0][4]
+
+
+def test_printed_cashflow_outflow_keeps_existing_definition_owned_convention():
+    class Edgar:
+        def _get_text(self, url):
+            if url.endswith("FilingSummary.xml"):
+                return '<Reports><Report><HtmlFileName>R1.htm</HtmlFileName><ShortName>Statements of Cash Flows</ShortName></Report></Reports>'
+            return '''<table><tr><th>USD ($) $ in Thousands</th><th>12 Months Ended Dec. 31, 2025</th></tr>
+              <tr><td><a onclick="defref_us-gaap_NetCashProvidedByUsedInOperatingActivities">Cash from operations</a></td><td>10</td></tr>
+              <tr><td><a onclick="defref_us-gaap_PaymentsToAcquirePropertyPlantAndEquipment">Capital payments</a></td><td>(2)</td></tr></table>'''
+    row = {"cik": "123", "sources": {"eps": {"accn": "a", "end": "2025-12-31"}},
+           "annual_ratios": {"2025": {"end": "2025-12-31"}},
+           "owner_earnings": {"fiscal_year": 2025, "components": [
+               ["operating cash flow", 10000], ["- total capital expenditure", -2000]],
+               "sources": {key: {"accn": "a", "end": "2025-12-31", "start": "2025-01-01", "unit": "USD", "tag": tag}
+                           for key, tag in [("operating_cash_flow", "us-gaap:NetCashProvidedByUsedInOperatingActivities"),
+                                            ("total_capex", "us-gaap:PaymentsToAcquirePropertyPlantAndEquipment")]}}}
+    result = audit.against_cash_flow(row, Edgar())
+    assert len(result) == 2 and all(check[0] == 'FILING-OK' for check in result)
+
+
+@pytest.mark.parametrize('shown', [0.2, 2.07, 0.3])
+def test_receipt_with_two_explicit_same_period_units_cannot_choose_by_value(shown):
+    class Edgar:
+        def _get_text(self, url):
+            if url.endswith("FilingSummary.xml"):
+                return '<Reports><Report><HtmlFileName>R1.htm</HtmlFileName><ShortName>Statements of Income</ShortName></Report></Reports>'
+            return '''<table><tr><th>Income</th><th>Dec. 31, 2025 CNY (¥)</th><th>Dec. 31, 2025 USD ($)</th></tr>
+              <tr><td><a onclick="defref_us-gaap_EarningsPerShareDiluted">Diluted</a></td><td>¥ 2.07</td><td>$ .3</td></tr></table>'''
+    row = {"cik": "123", "sources": {"eps": {"tag": "us-gaap:EarningsPerShareDiluted", "form": "20-F", "accn": "a", "end": "2025-12-31"}},
+           "receipt": {"ratio": 2 / 3}, "annual_eps": {"2025": shown}, "annual_ratios": {"2025": {"end": "2025-12-31"}}}
+    result = audit.against_income(row, Edgar())
+    assert len(result) == 1 and result[0][:4] == ('FILING?', 'FY2025 eps', shown, None)
+    assert 'CNY, USD' in result[0][4] and 'no exact selected-unit/basis witness' in result[0][4]
+
+
+@pytest.mark.parametrize('printed,shown', [('.3', .6), ('(.3)', -.6)])
+def test_single_explicit_unit_receipt_disclosure_keeps_positive_and_negative_sign(printed, shown):
+    class Edgar:
+        def _get_text(self, url):
+            if url.endswith("FilingSummary.xml"):
+                return '<Reports><Report><HtmlFileName>R1.htm</HtmlFileName><ShortName>Statements of Income</ShortName></Report></Reports>'
+            return f'''<table><tr><th>Income USD ($)</th><th>12 Months Ended Dec. 31, 2025</th></tr>
+              <tr><td><a onclick="defref_us-gaap_EarningsPerShareDiluted">Diluted</a></td><td>{printed}</td></tr></table>'''
+    row = {"cik": "123", "sources": {"eps": {"tag": "us-gaap:EarningsPerShareDiluted", "form": "20-F", "accn": "a", "end": "2025-12-31", "start": "2025-01-01", "unit": "USD/shares"}},
+           "receipt": {"ratio": 2}, "annual_eps": {"2025": shown}, "annual_ratios": {"2025": {"end": "2025-12-31"}}}
+    result = audit.against_income(row, Edgar())
+    assert len(result) == 1 and result[0][0] == 'FILING?' and 'per receipt' in result[0][4]
+    assert result[0][3] == shown / 2
 
 
 def test_filing_audit_opens_exact_incorporated_source_not_annual_wrapper(monkeypatch):
@@ -165,19 +372,19 @@ def test_income_audit_does_not_compare_one_share_class_with_another(monkeypatch)
             "segments": "ClassOfStock=EquivalentClassB;",
         }},
     }
+    row["sources"]["eps"].update(start="2025-01-01", unit="USD/shares")
     printed = [("Basic earnings per share — Class A", [Decimal("46563")])]
     tagged = {"us-gaap_EarningsPerShareBasic": [Decimal("46563")]}
     monkeypatch.setattr(
         audit,
         "_read_statement",
-        lambda *_: ((printed, tagged), [0], [date(2025, 12, 31)], None),
+        lambda *_: physical_views(printed, tagged, [date(2025, 12, 31)]),
     )
 
     result = audit.against_income(row, object())
 
-    assert result == [("FILING?", "FY2025 eps", 31.04, 46563.0,
-                       "filed under a share-class dimension that the rendered "
-                       "statement reader cannot distinguish")]
+    assert result == [("FILING?", "FY2025 eps", 31.04, None,
+                       "selected class/dimension has no exact printed context witness")]
 
 
 def test_income_audit_rebuilds_reconciled_operating_income(monkeypatch):
@@ -221,10 +428,14 @@ def test_income_audit_rebuilds_reconciled_operating_income(monkeypatch):
         "us-gaap_OtherNonoperatingIncomeExpense": [Decimal("-53")],
         "us-gaap_OperatingIncomeLoss": [Decimal("3.797")],
     }
+    selected = row["sources"]["operating_income"]
+    selected.update(accn="nke-2026", end="2026-05-31", start="2025-06-01", unit="USD")
+    for component in selected["components"]:
+        component.update(accn="nke-2026", end="2026-05-31", start="2025-06-01", unit="USD")
     monkeypatch.setattr(
         audit,
         "_read_statement",
-        lambda *_: (([], tagged), [0], [date(2026, 5, 31)], None),
+        lambda *_: physical_views([], tagged, [date(2026, 5, 31)]),
     )
 
     result = audit.against_income(row, object())
@@ -277,10 +488,14 @@ def test_income_audit_rebuilds_jnj_inverse_operating_bridge(monkeypatch):
         "us-gaap_InterestExpenseNonoperating": [Decimal("971")],
         "us-gaap_OtherNonoperatingIncomeExpense": [Decimal("-7209")],
     }
+    selected = row["sources"]["operating_income"]
+    selected.update(accn="jnj-2025", end="2025-12-28", start="2024-12-29", unit="USD")
+    for component in selected["components"]:
+        component.update(accn="jnj-2025", end="2025-12-28", start="2024-12-29", unit="USD")
     monkeypatch.setattr(
         audit,
         "_read_statement",
-        lambda *_: (([], tagged), [0], [date(2025, 12, 28)], None),
+        lambda *_: physical_views([], tagged, [date(2025, 12, 28)]),
     )
 
     result = audit.against_income(row, object())
@@ -289,7 +504,7 @@ def test_income_audit_rebuilds_jnj_inverse_operating_bridge(monkeypatch):
                        25_287.0, None)]
 
 
-def test_income_audit_accepts_combined_fresh_start_periods(monkeypatch):
+def test_income_audit_withholds_fresh_start_sum_without_selected_interval(monkeypatch):
     row = {
         "cik": "0001498710", "ticker": "FLYYQ",
         "annual_net_income": {"2025": -2_760_453_000.0},
@@ -318,11 +533,8 @@ def test_income_audit_accepts_combined_fresh_start_periods(monkeypatch):
 
     result = audit.against_income(row, object())
 
-    assert result == [(
-        "FILING-OK", "FY2025 net_income", -2_760_453_000.0,
-        -2_760_453_000.0,
-        "sum of predecessor and successor statement periods",
-    )]
+    assert result == [("FILING?", "FY2025 net_income", -2_760_453_000.0,
+                       None, "no exact selected source duration")]
 
 
 def test_balance_audit_reads_each_fields_own_source_accession(monkeypatch):
@@ -337,16 +549,16 @@ def test_balance_audit_reads_each_fields_own_source_accession(monkeypatch):
             },
         },
     }
+    for selected in row["sources"].values():
+        selected["unit"] = "USD"
     calls = []
 
     def read(_row, _edgar, _kind, source_override=None):
         accn = (source_override or row["sources"]["total_assets"])["accn"]
         calls.append(accn)
         if accn == "source-k":
-            return (([], {"us-gaap_IntangibleAssetsNetExcludingGoodwill": [
-                Decimal("399")]}), [0], [date(2025, 12, 31)], None)
-        return (([], {"us-gaap_IntangibleAssetsNetExcludingGoodwill": [
-            Decimal("242")]}), [0], [date(2026, 6, 30)], None)
+            return physical_views([], {"us-gaap_IntangibleAssetsNetExcludingGoodwill": [Decimal("399")]}, [date(2025, 12, 31)])
+        return physical_views([], {"us-gaap_IntangibleAssetsNetExcludingGoodwill": [Decimal("242")]}, [date(2026, 6, 30)])
 
     monkeypatch.setattr(audit, "_read_statement", read)
 
@@ -368,12 +580,11 @@ def test_balance_audit_uses_visible_row_when_element_link_misses_a_column(
                             "accn": "k25", "end": "2025-09-30"},
         },
     }
+    for selected in row["sources"].values():
+        selected["unit"] = "USD"
     monkeypatch.setattr(
         audit, "_read_statement",
-        lambda *_: (([("Other intangible assets, net",
-                       [Decimal("121590"), Decimal("126913")])],
-                     {"us-gaap_OtherIntangibleAssetsNet": [Decimal("126913")]}),
-                    [0], [date(2025, 9, 30), date(2024, 9, 30)], None),
+        lambda *_: physical_views([("Other intangible assets, net", [Decimal("121590"), Decimal("126913")])], {"us-gaap_OtherIntangibleAssetsNet": [None, Decimal("126913")]}, [date(2025, 9, 30), date(2024, 9, 30)]),
     )
 
     result = audit.against_filing(row, object())
@@ -386,6 +597,7 @@ def test_income_audit_distinguishes_dual_currency_facts(monkeypatch):
         "tag": "us-gaap:GrossProfit", "form": "20-F", "accn": "foreign-k",
         "start": "2025-01-01", "end": "2025-12-31",
     }
+    source["unit"] = "USD"
     row = {
         "cik": "1", "ticker": "TEST",
         "annual_gross_profit": {"2025": 100.0},
@@ -400,15 +612,12 @@ def test_income_audit_distinguishes_dual_currency_facts(monkeypatch):
     }}}}}
     monkeypatch.setattr(
         audit, "_read_statement",
-        lambda *_: (([], {"us-gaap_GrossProfit": [Decimal("700")]}),
-                    [0], [date(2025, 12, 31)], None),
+        lambda *_: physical_views([], {"us-gaap_GrossProfit": [Decimal("700")]}, [date(2025, 12, 31)], unit="CNY"),
     )
 
     result = audit.against_income(row, object(), facts)
 
-    assert result == [("FILING?", "FY2025 gross_profit", 100.0, 700.0,
-                       "the same concept is filed in another currency/unit; "
-                       "the rendered statement chose that presentation")]
+    assert result == [("FILING?", "FY2025 gross_profit", 100.0, None, "no matching line")]
 
 
 def test_income_audit_accepts_annual_value_in_duplicate_end_date_column(
@@ -418,6 +627,7 @@ def test_income_audit_accepts_annual_value_in_duplicate_end_date_column(
         "tag": "us-gaap:GrossProfit", "form": "10-K", "accn": "annual-k",
         "end": "2025-12-31",
     }
+    source.update(start="2025-01-01", unit="USD")
     row = {
         "cik": "1", "ticker": "TEST",
         "annual_gross_profit": {"2025": 100.0},
@@ -426,9 +636,7 @@ def test_income_audit_accepts_annual_value_in_duplicate_end_date_column(
     }
     monkeypatch.setattr(
         audit, "_read_statement",
-        lambda *_: (([("Gross profit", [Decimal("25"), Decimal("100")])],
-                     {"us-gaap_GrossProfit": [Decimal("25"), Decimal("100")]}),
-                    [0, 1], [date(2025, 12, 31), date(2025, 12, 31)], None),
+        lambda *_: physical_views([("Gross profit", [Decimal("25"), Decimal("100")])], {"us-gaap_GrossProfit": [Decimal("25"), Decimal("100")]}, [date(2025, 12, 31), date(2025, 12, 31)]),
     )
 
     assert audit.against_income(row, object()) == [
@@ -444,20 +652,21 @@ def test_cash_flow_audit_ignores_empty_tagged_comparative_cell(monkeypatch):
             "components": [["operating cash flow", 100.0]],
         },
     }
+    row["owner_earnings"]["sources"] = {"operating_cash_flow": {
+        "accn": "a", "unit": "USD", "end": "2025-12-31", "start": "2025-01-01",
+        "tag": "us-gaap:NetCashProvidedByUsedInOperatingActivities"}}
     monkeypatch.setattr(
         audit, "_read_statement",
-        lambda *_: (([], {
-            "us-gaap_NetCashProvidedByUsedInOperatingActivities": [None],
-        }), [0], [date(2025, 12, 31)], None),
+        lambda *_: physical_views([], {"us-gaap_NetCashProvidedByUsedInOperatingActivities": [None, Decimal("100")]}, [date(2025, 12, 31), date(2024, 12, 31)]),
     )
 
     assert audit.against_cash_flow(row, object()) == [(
         "FILING?", "all-capex evidence operating cash flow", 100.0, None,
-        "the statement tags no such concept",
+        "no numeric matching concept in the selected source context",
     )]
 
 
-def test_income_audit_finds_historical_translation_in_older_accession(
+def test_income_audit_withholds_historical_translation_without_selected_context(
         monkeypatch):
     source = {
         "tag": "us-gaap:GrossProfit", "form": "20-F", "accn": "latest-k",
@@ -483,11 +692,11 @@ def test_income_audit_finds_historical_translation_in_older_accession(
 
     result = audit.against_income(row, object(), facts)
 
-    assert result[0][0] == "FILING?"
-    assert "another currency/unit" in result[0][4]
+    assert result == [("FILING?", "FY2025 gross_profit", 100.0, None,
+                       "no exact selected-year source context in the serialized series")]
 
 
-def test_income_audit_reads_the_annual_filing_that_supplied_an_older_year(
+def test_income_audit_does_not_select_historical_source_by_displayed_value(
         monkeypatch):
     latest = {
         "tag": "us-gaap:GrossProfit", "form": "10-K",
@@ -521,11 +730,9 @@ def test_income_audit_reads_the_annual_filing_that_supplied_an_older_year(
 
     result = audit.against_income(row, object(), facts)
 
-    assert result == [(
-        "FILING-OK", "FY2012 gross_profit", 16_375.0, 16_375.0,
-        "printed in source accession source-k",
-    )]
-    assert calls == [None, "source-k"]
+    assert result == [("FILING?", "FY2012 gross_profit", 16_375.0, None,
+                       "no exact selected-year source context in the serialized series")]
+    assert calls == [None]
 
 
 def test_balance_audit_does_not_index_a_one_cell_element_as_column_zero(
@@ -539,17 +746,17 @@ def test_balance_audit_does_not_index_a_one_cell_element_as_column_zero(
                             "accn": "k25", "end": "2025-09-30"},
         },
     }
+    for selected in row["sources"].values():
+        selected["unit"] = "USD"
     monkeypatch.setattr(
         audit, "_read_statement",
-        lambda *_: (([], {"us-gaap_OtherIntangibleAssetsNet": [
-            Decimal("126913")]}), [0],
-                    [date(2025, 9, 30), date(2024, 9, 30)], None),
+        lambda *_: physical_views([], {"us-gaap_OtherIntangibleAssetsNet": [None, Decimal("126913")]}, [date(2025, 9, 30), date(2024, 9, 30)]),
     )
 
     result = audit.against_filing(row, object())
 
     assert result[0][0] == "FILING?"
-    assert "covers fewer cells" in result[0][4]
+    assert "no matching line" in result[0][4]
 
 
 def test_debt_identity_does_not_add_older_components_to_a_newer_rollup():
