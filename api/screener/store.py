@@ -13,11 +13,11 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from . import sectors
-from .sources import cover
+from .sources import cover, insiders
 
 # Bump when normalisation changes meaning; snapshots below this are recomputed
 # from stored raw facts, with no refetching.
-ENGINE_VERSION = 181  # recognize repo debt, continuing-operations OCF, and oil/gas cash CapEx
+ENGINE_VERSION = 183  # map EDINET shares, parent equity, debt, CapEx, dividends per share
 
 DEFAULT_DB = Path.home() / ".cache" / "graham-screener" / "screener.db"
 _WRITE_ATTEMPTS = 5   # a recompute must not fail because the site was being read
@@ -145,6 +145,23 @@ CREATE TABLE IF NOT EXISTS filing_event (
 );
 CREATE INDEX IF NOT EXISTS filing_event_cik ON filing_event(cik);
 
+-- Each director's and officer's current holding, from their latest SEC ownership
+-- filing (Forms 3/4/5) or the latest EDINET annual report. NULL shares: unknown.
+CREATE TABLE IF NOT EXISTS insider_holding (
+    cik             TEXT NOT NULL,
+    source          TEXT NOT NULL,   -- SEC or EDINET
+    person          TEXT NOT NULL,   -- SEC owner CIK; EDINET director name
+    name            TEXT NOT NULL,
+    title           TEXT,
+    shares          REAL,            -- direct plus indirect
+    indirect_shares REAL,
+    filed           TEXT,            -- filing that reported the holding
+    accn            TEXT,            -- its accession or EDINET document ID
+    form            TEXT,
+    last_filed      TEXT,            -- the person's latest filing of any kind
+    PRIMARY KEY (cik, person)
+);
+
 -- What a filing's cover page says the ticker is. Company Facts cannot express it:
 -- the elements are text and sit under a share-class axis, so both are stripped.
 -- The ratio is the number that makes a depositary receipt's market cap right.
@@ -201,7 +218,7 @@ CREATE TABLE IF NOT EXISTS sync_state (
 
 REQUIRED_TABLES = frozenset({"company", "snapshot", "sync_state", "tracked", "portfolio",
                              "portfolio_trade", "portfolio_asset", "portfolio_cash",
-                             "price_history", "fx_history", "filing_event",
+                             "price_history", "fx_history", "filing_event", "insider_holding",
                              "security_cover", "snapshot_dirty", "pending_filing"})
 
 
@@ -412,6 +429,7 @@ def dashboard_rows(conn) -> list[dict]:
              AND NOT """ + _PREFERRED_TICKER + """"""
     ).fetchall()
     events = events_by_cik(conn)
+    holdings = insider_holdings_by_cik(conn)
     out = []
     for r in rows:
         d = json.loads(r["data"])
@@ -423,6 +441,7 @@ def dashboard_rows(conn) -> list[dict]:
                  # what the filing index proved, and how far back it could see:
                  # a company with no events and no scan are different answers
                  filing_events=events.get(r["cik"], []), events_from=r["events_from"])
+        d["management_holdings"] = insiders.summary(holdings.get(r["cik"], []), d.get("shares"))
         out.append(d)
     return out
 
@@ -537,6 +556,24 @@ def set_events(conn, cik: str, events: list[dict], scanned_from: str | None) -> 
     conn.execute("UPDATE company SET events_from = ? WHERE cik = ?", (scanned_from, cik))
 
 
+def set_insider_holdings(conn, source: str, people: list[dict]) -> None:
+    """Replace one source's holdings wholesale: each run reads every filing, so a
+    person absent now is no longer a director or officer in that source."""
+    conn.execute("DELETE FROM insider_holding WHERE source = ?", (source,))
+    conn.executemany(
+        """INSERT OR REPLACE INTO insider_holding (cik, source, person, name, title, shares,
+               indirect_shares, filed, accn, form, last_filed)
+           VALUES (:cik, :source, :person, :name, :title, :shares, :indirect_shares,
+                   :filed, :accn, :form, :last_filed)""", people)
+
+
+def insider_holdings_by_cik(conn) -> dict[str, list[dict]]:
+    out: dict[str, list[dict]] = {}
+    for r in conn.execute("SELECT * FROM insider_holding ORDER BY cik"):
+        out.setdefault(r["cik"], []).append(dict(r))
+    return out
+
+
 def events_by_cik(conn) -> dict[str, list[dict]]:
     """Every stored event, grouped — one query for the whole export."""
     out: dict[str, list[dict]] = {}
@@ -548,14 +585,15 @@ def events_by_cik(conn) -> dict[str, list[dict]]:
     return out
 
 
-def set_metadata(conn, cik: str, sic, industry, exchange, filer_size, ticker=None, name=None) -> None:
+def set_metadata(conn, cik: str, sic, industry, exchange, filer_size, ticker=None, name=None,
+                 sector=None) -> None:
     conn.execute(
         """UPDATE company SET sic = COALESCE(?, sic), industry = COALESCE(?, industry),
                sector = COALESCE(?, sector),
                exchange = COALESCE(?, exchange), filer_size = COALESCE(?, filer_size),
                ticker = COALESCE(ticker, ?), name = COALESCE(?, name)
            WHERE cik = ?""",
-        (sic, industry, sectors.sector_for(sic), exchange, filer_size, ticker, name, cik),
+        (sic, industry, sector or sectors.sector_for(sic), exchange, filer_size, ticker, name, cik),
     )
 
 
@@ -898,6 +936,7 @@ def stats(conn) -> dict:
         "companies_scanned_for_events": q(
             "SELECT COUNT(*) FROM company WHERE events_from IS NOT NULL"),
         "filing_events": q("SELECT COUNT(*) FROM filing_event"),
+        "insider_holdings": q("SELECT COUNT(*) FROM insider_holding"),
         "engine_version": ENGINE_VERSION,
         # freshness for the UI: when filings were last fetched, when the newest
         # snapshot was computed, when prices/dashboard were last rebuilt

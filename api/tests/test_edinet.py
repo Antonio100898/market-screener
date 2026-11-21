@@ -134,3 +134,22 @@ def test_edinet_fetch_retains_annual_reports_and_counts_failures():
     client = Client()
     assert edinet.fetch(date(2026, 6, 19), date(2026, 6, 20), client) == 1
     assert client.fetched == ["S100YETA"]
+
+
+def test_edinet_reads_the_period_end_a_correction_declares():
+    from screener.sources.edinet import reported_period_end
+
+    data = io.BytesIO()
+    with zipfile.ZipFile(data, "w") as bundle:
+        bundle.writestr("XBRL/PublicDoc/report.xbrl", (
+            '<xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance" '
+            'xmlns:jpdei_cor="http://disclosure.edinet-fsa.go.jp/taxonomy/jpdei/2013-08-31/jpdei_cor">'
+            '<jpdei_cor:CurrentPeriodEndDateDEI contextRef="FilingDateInstant">'
+            '2026-03-31</jpdei_cor:CurrentPeriodEndDateDEI></xbrli:xbrl>'))
+    assert reported_period_end(data.getvalue(), "S100ZD09") == "2026-03-31"
+
+
+def test_edinet_skips_withdrawn_filings():
+    row = {"docID": "S100YETA", "docTypeCode": "120", "xbrlFlag": "1",
+           "edinetCode": "E01772", "secCode": "67520"}
+    assert annual_filings([{**row, "withdrawalStatus": "2"}, row]) == [row]

@@ -40,9 +40,12 @@ that its services or features already exist.
   answers what price would clear the tests.
 - Missing data is never zero in reported fields or Graham grades: missing evidence
   remains `INSUFFICIENT`. Company detail defaults to the disclosed
-  `?assume_absent_zero=true` view (with an explicit strict-mode switch), and Return
-  Quality ranks on a separate disclosed zero-assumption overlay; neither may alter
-  the strict stored criteria or verdict.
+  `?assume_absent_zero=true` view (with an explicit strict-mode switch). Return
+  Quality prefers measured inputs and excludes returns without positive capital.
+  Unreported debt may be assumed zero with disclosure; validated estimated
+  ROIC/RONTA receive 75% credit. Missing inputs earn no scoring credit. Keep their
+  weights and apply the missing-penalty rules in `product/personal-research.md`.
+  Neither view may alter the strict stored criteria or verdict.
 - Grade precedence, pinned by `web/test/grade.test.mjs`, is: definitive non-price
   `FAIL` -> `BLOCKED`; any uncomputable criterion -> `UNGRADEABLE`; valuation-only
   failures -> `NEAR-PASS`/`CLOSE`. A measured `FAIL` outranks `INDETERMINATE`.

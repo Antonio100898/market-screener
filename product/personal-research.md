@@ -51,15 +51,29 @@ against companies with the same usable input. ROE, ROIC and RONTA each weigh
 or 20% when D/E is at least 1. Its added 10% comes from ROE alone. Lower
 CapEx/OCF and debt/equity rank higher.
 
-Missing inputs remain missing and are omitted from the average. A return whose
-operating-income numerator was assumed absent is unavailable, not an observed
-zero. Other disclosed estimates retain their assumption labels. Missing OCF or FCF
-makes Return Quality 0, even if other return inputs exist. Show available-input count
-and the missing inputs beside the score.
+**2026-10-16 owner correction:** Missing inputs remain missing and earn no scoring
+credit; their weights stay in the total instead of being redistributed. Measured
+inputs take priority over the discovery overlay. The owner then chose **75%
+credit for estimated ROIC and RONTA**: keep the original metric weights and
+multiply each estimated metric's percentile contribution by 0.75. This includes
+validated zero-assumption returns and disclosed conservative lower bounds.
+Keep the estimated values visible and labelled; measured returns get full credit.
+Unreported debt components may be assumed zero with disclosure. Returns require finite,
+positive average capital: a loss divided by negative capital must not become a
+positive quality signal. An assumed operating-income numerator remains unavailable
+and earns no credit. Legacy overlays without capital-validation metadata cannot
+provide ranked returns. Missing OCF or FCF still makes Return Quality 0. Show
+available-input count, missing inputs and invalid-capital reasons beside the score.
 
 Divide by `1 + min(debt/equity, 1)` when a nonnegative ratio is available. Debt
-can therefore reduce the score by at most 50%. Missing or invalid leverage is
-explicitly unassessed, never displayed as debt-free.
+can therefore reduce the score by at most 50%. When debt is unreported, use the
+existing disclosed zero-debt calculation if equity supports a meaningful D/E.
+Do not infer zero leverage merely from a missing D/E: unavailable or nonpositive
+equity still leaves the ratio unavailable. Remaining missing or invalid leverage
+uses the maximum divisor of 2 for scoring.
+It also uses the existing high-debt weight allocation, with zero credit for the
+unknown debt percentile. This prevents missing leverage from improving a score;
+it is a conservative scoring rule, not a reported debt estimate.
 Investigate extraction bugs before accepting missing inputs as genuine gaps.
 Shared facts, strict Graham grades and reported figures are unchanged by this
 scoring convention. This replaces the earlier positive-only harmonic mean and
@@ -70,10 +84,18 @@ the same ten fiscal-year slots. A median of 50% divides the score by 1.5.
 Use each year's Total CapEx magnitude and operating cash flow from the detail
 table. Total CapEx can include accrual-based investment; disclose that basis
 in the column tooltip. This is not a cash-only CapEx measure. Exclude missing
-pairs and non-positive OCF and show the valid year count. Under P-16, no usable
-pair means the penalty is explicitly unassessed; it does not remove the score.
+pairs and non-positive OCF and show the valid year count. Under the 2026-10-16
+correction, no usable pair leaves Return Quality at 0 with a missing-data label.
+The existing CapEx divisor is uncapped, so ignoring an unknown divisor could
+otherwise reward missing evidence.
 An actual zero CapEx median leaves the score unchanged. The FCF/revenue
 contribution and debt adjustment remain.
+
+The correction changes invalid/missing-input handling and adds the owner-selected
+75% estimate credit. The measured-input
+weights, high-debt threshold, known penalty formulas, historical windows,
+percentile cohorts and 0–100 output remain unchanged. No additional history
+minimum, sector adjustment, growth criterion or Fisher score is introduced.
 
 ## Proposed implementation, not owner decisions
 

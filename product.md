@@ -34,6 +34,8 @@ product decisions.
 | P-12 | Use Next.js for the frontend, including public company pages, blogs, guides, and product pages so people and AI search tools can discover the financial research platform. | [Frontend and compatibility](product/compatibility.md#frontend-choice) |
 | P-13 | Divide Return Quality by 1 + the ten-year median annual Total CapEx/OCF; higher capital spending relative to OCF reduces the score. | [Personal research](product/personal-research.md#return-quality) |
 | P-17 | Python owns the application PostgreSQL schema and migrations through SQLAlchemy and Alembic. Next.js accesses application data through FastAPI, not Prisma or direct database queries. | [Shared data](product/shared-data.md#database-ownership) |
+| P-18 | Every company shows its management's current shareholdings: each director and officer, shares held, total and percent of outstanding shares, as-of date and source filing. Current holdings only; no trade history. | [Shared data](product/shared-data.md#management-holdings) |
+| P-19 | Japanese coverage is every company listed on the Tokyo Stock Exchange today, from EDINET annual reports, with the same research view as US companies. Corrections replace the numbers of the report they correct; withdrawn filings do not count. Funds, unlisted and delisted companies are excluded. | [Shared data](product/shared-data.md#japanese-coverage) |
 
 **P-14 — local-first delivery:** Build and test the new data, API, Next.js,
 workspace, and AI flows locally before testing a hosted deployment. Railway
@@ -74,6 +76,23 @@ Technical recommendations and proposed defaults are in
 unless explicitly identified above as accepted owner decisions.
 
 ## Decision history
+
+- 2026-11-21: Owner chose current management holdings for every company, without
+  trade history (P-18). Japan publishes no insider trade reports on EDINET, so
+  Japanese holdings come from the annual report's director list. Owner limited
+  Japanese coverage to companies buyable today on the Tokyo Stock Exchange and
+  required corrected filings to replace original numbers (P-19).
+
+- 2026-10-16: Owner required fixing Return Quality's invalid-return ranking and
+  preventing missing data from improving scores, while preserving other scoring
+  rules. Owner then explicitly allowed unreported debt to be assumed zero, with
+  disclosure; missing or nonpositive equity still cannot imply zero leverage.
+  Owner also chose 75% credit for valid estimated ROIC/RONTA, retaining their
+  original weights and displaying their assumptions. P-16 retains missing weights
+  with no credit, excludes nonpositive-capital returns and assumed operating
+  income, applies the existing maximum debt
+  penalty when leverage is unknown, and gives 0 when CapEx/OCF is unavailable.
+  P-11/P-13 known-input weights, medians and penalty formulas remain unchanged.
 
 - 2026-09-25: Owner approved SQLAlchemy and Alembic as the single application
   database owner in Python and declined Prisma for this architecture (P-17).

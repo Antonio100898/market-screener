@@ -37,9 +37,12 @@ web/   React SPA (Vite, no runtime deps beyond React). One fetch of dashboard.js
   refresh is ever built, that is when the two-places rule starts to apply.
 - **Missing is never zero in evidence or Graham grades.** A figure with no evidence
   stays INSUFFICIENT. Company detail defaults to the flagged
-  `?assume_absent_zero=true` view and can switch back to strict values; Return
-  Quality uses a separate disclosed zero-assumption overlay that cannot affect a
-  stored criterion or verdict.
+  `?assume_absent_zero=true` view and can switch back to strict values. Return
+  Quality prefers measured inputs and excludes returns without positive capital.
+  Unreported debt may be assumed zero with disclosure; validated estimated
+  ROIC/RONTA receive 75% credit. Missing inputs earn no scoring credit. Keep their
+  weights and apply the missing-penalty rules in `product/personal-research.md`.
+  Neither view may alter a stored criterion or verdict.
 - **Grade precedence** (pinned by `web/test/grade.test.mjs`): definitive non-price
   FAIL → BLOCKED, any uncomputable criterion → UNGRADEABLE, valuation-only fails →
   NEAR-PASS/CLOSE. The engine verdict ranks a measured FAIL above INDETERMINATE.

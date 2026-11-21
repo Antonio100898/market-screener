@@ -7,7 +7,7 @@ const row = (roe, roic, ronta, debtToEquity = 0, estimate = null, assumption = n
   profitability: { on_equity: roe },
   operating_returns: { nopat_roic: roic, ronta },
   operating_returns_estimate: estimate,
-  return_quality_assumption: assumption,
+  return_quality_assumption: assumption ? { invalid_inputs: {}, ...assumption } : null,
   debt_to_equity: debtToEquity,
   owner_earnings: {
     fiscal_year: 2025,
@@ -46,14 +46,15 @@ test("debt to equity penalizes returns by no more than half", () => {
   assert.equal(returnQuality(row(60, 40, 50, 1)).score, leveraged.score);
 });
 
-test("sparse returns are scored from available inputs and missing penalties are disclosed", () => {
+test("sparse returns retain missing weights and the maximum unknown debt penalty", () => {
   const sparse = returnQuality(row(30, null, null, null));
-  assert.equal(sparse.score, 80);
+  assert.equal(sparse.returnScore, 40);
+  assert.equal(sparse.score, 20);
   assert.equal(sparse.inputsPresent, 3);
   assert.deepEqual(sparse.missingInputs, ["ROIC", "RONTA", "D/E"]);
   assert.equal(sparse.noReturnEvidence, false);
   const negativeDebt = returnQuality(row(30, 30, 30, -1));
-  assert.equal(negativeDebt.score, 80);
+  assert.equal(negativeDebt.score, 40);
   assert.equal(negativeDebt.debtToEquity, null);
   assert.deepEqual(negativeDebt.missingInputs, ["D/E"]);
 });
@@ -88,13 +89,13 @@ test("an exact reported return always wins over its estimate", () => {
 
 test("an undisclosed number cannot masquerade as a conservative estimate", () => {
   const quality = returnQuality(row(30, null, null, 0, { nopat_roic: 20, ronta: 40 }));
-  assert.equal(quality.score, 80);
+  assert.equal(quality.score, 40);
   assert.equal(quality.roic, null);
   assert.equal(quality.ronta, null);
   assert.equal(quality.estimated, false);
 });
 
-test("the exported zero-assumption inputs drive Return Quality by default", () => {
+test("validated zero-assumption return estimates receive 75 percent credit", () => {
   const assumption = {
     status: "APPLIED",
     roe: 30,
@@ -112,9 +113,14 @@ test("the exported zero-assumption inputs drive Return Quality by default", () =
   const quality = returnQuality(row(30, null, null, null, null, assumption));
 
   assert.ok(quality.score > 0);
+  assert.equal(quality.score, 69.6875);
+  assert.equal(quality.roic, 20);
+  assert.equal(quality.ronta, 40);
+  assert.equal(quality.debtToEquity, 0);
+  assert.equal(quality.debtAssumed, true);
   assert.equal(quality.assumptionMode, true);
   assert.equal(quality.assumptionApplied, true);
-  assert.equal(quality.estimated, false);
+  assert.equal(quality.estimated, true);
   assert.deepEqual(quality.assumedInputs, {
     roe: false, roic: true, ronta: true, debtToEquity: true,
   });
@@ -136,8 +142,8 @@ test("operating income assumed absent is omitted instead of scored as measured z
   };
   const quality = returnQuality(row(30, null, null, null, null, assumption));
 
-  assert.equal(quality.score, 80);
-  assert.equal(quality.returnScore, 80);
+  assert.equal(quality.score, 40);
+  assert.equal(quality.returnScore, 40);
   assert.equal(quality.roic, null);
   assert.equal(quality.ronta, null);
   assert.deepEqual(quality.missingInputs, ["ROIC", "RONTA"]);
@@ -181,7 +187,7 @@ test("the median CapEx/OCF penalty lowers the score without changing operating r
   bridge.total_capital_expenditure = [100];
   assert.equal(returnQuality(company).score, 40);
   bridge.operating_cash_flow = [0];
-  assert.equal(returnQuality(company).score, 80);
+  assert.equal(returnQuality(company).score, 0);
   assert.deepEqual(returnQuality(company).missingInputs, ["CapEx/OCF"]);
   delete bridge.operating_cash_flow;
   assert.equal(returnQuality(company).score, 0);
@@ -254,6 +260,136 @@ const setCashFlow = (company, fcf, capex, ocf = 100) => {
   return company;
 };
 
+test("ranking rejects invalid capital returns while keeping measured losses", () => {
+  const company = row(-20, -10, null, 0, null, {
+    status: "APPLIED", roe: 999, nopat_roic: 844, ronta: 500,
+    debt_to_equity: 0, applied: ["intangibles"],
+    input_assumptions: { nopat_roic: [], ronta: ["intangibles"] },
+    invalid_inputs: { nopat_roic: "Capital is negative" },
+  });
+  const quality = returnQuality(company);
+  assert.equal(quality.roe, -20);
+  assert.equal(quality.roic, -10);
+  assert.equal(quality.ronta, 500);
+  assert.equal(quality.estimatedInputs.ronta, true);
+  company.operating_returns.nopat_roic = null;
+  assert.equal(returnQuality(company).roic, null);
+});
+
+test("a legacy overlay without capital validation cannot supply ranked returns", () => {
+  const company = row(30, null, null, 0, null, {
+    status: "APPLIED", roe: 30, nopat_roic: 844, ronta: 600,
+    debt_to_equity: 0, input_assumptions: { nopat_roic: ["short_term_debt"] },
+  });
+  delete company.return_quality_assumption.invalid_inputs;
+  const quality = returnQuality(company);
+  assert.equal(quality.roic, null);
+  assert.equal(quality.ronta, null);
+  assert.equal(quality.estimated, false);
+});
+
+test("estimated returns keep their weights but receive exactly 75 percent of percentile credit", () => {
+  const peers = [row(10, 10, 10), row(50, 50, 50)];
+  const measured = row(30, 30, 30);
+  const estimated = row(30, null, null, 0, null, {
+    status: "APPLIED", roe: 30, nopat_roic: 30, ronta: 30,
+    debt_to_equity: 0, input_assumptions: {
+      nopat_roic: ["short_term_investments"], ronta: ["intangibles"],
+    },
+  });
+  const before = returnQualityPercentiles([...peers, measured]).at(-1);
+  const after = returnQualityPercentiles([...peers, estimated]).at(-1);
+  // Both returns rank at 50. Their combined weight is 31 2/3 percent.
+  assert.ok(Math.abs((before.returnScore - after.returnScore) - 3.95833333333) < 1e-9);
+  assert.ok(after.score < before.score);
+  assert.equal(after.inputsPresent, 6);
+  assert.deepEqual(after.estimatedInputs, { roic: true, ronta: true });
+});
+
+test("measured inputs do not inherit warnings from an unused assumption overlay", () => {
+  const company = row(30, 20, 40, 0, null, {
+    status: "APPLIED", roe: null, nopat_roic: null, ronta: 500,
+    debt_to_equity: 0, applied: ["debt", "intangibles"],
+    input_assumptions: { roe: ["equity"], debt_to_equity: ["debt"], ronta: ["intangibles"] },
+    invalid_inputs: { roe: "Invalid equity", nopat_roic: "Invalid capital" },
+  });
+  const quality = returnQuality(company);
+  assert.equal(quality.inputsPresent, 6);
+  assert.equal(quality.assumptionApplied, false);
+  assert.deepEqual(quality.invalidInputs, {});
+  assert.ok(Object.values(quality.assumedInputs).every((value) => !value));
+});
+
+test("removing any scoring input cannot improve the company rank score", () => {
+  const remove = {
+    ROE: (r) => { r.profitability.on_equity = null; },
+    ROIC: (r) => { r.operating_returns.nopat_roic = null; },
+    RONTA: (r) => { r.operating_returns.ronta = null; },
+    "FCF/revenue": (r) => { r.annual_revenue = {}; },
+    "D/E": (r) => { r.debt_to_equity = null; },
+    "CapEx/OCF": (r) => { r.owner_earnings.annual_per_share[2025].cash_flow_bridge.total_capital_expenditure = null; },
+  };
+  for (const debt of [0, 0.8, 1, 3]) {
+    for (const returns of [-30, 30, 100]) {
+      const peers = [setCashFlow(row(-50, -50, -50, 0), -50, 0),
+        setCashFlow(row(10, 10, 10, 0.5), 10, 30),
+        setCashFlow(row(200, 200, 200, 4), 50, 200)];
+      const target = setCashFlow(row(returns, returns, returns, debt), 20, 80);
+      const before = returnQualityPercentiles([...peers, target]).at(-1).score;
+      for (const [name, erase] of Object.entries(remove)) {
+        const missing = structuredClone(target);
+        erase(missing);
+        const after = returnQualityPercentiles([...peers, missing]).at(-1);
+        assert.ok(after.score <= before + 1e-10,
+          `${name} missing at D/E ${debt}: ${after.score} > ${before}`);
+        assert.ok(after.missingInputs.includes(name));
+      }
+    }
+  }
+});
+
+test("unreported debt uses the disclosed zero-debt assumption", () => {
+  const company = row(30, 30, 30, null, null, {
+    status: "APPLIED", roe: 30, nopat_roic: 30, ronta: 30,
+    debt_to_equity: 0, applied: ["debt"],
+    input_assumptions: { debt_to_equity: ["debt"] },
+  });
+  const quality = returnQualityPercentiles([company])[0];
+  assert.equal(quality.debtToEquity, 0);
+  assert.equal(quality.debtAssumed, true);
+  assert.ok(!quality.missingInputs.includes("D/E"));
+  assert.equal(quality.highDebtWeight, false);
+  assert.equal(quality.score, quality.returnScore);
+});
+
+test("debt-only assumptions can support valid capital returns but missing equity cannot imply zero leverage", () => {
+  const company = row(30, null, null, null, null, {
+    status: "APPLIED", roe: 30, nopat_roic: 20, ronta: 40,
+    debt_to_equity: 0, applied: ["short_term_debt"],
+    input_assumptions: { nopat_roic: ["short_term_debt"], ronta: ["short_term_debt"], debt_to_equity: ["short_term_debt"] },
+  });
+  const quality = returnQuality(company);
+  assert.equal(quality.roic, 20);
+  assert.equal(quality.ronta, 40);
+  assert.equal(quality.debtToEquity, 0);
+  company.return_quality_assumption.debt_to_equity = null;
+  const unavailable = returnQualityPercentiles([company])[0];
+  assert.equal(unavailable.debtToEquity, null);
+  assert.equal(unavailable.debtAssumed, false);
+  assert.equal(unavailable.highDebtWeight, true);
+  assert.equal(unavailable.score, unavailable.returnScore / 2);
+});
+
+test("missing capital-spending evidence cannot remove its unbounded penalty", () => {
+  const company = row(30, 30, 30);
+  delete company.owner_earnings.annual_per_share[2025].cash_flow_bridge.total_capital_expenditure;
+  const quality = returnQualityPercentiles([company])[0];
+  assert.equal(quality.cashFlowMissing, false);
+  assert.equal(quality.capexOcf, null);
+  assert.equal(quality.score, 0);
+  assert.equal(returnQuality(company).score, 0);
+});
+
 test("percentile Return Quality applies debt and CapEx divisors after the weighted base", () => {
   const target = setCashFlow(row(0, 10, 10, 1), 10, 50);
   const lower = setCashFlow(row(10, 0, 0, 0), 0, 100);
@@ -266,7 +402,7 @@ test("percentile Return Quality applies debt and CapEx divisors after the weight
   assert.equal(quality.highDebtWeight, true);
 });
 
-test("percentile Return Quality leaves unavailable penalties unassessed", () => {
+test("percentile Return Quality cannot ignore unavailable penalties", () => {
   const company = row(10, 10, 10, null);
   delete company.owner_earnings.annual_per_share[2025].cash_flow_bridge.total_capital_expenditure;
 
@@ -274,7 +410,7 @@ test("percentile Return Quality leaves unavailable penalties unassessed", () => 
 
   assert.equal(quality.debtToEquity, null);
   assert.equal(quality.capexOcf, null);
-  assert.equal(quality.score, quality.returnScore);
+  assert.equal(quality.score, 0);
 });
 
 test("percentile Return Quality is zero when OCF or FCF is missing", () => {

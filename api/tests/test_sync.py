@@ -88,10 +88,12 @@ def test_export_strip_keeps_operating_returns_but_moves_evidence_to_detail():
 
 def test_return_quality_assumption_serializes_only_ranking_inputs_and_disclosure():
     assumed_row = {
-        "profitability": {"on_equity": 30.0},
+        "profitability": {"on_equity": 30.0, "average_common_equity": 100.0},
         "operating_returns": {
             "nopat_roic": 20.0,
             "ronta": 40.0,
+            "invested_capital": 150.0,
+            "average_net_tangible_operating_assets": 75.0,
             "operating_return_assumptions": ["intangibles", "cash"],
         },
         "debt_to_equity": 0.0,
@@ -110,6 +112,47 @@ def test_return_quality_assumption_serializes_only_ranking_inputs_and_disclosure
     assert "do not change Graham criteria or verdicts" in payload["note"]
 
 
+@pytest.mark.parametrize("capital", [-20.397, 0, None, float("nan"), float("inf")])
+def test_return_quality_withholds_returns_without_positive_capital(capital):
+    assumed_row = {
+        "profitability": {"on_equity": 30.0, "average_common_equity": capital},
+        "operating_returns": {
+            "nopat": -172.192,
+            "nopat_roic": 844.1818850349307,
+            "ronta": 40.0,
+            "invested_capital": capital,
+            "average_net_tangible_operating_assets": capital,
+        },
+    }
+
+    payload = sync._return_quality_assumption(assumed_row)
+
+    for key in ("nopat_roic", "ronta", "roe"):
+        assert payload[key] is None
+        assert payload["invalid_inputs"][key]
+    assert assumed_row["operating_returns"]["nopat_roic"] == 844.1818850349307
+    assert assumed_row["profitability"]["on_equity"] == 30.0
+
+
+def test_return_quality_keeps_losses_over_positive_capital_negative():
+    assumed_row = {
+        "profitability": {"on_equity": -30.0, "average_common_equity": 100.0},
+        "operating_returns": {
+            "nopat_roic": -20.0,
+            "ronta": -40.0,
+            "invested_capital": 150.0,
+            "average_net_tangible_operating_assets": 75.0,
+        },
+    }
+
+    payload = sync._return_quality_assumption(assumed_row)
+
+    assert payload["roe"] == -30.0
+    assert payload["nopat_roic"] == -20.0
+    assert payload["ronta"] == -40.0
+    assert not payload.get("invalid_inputs")
+
+
 def test_production_derivation_keeps_strict_row_and_attaches_assumed_quality(monkeypatch):
     strict = {
         "criteria": [{"n": 3, "status": "INSUFFICIENT_DATA"}],
@@ -118,10 +161,12 @@ def test_production_derivation_keeps_strict_row_and_attaches_assumed_quality(mon
     assumed = {
         "criteria": [{"n": 3, "status": "PASS"}],
         "verdict": "PASS",
-        "profitability": {"on_equity": 30.0},
+        "profitability": {"on_equity": 30.0, "average_common_equity": 100.0},
         "operating_returns": {
             "nopat_roic": 20.0,
             "ronta": 40.0,
+            "invested_capital": 150.0,
+            "average_net_tangible_operating_assets": 75.0,
             "operating_return_assumptions": ["intangibles"],
         },
         "debt_to_equity": 0.0,

@@ -130,3 +130,45 @@ The implementation details are in [the architecture](../docs/production-architec
   source and activation time. Reprocessing a revision does not duplicate history.
 - A parser correction is labelled as our extraction change, not a company revision.
 - Unknown reasons, unavailable earlier versions, and incomparable bases are explicit.
+
+## Management holdings
+
+P-18: each company page shows who in management holds its shares today.
+
+- **People:** directors and officers. Holders who are not management, such as
+  funds or other companies, are not included.
+- **Per person:** name, title, shares held, and the filing the figure comes from.
+- **Total:** shares held by all listed people and the percent of shares
+  outstanding.
+- **As of:** the filing date of each figure. A figure is never presented as more
+  recent than its filing.
+- **US source:** each insider's latest SEC ownership filing (Forms 3, 4 and 5).
+  The shares a person holds after their latest reported transaction count as
+  their holding. SEC filings do not say when a person leaves, so a person whose
+  latest filing is more than two years old is listed apart as possibly former
+  and is not counted in the total.
+- **Japan source:** the director and corporate auditor list in the latest
+  annual securities report, or its correction. Japan does not publish insider
+  trade reports on EDINET, so these figures update once a year.
+- **Missing:** when no filing gives a holding, show it as unknown, never zero.
+  A Japanese report's dash counts as zero only when the report's own total
+  equals the sum of the listed figures.
+
+## Japanese coverage
+
+P-19: Japanese companies enter when they are listed on the Tokyo Stock Exchange
+today, so they can be bought.
+
+- Every annual securities report EDINET still serves (about ten years) is used.
+- A correction (訂正有価証券報告書) replaces every number of the report it
+  corrects. When a report is corrected more than once, the latest correction
+  stands.
+- Withdrawn filings do not count.
+- A company with no subsidiaries files only standalone statements. Its standalone
+  figures are used and labelled as standalone.
+- Funds, unlisted companies and delisted companies are excluded.
+- Sector comes from the Tokyo Stock Exchange's 33-industry group, placed in the
+  same sector a US company of that industry gets. Sector decides the Graham
+  profile, so Japanese banks, insurers and utilities follow the same rules as US
+  ones.
+

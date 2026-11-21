@@ -52,10 +52,20 @@ export function priceToBook(row) {
   return price != null && row.bvps > 0 ? price / row.bvps : null;
 }
 
-/** Equal-weight bounded returns, reduced by known debt and CapEx penalties.
- * Missing inputs are disclosed and omitted, never represented as reported zero.
- * A return whose numerator was assumed absent is unavailable. With no return
- * Missing OCF or FCF makes the score zero; other missing inputs remain disclosed.
+const ESTIMATED_RETURN_CREDIT = 0.75;
+
+function penalizedQuality(base, debtToEquity, capexOcf) {
+  // An unknown uncapped CapEx penalty cannot safely be treated as no penalty.
+  if (!Number.isFinite(capexOcf)) return 0;
+  const debtDivisor = Number.isFinite(debtToEquity)
+    ? 1 + Math.min(debtToEquity, 1) : 2;
+  return base / debtDivisor / (1 + capexOcf / 100);
+}
+
+/** Bounded returns with fixed weights and debt/CapEx penalties.
+ * Missing inputs earn no credit; validated return estimates earn partial credit.
+ * Unreported debt may be assumed zero and labelled.
+ * The table replaces this base with the weighted percentile base below.
  * Shared facts and Graham criteria remain untouched. */
 export function returnQuality(row) {
   const assumption = row.return_quality_assumption?.status === "APPLIED"
@@ -64,19 +74,27 @@ export function returnQuality(row) {
     && row.operating_returns_estimate?.status === "CONSERVATIVE_LOWER_BOUND"
     ? row.operating_returns_estimate : null;
   const inputAssumptions = assumption?.input_assumptions ?? {};
-  const roe = assumption ? assumption.roe : row.profitability?.on_equity;
+  const rankingEstimate = (name, value) => (
+    !assumption?.invalid_inputs?.[name]
+    && !inputAssumptions[name]?.includes("operating_income")
+    // Older overlays did not validate capital and can contain inverted returns.
+    && (name === "debt_to_equity" || Object.hasOwn(assumption ?? {}, "invalid_inputs"))
+    && Number.isFinite(value) ? value : null
+  );
+  const roe = Number.isFinite(row.profitability?.on_equity)
+    ? row.profitability.on_equity : rankingEstimate("roe", assumption?.roe);
   const metric = (name) => {
-    if (assumption) {
-      const value = inputAssumptions[name]?.includes("operating_income")
-        ? null : assumption[name];
-      return {
-        value: Number.isFinite(value) ? value : null,
-        assumed: (inputAssumptions[name]?.length ?? 0) > 0,
-        estimated: false,
-      };
-    }
     const exact = row.operating_returns?.[name];
     if (Number.isFinite(exact)) return { value: exact, assumed: false, estimated: false };
+    if (assumption) {
+      const value = rankingEstimate(name, assumption[name]);
+      const assumed = (inputAssumptions[name]?.length ?? 0) > 0;
+      return {
+        value,
+        assumed,
+        estimated: Number.isFinite(value) && assumed,
+      };
+    }
     const lowerBound = estimate?.[name];
     return Number.isFinite(lowerBound)
       ? { value: lowerBound, assumed: false, estimated: true }
@@ -90,18 +108,32 @@ export function returnQuality(row) {
   const capexOcf = capexOcfHistory(row);
   const cashFlow = cashFlowEvidence(row);
   const cashFlowMissing = !cashFlow.fcf || !cashFlow.ocf;
-  const debt = assumption ? assumption.debt_to_equity : row.debt_to_equity;
+  const debt = Number.isFinite(row.debt_to_equity)
+    ? row.debt_to_equity : rankingEstimate("debt_to_equity", assumption?.debt_to_equity);
   const debtToEquity = Number.isFinite(debt) && debt >= 0 ? debt : null;
-  const values = [roe, roic, ronta, fcfRevenue.median].filter(Number.isFinite);
+  const returns = [[roe, 1],
+    [roic, roicMetric.estimated ? ESTIMATED_RETURN_CREDIT : 1],
+    [ronta, rontaMetric.estimated ? ESTIMATED_RETURN_CREDIT : 1],
+    [fcfRevenue.median, 1]].filter(([value]) => Number.isFinite(value));
+  const values = returns.map(([value]) => value);
   const returnScore = cashFlowMissing ? 0 : values.length
-    ? values.reduce((sum, value) => sum + 50 + 50 * (value / (20 + Math.abs(value))), 0) / values.length
+    ? returns.reduce((sum, [value, credit]) => sum + credit * (50 + 50 * (value / (20 + Math.abs(value)))), 0) / 4
     : 0;
   const missingInputs = Object.entries({
     ROE: roe, ROIC: roic, RONTA: ronta, "FCF/revenue": fcfRevenue.median,
     "D/E": debtToEquity, "CapEx/OCF": capexOcf.median,
   }).filter(([, value]) => !Number.isFinite(value)).map(([name]) => name);
+  const assumedInputs = {
+    roe: !Number.isFinite(row.profitability?.on_equity) && (inputAssumptions.roe?.length ?? 0) > 0,
+    roic: roicMetric.assumed,
+    ronta: rontaMetric.assumed,
+    debtToEquity: !Number.isFinite(row.debt_to_equity) && (inputAssumptions.debt_to_equity?.length ?? 0) > 0,
+  };
+  const selectedReturns = { roe, nopat_roic: roic, ronta };
+  const invalidInputs = Object.fromEntries(Object.entries(assumption?.invalid_inputs ?? {})
+    .filter(([name]) => !Number.isFinite(selectedReturns[name])));
   return {
-    score: returnScore / (1 + Math.min(debtToEquity ?? 0, 1)) / (1 + (capexOcf.median ?? 0) / 100),
+    score: penalizedQuality(returnScore, debtToEquity, capexOcf.median),
     returnScore,
     missingInputs,
     inputsPresent: 6 - missingInputs.length,
@@ -116,13 +148,9 @@ export function returnQuality(row) {
     capexOcfYears: capexOcf.yearsPresent,
     debtToEquity: Number.isFinite(debtToEquity) && debtToEquity >= 0 ? debtToEquity : null,
     assumptionMode: assumption != null,
-    assumptionApplied: (assumption?.applied?.length ?? 0) > 0,
-    assumedInputs: {
-      roe: (inputAssumptions.roe?.length ?? 0) > 0,
-      roic: roicMetric.assumed,
-      ronta: rontaMetric.assumed && Number.isFinite(ronta),
-      debtToEquity: (inputAssumptions.debt_to_equity?.length ?? 0) > 0,
-    },
+    assumptionApplied: Object.values(assumedInputs).some(Boolean),
+    assumedInputs,
+    debtAssumed: assumedInputs.debtToEquity && debtToEquity != null,
     estimated: roicMetric.estimated || rontaMetric.estimated,
     estimatedInputs: {
       roic: roicMetric.estimated,
@@ -130,6 +158,7 @@ export function returnQuality(row) {
     },
     assumptions: assumption?.applied ?? estimate?.operating_return_assumptions ?? [],
     estimateNote: assumption?.note ?? estimate?.note ?? null,
+    invalidInputs,
   };
 }
 
@@ -147,21 +176,19 @@ export function returnQualityPercentiles(rows) {
   };
   return qualities.map((quality) => {
     if (quality.cashFlowMissing) return { ...quality, score: 0, returnScore: 0 };
-    const highDebt = quality.debtToEquity >= 1;
+    const highDebt = quality.debtToEquity == null || quality.debtToEquity >= 1;
     const weights = { roe: highDebt ? 5.8333333333 : 15.8333333333, roic: 15.8333333333,
       ronta: 15.8333333333, fcfRevenue: 22.5, capexOcf: 20, debtToEquity: highDebt ? 20 : 10 };
-    let weighted = 0; let presentWeight = 0;
+    let weighted = 0;
     for (const [key, lowerBetter] of metrics) if (Number.isFinite(quality[key])) {
-      weighted += weights[key] * percentile(key, quality[key], lowerBetter); presentWeight += weights[key];
+      const credit = quality.estimatedInputs[key] ? ESTIMATED_RETURN_CREDIT : 1;
+      weighted += weights[key] * percentile(key, quality[key], lowerBetter) * credit;
     }
-    const returnScore = presentWeight ? weighted / presentWeight : 0;
-    const debtDivisor = Number.isFinite(quality.debtToEquity)
-      ? 1 + Math.min(quality.debtToEquity, 1) : 1;
-    const capexDivisor = Number.isFinite(quality.capexOcf)
-      ? 1 + quality.capexOcf / 100 : 1;
+    const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+    const returnScore = weighted / totalWeight;
     return {
       ...quality,
-      score: returnScore / debtDivisor / capexDivisor,
+      score: penalizedQuality(returnScore, quality.debtToEquity, quality.capexOcf),
       returnScore,
       highDebtWeight: highDebt,
     };

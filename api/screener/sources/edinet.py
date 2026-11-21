@@ -86,10 +86,12 @@ def _write(path: Path, content: bytes) -> None:
 
 
 def annual_filings(rows: list[dict]) -> list[dict]:
-    """Filed annual reports and corrections with an XBRL primary document."""
+    """Filed annual reports and corrections with an XBRL primary document,
+    excluding withdrawn filings."""
     return [row for row in rows
             if row.get("docTypeCode") in {"120", "130"} and row.get("xbrlFlag") == "1"
-            and row.get("edinetCode") and row.get("secCode")]
+            and row.get("edinetCode") and row.get("secCode")
+            and row.get("withdrawalStatus", "0") == "0"]
 
 
 def _unit(unit: ET.Element) -> str | None:
@@ -127,20 +129,75 @@ def _context(context: ET.Element) -> dict:
     return out
 
 
-def xbrl_facts(archive: bytes, document_id: str) -> list[dict]:
-    """Keep numeric filing facts with their exact concept, period, unit and axes."""
+def _instances(archive: bytes, document_id: str) -> list[tuple[str, bytes]]:
     try:
         with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
             names = [name for name in bundle.namelist()
                      if name.startswith("XBRL/PublicDoc/") and name.endswith(".xbrl")]
             if not names:
                 raise EdinetError(f"{document_id} has no PublicDoc XBRL instance")
-            instances = [(name, bundle.read(name)) for name in names]
+            return [(name, bundle.read(name)) for name in names]
     except zipfile.BadZipFile:
         raise EdinetError(f"{document_id} is not an EDINET XBRL archive") from None
 
+
+def reported_period_end(archive: bytes, document_id: str) -> str | None:
+    """The fiscal year end the filing itself declares; correction filings carry
+    it only here, not in the filing list."""
+    for _, content in _instances(archive, document_id):
+        for element in ET.fromstring(content):
+            namespace, _, tag = element.tag.partition("}")
+            if tag == "CurrentPeriodEndDateDEI" and namespace.endswith("/jpdei_cor"):
+                return (element.text or "").strip() or None
+    return None
+
+
+_DIRECTOR_FIELDS = {
+    "NameInformationAboutDirectorsAndCorporateAuditors": "name",
+    "OfficialTitleOrPositionInformationAboutDirectorsAndCorporateAuditors": "title",
+    "NumberOfSharesHeldOrdinarySharesInformationAboutDirectorsAndCorporateAuditors": "shares",
+}
+
+
+def directors(archive: bytes, document_id: str) -> list[dict]:
+    """The report's director and corporate auditor list: name, title, shares.
+
+    Each person is one member of the officers axis. The "Proposal" variants
+    describe the board proposed to the next shareholders' meeting, not the
+    people in office, so only the plain elements are read. Older reports define
+    some of these elements in the filer's own namespace, so only the name is
+    matched. A person without a share figure keeps an unknown holding, unless
+    the report's own total equals the sum of the given figures: the filing then
+    proves its blank entries (a printed dash) mean no shares.
+    """
+    people: dict[str, dict] = {}
+    total = None
+    for _, content in _instances(archive, document_id):
+        for element in ET.fromstring(content):
+            field = _DIRECTOR_FIELDS.get(element.tag.partition("}")[2])
+            member = element.get("contextRef", "")
+            if field is None:
+                continue
+            text = " ".join((element.text or "").split())
+            if "Member" not in member:
+                if field == "shares" and text:
+                    total = float(text)
+                continue
+            person = people.setdefault(member, {"name": None, "title": None, "shares": None})
+            person[field] = (float(text) if field == "shares" and text
+                             else text or None)
+    listed = [p for p in people.values() if p["name"]]
+    if total is not None and total == sum(p["shares"] or 0 for p in listed):
+        for person in listed:
+            if person["shares"] is None:
+                person["shares"] = 0.0
+    return listed
+
+
+def xbrl_facts(archive: bytes, document_id: str) -> list[dict]:
+    """Keep numeric filing facts with their exact concept, period, unit and axes."""
     facts = []
-    for filename, content in instances:
+    for filename, content in _instances(archive, document_id):
         root = ET.fromstring(content)
         contexts = {element.get("id"): _context(element)
                     for element in root.findall(f"{_XBRLI}context")}

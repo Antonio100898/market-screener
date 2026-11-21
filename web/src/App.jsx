@@ -692,11 +692,11 @@ export default function App() {
               </td>
               <td data-label="10Y EPS evidence"><EarningsEvidence annual={r.annual_eps} fcf={annualFcf(r)} /></td>
               <td className="num return-quality" data-label="Return quality"
-                  title={`0–100 percentile score: ROE, ROIC, RONTA, FCF/revenue, CapEx/OCF and debt/equity are compared with companies that have the same input. FCF/revenue has 22.5% weight; CapEx/OCF has 20%; debt/equity has 10%, or 20% when D/E is at least 1, taking the extra 10% from ROE. Lower CapEx/OCF and debt/equity score higher. After percentile weighting, the final score is divided by 1 + min(D/E, 1), then by 1 + median CapEx/OCF. Missing penalties are unassessed. Missing OCF or FCF makes the score 0. ${r.returnQuality.missingInputs.length ? `Missing: ${r.returnQuality.missingInputs.join(", ")}.` : "All six inputs available."} ${r.returnQuality.assumptionMode
-                    ? `Zero-assumption Return Quality. ${r.returnQuality.estimateNote ?? ""} ${r.returnQuality.assumptions.length ? `Assumed absent: ${r.returnQuality.assumptions.join(", ")}.` : "No eligible absent input required substitution."}`
+                  title={`0–100 score from weighted percentiles: ROE, ROIC, RONTA, FCF/revenue, CapEx/OCF and debt/equity are compared with companies that have the same input. FCF/revenue has 22.5% weight; CapEx/OCF has 20%; debt/equity has 10%, or 20% when D/E is at least 1 or unavailable, taking the extra 10% from ROE. Lower CapEx/OCF and debt/equity score higher. Missing inputs earn no credit and keep their weight. Estimated ROIC and RONTA retain their weights but receive 75% of their percentile credit. The final score is divided by 1 + min(D/E, 1), then by 1 + median CapEx/OCF. Unavailable D/E gets the maximum debt divisor of 2. Missing OCF, FCF or CapEx/OCF makes the score 0. ${r.returnQuality.missingInputs.length ? `Missing: ${r.returnQuality.missingInputs.join(", ")}.` : "All six inputs available."} ${r.returnQuality.assumptionMode
+                    ? "Measured inputs take priority. Unreported debt components may be assumed zero with disclosure. Returns without positive capital or with assumed operating income earn no ranking credit."
                     : r.returnQuality.estimated
                     ? `Uses conservative return estimates. ${r.returnQuality.estimateNote ?? ""} Assumed absent: ${r.returnQuality.assumptions.join(", ")}.`
-                    : "A missing or irrelevant operating return is omitted rather than treated as zero."}`}>
+                    : "Missing values remain unavailable; zero scoring credit does not mean a reported zero."}`}>
                 <b>{r.returnQuality.assumptionApplied || r.returnQuality.estimated || r.returnQuality.missingInputs.length
                   ? "≈ " : ""}{fmtScore(r.returnQuality.score)}</b>
                 <span className="return-quality-parts">
@@ -706,16 +706,20 @@ export default function App() {
                   FCF/revenue {fmtQualityRate(r.returnQuality.fcfRevenue)} · {r.returnQuality.fcfRevenueYears}/10 years
                 </span>
                 <span className="return-quality-parts"
-                      title="Score divided by 1 + median annual Total CapEx / operating cash flow. CapEx uses its positive magnitude as shown in the detail table, which can include accrual-based investment. Only years with positive OCF count. No usable pairs means this penalty is unassessed.">
+                      title="Score divided by 1 + median annual Total CapEx / operating cash flow. CapEx uses its positive magnitude as shown in the detail table, which can include accrual-based investment. Only years with positive OCF count. No usable pairs means the score is 0; an unknown penalty cannot improve the score.">
                   CapEx/OCF {fmtQualityRate(r.returnQuality.capexOcf)} · {r.returnQuality.capexOcfYears}/10 years
                 </span>
                 <span className="return-quality-parts return-quality-evidence">
-                  {r.returnQuality.cashFlowMissing ? "Missing OCF/FCF · " : r.returnQuality.noReturnEvidence ? "No return evidence · " : ""}{r.returnQuality.inputsPresent}/6 inputs
+                  {r.returnQuality.cashFlowMissing ? "Missing OCF/FCF · " : r.returnQuality.capexOcf == null ? "Missing CapEx/OCF · " : r.returnQuality.noReturnEvidence ? "No return evidence · " : ""}{r.returnQuality.inputsPresent}/6 inputs
                   {r.returnQuality.missingInputs.length > 0 && ` · missing ${r.returnQuality.missingInputs.join(", ")}`}
                 </span>
-                {r.returnQuality.assumptionMode
-                  ? <span className="return-quality-estimate">zero-assumption mode</span>
-                  : r.returnQuality.estimated && <span className="return-quality-estimate">uses estimated returns</span>}
+                {Object.keys(r.returnQuality.invalidInputs).length > 0 &&
+                  <span className="return-quality-estimate">Invalid capital: {Object.keys(r.returnQuality.invalidInputs).map((key) => ({ roe: "ROE", nopat_roic: "ROIC", ronta: "RONTA" }[key] ?? key)).join(", ")}</span>}
+                {r.returnQuality.debtAssumed &&
+                  <span className="return-quality-estimate">missing debt components assumed 0</span>}
+                {Object.entries(r.returnQuality.assumedInputs).some(([key, assumed]) => assumed && r.returnQuality[key] == null)
+                  ? <span className="return-quality-estimate">other assumed inputs excluded</span>
+                  : r.returnQuality.estimated && <span className="return-quality-estimate">estimated returns: 75% credit</span>}
               </td>
               <td className="num" data-label="Mkt cap">{fmtCap(r.mcap, r.quote_currency ?? r.currency)}</td>
               <td className="num" data-label="Price">

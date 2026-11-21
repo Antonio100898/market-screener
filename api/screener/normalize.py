@@ -3766,6 +3766,8 @@ def _historical_absent_zero_candidates(facts: dict, end: date) -> set[str]:
     the side of withholding an assumption when an unfamiliar asset tag might be
     relevant.
     """
+    if "canonical" in facts:
+        return set()
     evidence = {
         "short_term_debt": False,
         "short_term_investments": False,
@@ -3834,7 +3836,11 @@ def _absent_zero_candidates(facts: dict) -> set[str]:
     not prove a current balance: DECK, for example, last reported borrowings years
     before its current debt-free annual report. The caller must still opt in, and
     no assumption is allowed unless an annual filing anchors the window.
+    A canonical adapter bundle keeps only the concepts it maps, so a concept's
+    absence there is no evidence the filing lacks it: no assumption is allowed.
     """
+    if "canonical" in facts:
+        return set()
     latest_annual_filed = max(
         (entry.get("filed") for taxo in facts.values() for tagdata in taxo.values()
          for entries in (tagdata.get("units") or {}).values() for entry in entries

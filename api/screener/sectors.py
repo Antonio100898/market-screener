@@ -81,3 +81,42 @@ def sector_for(sic: str | int | None) -> str | None:
 
 def all_sectors() -> list[str]:
     return sorted({name for _, _, name in RULES} | {UNKNOWN})
+
+
+# Tokyo Stock Exchange 33-industry classification -> the same sectors, placed
+# where the matching SIC ranges above place their US peers.
+JPX_SECTORS = {
+    "Fishery, Agriculture and Forestry": "Agriculture",
+    "Mining": "Materials & chemicals",
+    "Construction": "Industrials",
+    "Foods": "Consumer staples",
+    "Textiles and Apparels": "Consumer discretionary",
+    "Pulp and Paper": "Materials & chemicals",
+    "Chemicals": "Materials & chemicals",
+    "Pharmaceutical": "Healthcare & pharma",
+    "Oil and Coal Products": "Energy",
+    "Rubber Products": "Consumer discretionary",
+    "Glass and Ceramics Products": "Materials & chemicals",
+    "Iron and Steel": "Materials & chemicals",
+    "Nonferrous Metals": "Materials & chemicals",
+    "Metal Products": "Industrials",
+    "Machinery": "Industrials",
+    "Electric Appliances": "Technology",
+    "Transportation Equipment": "Industrials",
+    "Precision Instruments": "Industrials",
+    "Other Products": "Consumer discretionary",
+    "Electric Power and Gas": "Utilities",
+    "Land Transportation": "Transportation",
+    "Marine Transportation": "Transportation",
+    "Air Transportation": "Transportation",
+    "Warehousing and Harbor Transportation Service": "Transportation",
+    "Information & Communication": "Technology",
+    "Wholesale Trade": "Wholesale & distribution",
+    "Retail Trade": "Consumer discretionary",
+    "Banks": "Financials",
+    "Securities and Commodities Futures": "Financials",
+    "Insurance": "Financials",
+    "Other Financing Business": "Financials",
+    "Real Estate": "Real estate",
+    "Services": "Business services",
+}

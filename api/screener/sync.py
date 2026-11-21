@@ -23,6 +23,7 @@ import argparse
 import getpass
 import io
 import json
+import math
 import os
 import sys
 import zipfile
@@ -33,13 +34,15 @@ from pathlib import Path
 
 import httpx
 
-from . import ch13, evidence, pricestats, profiles, store
+from . import ch13, evidence, pricestats, profiles, sectors, store
 from . import normalize
 from .normalize import PendingFilingFactsError, UnsupportedFilerError, build_snapshot
 from .screens.enterprising import (PE_MAX, PRICE_TO_TBV_MAX, STALE_FOR_PRICING_DAYS,
                                    YIELD_IMPLAUSIBLE, evaluate, settled_debt)
 from .sources import cover, dera, indexes, ifrs_workbook, jpx
-from .sources.edinet import EdinetClient, annual_filings
+from .sources import insiders as insider_data
+from .sources.edinet import (EdinetClient, EdinetError, annual_filings,
+                             directors as edinet_directors)
 from .sources.edinet_mapper import ADAPTER_KIND as EDINET_ADAPTER, build_edinet_companyfacts
 from .sources.edgar import EdgarClient, EdgarError, NoXbrlDataError
 from .sources.prices import YahooPriceProvider
@@ -531,6 +534,19 @@ def _derive_evidence(bundle: evidence.EvidenceBundle, quote=None, *,
 def _return_quality_assumption(row: dict) -> dict:
     """Compact assumption-mode inputs for client-side Return Quality ranking."""
     returns = row.get("operating_returns") or {}
+    profitability = row.get("profitability") or {}
+    invalid_inputs = {}
+
+    def ranked_return(name, value, capital):
+        if value is None:
+            return None
+        if capital is None or not math.isfinite(capital) or capital <= 0:
+            invalid_inputs[name] = (
+                "Return withheld: average capital is missing or not positive."
+            )
+            return None
+        return value
+
     operating_assumptions = sorted(set(
         returns.get("operating_return_assumptions") or ()))
     capital_assumptions = sorted(
@@ -538,9 +554,13 @@ def _return_quality_assumption(row: dict) -> dict:
     applied = sorted(set(operating_assumptions) | set(capital_assumptions))
     return {
         "status": "APPLIED",
-        "roe": (row.get("profitability") or {}).get("on_equity"),
-        "nopat_roic": returns.get("nopat_roic"),
-        "ronta": returns.get("ronta"),
+        "roe": ranked_return("roe", profitability.get("on_equity"),
+                             profitability.get("average_common_equity")),
+        "nopat_roic": ranked_return("nopat_roic", returns.get("nopat_roic"),
+                                    returns.get("invested_capital")),
+        "ronta": ranked_return("ronta", returns.get("ronta"),
+                               returns.get("average_net_tangible_operating_assets")),
+        "invalid_inputs": invalid_inputs,
         "debt_to_equity": row.get("debt_to_equity"),
         "applied": applied,
         "input_assumptions": {
@@ -550,9 +570,10 @@ def _return_quality_assumption(row: dict) -> dict:
             "debt_to_equity": capital_assumptions,
         },
         "note": (
-            "Return Quality uses the same explicit zero-assumption convention as "
-            "the company detail. These values are discovery estimates, not lower "
-            "bounds, and do not change Graham criteria or verdicts."
+            "The company detail's zero-assumption values are discovery estimates, "
+            "not lower bounds. Return estimates require positive capital for "
+            "ranking and retain their assumption labels. These estimates do not "
+            "change Graham criteria or verdicts."
         ),
     }
 
@@ -1669,6 +1690,47 @@ def events(conn, progress=_print_progress) -> None:
     progress("done", len(ciks), len(ciks))
 
 
+def insiders(conn, progress=_print_progress) -> None:
+    """Current management holdings for every company (P-18).
+
+    US: each director's and officer's latest Form 3/4/5 in SEC's quarterly
+    insider datasets. Japan: the director list in the annual report the import
+    already accepted, so a correction stands in place of the report it corrects.
+    """
+    edgar = EdgarClient()
+    issuers = {r["cik"] for r in conn.execute(
+        "SELECT cik FROM company WHERE ticker IS NOT NULL AND cik GLOB '[0-9]*'")}
+    urls = insider_data.quarter_urls(edgar.user_agent)
+    latest: dict = {}
+    for i, (quarter, url) in enumerate(sorted(urls.items()), 1):
+        insider_data.fold(insider_data.download(quarter, url, edgar.cache_dir, edgar.user_agent),
+                          issuers, latest)
+        progress(f"insider filings through {quarter}", i, len(urls))
+    us = insider_data.management(latest)
+
+    japan = []
+    for (cik,) in conn.execute("SELECT cik FROM company WHERE cik GLOB 'E[0-9]*'").fetchall():
+        path = edgar.cache_dir / f"companyfacts_{cik}.json"
+        reports = (json.loads(path.read_text()).get("_adapter") or {}).get("reports") \
+            if path.exists() else None
+        if not reports:
+            continue
+        report = max(reports, key=lambda r: (r["period_end"], r["published"]))
+        archive = edgar.cache_dir / "edinet" / f"{report['document']}.zip"
+        if not archive.exists():
+            continue
+        form = "Annual report correction" if report.get("corrects") else "Annual report"
+        japan.extend({"cik": cik, "source": "EDINET", "person": p["name"], "name": p["name"],
+                      "title": p["title"], "shares": p["shares"], "indirect_shares": None,
+                      "filed": report["published"], "accn": report["document"],
+                      "form": form, "last_filed": report["published"]}
+                     for p in edinet_directors(archive.read_bytes(), report["document"]))
+    store.set_insider_holdings(conn, "SEC", us)
+    store.set_insider_holdings(conn, "EDINET", japan)
+    conn.commit()
+    progress(f"{len(us)} US and {len(japan)} Japanese management holdings", 1, 1)
+
+
 def _current_supported_annual(facts: dict) -> tuple[str, str] | None:
     """Newest foreign annual accession whose cover should settle its security.
 
@@ -1962,8 +2024,18 @@ def import_ifrs_workbooks(
     return result
 
 
+def _edinet_original(report: dict) -> str:
+    return report.get("corrects") or report["document"]
+
+
 def _merge_edinet_facts(previous: dict | None, incoming: dict) -> dict:
-    """Keep earlier filings while later annual reports can restate their years."""
+    """Keep earlier filings while later annual reports can restate their years.
+
+    A correction replaces every fact of the report it corrects, and of any
+    earlier correction of that report; the latest filed version stands.
+    History keeps only reports on the latest fiscal year's statement scope, so
+    parent-only years never mix into group history (or the reverse).
+    """
     if not previous or (previous.get("_adapter") or {}).get("kind") != EDINET_ADAPTER:
         return incoming
     if previous.get("cik") != incoming.get("cik"):
@@ -1971,19 +2043,40 @@ def _merge_edinet_facts(previous: dict | None, incoming: dict) -> dict:
     out = previous
     prior_reports = (out.get("_adapter") or {}).get("reports") or []
     new_report = incoming["_adapter"]["reports"][0]
+    original = _edinet_original(new_report)
+    versions = [report for report in prior_reports
+                if _edinet_original(report) == original
+                and report["document"] != new_report["document"]]
+    if any(report["published"] > new_report["published"]
+           or (report.get("corrects") and not new_report.get("corrects"))
+           for report in versions):
+        return out
+    replaced = {new_report["document"], *(report["document"] for report in versions)}
     prior_reports = [report for report in prior_reports
-                     if report["document"] != new_report["document"]]
+                     if report["document"] not in replaced]
     for tagdata in out.get("facts", {}).get("canonical", {}).values():
         for unit, entries in tagdata.get("units", {}).items():
             tagdata["units"][unit] = [entry for entry in entries
-                                      if entry.get("accn") != new_report["document"]]
+                                      if entry.get("accn") not in replaced]
     for tag, tagdata in incoming["facts"]["canonical"].items():
         target = out.setdefault("facts", {}).setdefault("canonical", {}) \
             .setdefault(tag, {"units": {}})["units"]
         for unit, entries in tagdata["units"].items():
             target.setdefault(unit, []).extend(entries)
+    reports = [*prior_reports, new_report]
+    scope = max(reports, key=lambda report: (report.get("period_end") or "", report["published"])
+                ).get("scope")
+    other_scope = {report["document"] for report in reports
+                   if report.get("scope") not in (None, scope)}
+    for tagdata in out["facts"]["canonical"].values():
+        for unit, entries in tagdata["units"].items():
+            tagdata["units"][unit] = [entry for entry in entries
+                                      if entry.get("accn") not in other_scope]
     out["_adapter"]["reports"] = sorted(
-        [*prior_reports, new_report], key=lambda report: report["published"])
+        [report for report in reports if report["document"] not in other_scope],
+        key=lambda report: report["published"])
+    if scope:
+        out["_adapter"]["statement_scope"] = scope
     if new_report["published"] >= out["_adapter"]["reports"][-1]["published"]:
         out["_adapter"]["reporting_currency"] = incoming["_adapter"]["reporting_currency"]
         out["_adapter"]["quote_currency"] = incoming["_adapter"]["quote_currency"]
@@ -1992,22 +2085,14 @@ def _merge_edinet_facts(previous: dict | None, incoming: dict) -> dict:
     return out
 
 
-def import_edinet(conn, start: date, end: date, *, client: EdinetClient | None = None,
-                  listings: dict | None = None, progress=_print_progress,
-                  limit: int | None = None, only_code: str | None = None,
-                  cache_dir: Path | None = None) -> int:
-    """Import TSE-listed annual EDINET reports into the shared dashboard store."""
+def _edinet_filings(client, start: date, end: date, listings: dict,
+                    only_code: str | None):
+    """Annual EDINET reports of currently TSE-listed companies, in filing order."""
     if end < start:
         raise ValueError("EDINET end date precedes start date")
-    client = client or EdinetClient()
-    listings = listings if listings is not None else jpx.fetch_listed_companies()
-    cache = Path(cache_dir) if cache_dir is not None else EdgarClient().cache_dir
-    imported = 0
-    skipped = 0
     day = start
     while day <= end:
-        records = annual_filings(client.documents_on(day.isoformat()))
-        for record in records:
+        for record in annual_filings(client.documents_on(day.isoformat())):
             code = record.get("secCode") or ""
             if len(code) != 5 or not code.endswith("0"):
                 continue
@@ -2015,58 +2100,148 @@ def import_edinet(conn, start: date, end: date, *, client: EdinetClient | None =
             if only_code is not None and local_code != only_code:
                 continue
             listed = listings.get(local_code)
-            if listed is None:
-                continue
-            ticker = f"{local_code}.T"
-            document_id = record["docID"]
-            archive_path = cache / "edinet" / f"{document_id}.zip"
-            if archive_path.exists():
-                archive = archive_path.read_bytes()
-            else:
-                archive = client.xbrl_archive(document_id)
-            try:
-                source = build_edinet_companyfacts(record, archive, ticker=ticker)
-            except ValueError as exc:
-                skipped += 1
-                progress(f"EDINET {document_id} skipped: {exc}")
-                continue
-            entity_id = source["cik"]
-            destination = cache / f"companyfacts_{entity_id}.json"
-            previous = (json.loads(destination.read_text()) if destination.exists()
-                        else None)
-            bundle = _merge_edinet_facts(previous, source)
-            status, data = _derive_evidence(evidence.EvidenceBundle(
-                cik=entity_id, ticker=ticker, facts=bundle,
-                dimensioned=None, receipt=None))
-            if status != "ok":
-                skipped += 1
-                progress(f"EDINET {document_id} skipped: derivation status {status}")
-                continue
-            archive_path.parent.mkdir(parents=True, exist_ok=True)
-            if not archive_path.exists():
-                archive_path.write_bytes(archive)
-            temporary = destination.with_suffix(".json.tmp")
-            temporary.write_text(json.dumps(bundle, separators=(",", ":")), encoding="utf-8")
-            temporary.replace(destination)
-            store.upsert_company(conn, entity_id, ticker, listed["name"],
-                                 last_filing=record["submitDateTime"][:10],
-                                 facts_synced=True)
-            store.set_metadata(conn, entity_id, sic=None,
-                               industry=listed["industry"], exchange="TSE",
-                               filer_size=None, ticker=ticker, name=listed["name"])
-            conn.execute(
-                "UPDATE company SET listed = 'external', incorporation = ? WHERE cik = ?",
-                ("M0|Japan", entity_id),
-            )
-            store.put_snapshot(conn, entity_id, status, data)
-            conn.commit()
-            imported += 1
-            progress(f"EDINET {ticker}: {document_id} ({status})")
-            if limit is not None and imported >= limit:
-                return imported
+            if listed is not None:
+                yield record, f"{local_code}.T", listed
         day += timedelta(days=1)
+
+
+def _store_edinet(conn, cache: Path, ticker: str, listed: dict, bundle: dict,
+                  status: str, data: dict, last_filing: str) -> None:
+    entity_id = bundle["cik"]
+    destination = cache / f"companyfacts_{entity_id}.json"
+    temporary = destination.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(bundle, separators=(",", ":")), encoding="utf-8")
+    temporary.replace(destination)
+    store.upsert_company(conn, entity_id, ticker, listed["name"],
+                         last_filing=last_filing, facts_synced=True)
+    store.set_metadata(conn, entity_id, sic=None,
+                       industry=listed["industry"], exchange="TSE",
+                       filer_size=None, ticker=ticker, name=listed["name"],
+                       sector=sectors.JPX_SECTORS.get(listed["industry"]))
+    conn.execute(
+        "UPDATE company SET listed = 'external', incorporation = ? WHERE cik = ?",
+        ("M0|Japan", entity_id),
+    )
+    store.put_snapshot(conn, entity_id, status, data)
+    conn.commit()
+
+
+def import_edinet(conn, start: date, end: date, *, client: EdinetClient | None = None,
+                  listings: dict | None = None, progress=_print_progress,
+                  limit: int | None = None, only_code: str | None = None,
+                  cache_dir: Path | None = None) -> int:
+    """Import TSE-listed annual EDINET reports into the shared dashboard store."""
+    client = client or EdinetClient()
+    listings = listings if listings is not None else jpx.fetch_listed_companies()
+    cache = Path(cache_dir) if cache_dir is not None else EdgarClient().cache_dir
+    imported = 0
+    skipped = 0
+    for record, ticker, listed in _edinet_filings(client, start, end, listings, only_code):
+        document_id = record["docID"]
+        archive_path = cache / "edinet" / f"{document_id}.zip"
+        if archive_path.exists():
+            archive = archive_path.read_bytes()
+        else:
+            archive = client.xbrl_archive(document_id)
+        try:
+            source = build_edinet_companyfacts(record, archive, ticker=ticker)
+        except ValueError as exc:
+            skipped += 1
+            progress(f"EDINET {document_id} skipped: {exc}")
+            continue
+        entity_id = source["cik"]
+        destination = cache / f"companyfacts_{entity_id}.json"
+        previous = (json.loads(destination.read_text()) if destination.exists()
+                    else None)
+        bundle = _merge_edinet_facts(previous, source)
+        status, data = _derive_evidence(evidence.EvidenceBundle(
+            cik=entity_id, ticker=ticker, facts=bundle,
+            dimensioned=None, receipt=None))
+        if status != "ok":
+            skipped += 1
+            progress(f"EDINET {document_id} skipped: derivation status {status}")
+            continue
+        archive_path.parent.mkdir(parents=True, exist_ok=True)
+        if not archive_path.exists():
+            archive_path.write_bytes(archive)
+        _store_edinet(conn, cache, ticker, listed, bundle, status, data,
+                      record["submitDateTime"][:10])
+        imported += 1
+        progress(f"EDINET {ticker}: {document_id} ({status})")
+        if limit is not None and imported >= limit:
+            return imported
     progress(f"imported {imported} EDINET annual reports; skipped {skipped}")
     return imported
+
+
+def _rebuild_edinet_company(task: tuple):
+    """Merge one company's retained annual reports in filing order, derive once."""
+    filings, cache_dir = task
+    cache = Path(cache_dir)
+    bundle, messages = None, []
+    for record, ticker, _ in filings:
+        archive_path = cache / "edinet" / f"{record['docID']}.zip"
+        if not archive_path.exists():
+            messages.append(f"EDINET {record['docID']} skipped: archive not retained")
+            continue
+        try:
+            source = build_edinet_companyfacts(record, archive_path.read_bytes(), ticker=ticker)
+        except (ValueError, EdinetError) as exc:
+            messages.append(f"EDINET {record['docID']} skipped: {exc}")
+            continue
+        bundle = _merge_edinet_facts(bundle, source)
+    if bundle is None:
+        return filings, None, None, None, messages
+    status, data = _derive_evidence(evidence.EvidenceBundle(
+        cik=bundle["cik"], ticker=filings[-1][1], facts=bundle,
+        dimensioned=None, receipt=None))
+    return filings, bundle, status, data, messages
+
+
+def rebuild_edinet(conn, start: date, end: date, *, client: EdinetClient | None = None,
+                   listings: dict | None = None, progress=_print_progress,
+                   only_code: str | None = None, cache_dir: Path | None = None,
+                   workers: int = 4) -> int:
+    """Rebuild Japanese companies from retained EDINET lists and archives.
+
+    After a mapping change every company's facts must be rebuilt from its
+    filings. Each company's reports are merged once, in filing order, under
+    the import's correction rules, and derived once. Nothing is downloaded.
+    """
+    client = client or EdinetClient()
+    listings = listings if listings is not None else jpx.fetch_listed_companies()
+    cache = Path(cache_dir) if cache_dir is not None else EdgarClient().cache_dir
+    companies: dict[str, list] = {}
+    for filing in _edinet_filings(client, start, end, listings, only_code):
+        companies.setdefault(filing[0]["edinetCode"], []).append(filing)
+    tasks = [(filings, str(cache)) for filings in companies.values()]
+    if workers > 1:
+        pool = ProcessPoolExecutor(max_workers=workers)
+        results = as_completed([pool.submit(_rebuild_edinet_company, t) for t in tasks])
+        results = (future.result() for future in results)
+    else:
+        pool, results = None, map(_rebuild_edinet_company, tasks)
+    rebuilt = 0
+    try:
+        for i, (filings, bundle, status, data, messages) in enumerate(results, 1):
+            for message in messages:
+                progress(message)
+            record, ticker, listed = filings[-1]
+            if bundle is None:
+                progress(f"EDINET {ticker} skipped: no mappable annual report")
+            elif status != "ok":
+                progress(f"EDINET {ticker} skipped: derivation status {status}")
+            else:
+                last = max(report["published"] for report in bundle["_adapter"]["reports"])
+                _store_edinet(conn, cache, ticker, listed, bundle, status, data, last)
+                rebuilt += 1
+            if i % 200 == 0:
+                progress("rebuilding EDINET companies", i, len(tasks))
+    finally:
+        if pool is not None:
+            pool.shutdown()
+    progress(f"rebuilt {rebuilt} of {len(tasks)} EDINET companies")
+    return rebuilt
 
 def derive(conn, progress=_print_progress, *, all_snapshots: bool = False,
            workers: int = 4) -> None:
@@ -2844,8 +3019,9 @@ def quotes(conn, progress=_print_progress) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("command", choices=["bootstrap", "bulk", "metadata", "daily",
-                                        "derive", "export", "quotes", "listing-age", "events",
-                                        "cover", "dera", "ifrs-import", "edinet-import", "status"])
+                                        "derive", "export", "quotes", "listing-age", "events", "insiders",
+                                        "cover", "dera", "ifrs-import", "edinet-import", "edinet-rebuild",
+                                        "status"])
     ap.add_argument("--limit", type=int)
     ap.add_argument("--days", type=int, default=7)
     ap.add_argument("--no-prices", action="store_true")
@@ -2855,6 +3031,8 @@ def main(argv=None) -> int:
     ap.add_argument("--path", help="directory containing IFRS statement workbooks")
     ap.add_argument("--to", dest="end", help="last EDINET filing date (YYYY-MM-DD)")
     ap.add_argument("--edinet-code", help="one Japanese four-character security code")
+    ap.add_argument("--workers", type=int, default=4,
+                    help="with edinet-rebuild, processes deriving companies at once")
     ap.add_argument("--ticker", default=ifrs_workbook.DEFAULT_TICKER)
     ap.add_argument("--entity-id", default=ifrs_workbook.DEFAULT_ENTITY_ID)
     args = ap.parse_args(argv)
@@ -2873,6 +3051,8 @@ def main(argv=None) -> int:
         listing_age(conn)
     elif args.command == "events":
         events(conn)
+    elif args.command == "insiders":
+        insiders(conn)
     elif args.command == "cover":
         cover_pages(conn)
     elif args.command == "dera":
@@ -2890,6 +3070,12 @@ def main(argv=None) -> int:
         import_edinet(conn, date.fromisoformat(args.start),
                       date.fromisoformat(args.end or args.start), limit=args.limit,
                       only_code=args.edinet_code, client=client)
+    elif args.command == "edinet-rebuild":
+        if not (args.start and args.end):
+            ap.error("edinet-rebuild requires --from and --to YYYY-MM-DD")
+        rebuild_edinet(conn, date.fromisoformat(args.start), date.fromisoformat(args.end),
+                       client=EdinetClient(), only_code=args.edinet_code,
+                       workers=args.workers)
     elif args.command == "export":
         export(conn, not args.no_prices)
     elif args.command == "quotes":

@@ -193,6 +193,7 @@ export default function Detail({ row: baseRow, onClose, tracked = false, onToggl
                        annualEps={row.annual_eps}
                        annualWeightedShares={row.annual_weighted_shares}
                        currency={currency} />
+        <ManagementHoldings cik={row.cik} holdings={row.management_holdings} />
         <Notes title="What the multiples do not say"
                subtitle="Cash conversion, dilution, interest cover, leases, receivables and inventory against sales, untaxed profits, tax charged but not paid, valuation allowances, an eroding margin, a foreign listing whose ratio is only on the cover page, a book value made of acquisitions, the shape of the ten-year record, peer efficiency, warrants, debt discount, and the events the company's own filing index proves — context, never part of a grade"
                notes={row.context_notes} />
@@ -764,6 +765,50 @@ function OwnerEarnings({ oe, cik, annualEps, annualWeightedShares, currency = "U
       {!!oe.caveats?.length && <ul className="disclosure-notes compact">
         {oe.caveats.map((caveat) => <li key={caveat}>{caveat}</li>)}
       </ul>}
+    </section>
+  );
+}
+
+/** Who in management holds the shares today, each figure dated by its filing (P-18). */
+function ManagementHoldings({ cik, holdings }) {
+  if (!holdings) return (
+    <section className="criteria-section management-holdings">
+      <div className="criteria-title"><div><h3>Management holdings</h3>
+        <p>Unknown: no director or officer holding was found in the loaded filings.</p></div></div>
+    </section>
+  );
+  const sec = holdings.source === "SEC";
+  const total = holdings.total_shares;
+  const rows = (people) => people.map((p, i) => {
+    const url = edgarUrl(cik, p.accn);
+    const filing = `${p.form ?? "Filing"} · ${p.filed ?? "—"}`;
+    return (
+      <tr key={i}>
+        <td><b>{p.name}</b><small>{p.title ?? "—"}</small></td>
+        <td className="num">{p.shares == null ? "unknown" : number(p.shares)}
+          {p.indirect_shares > 0 && <small>{number(p.indirect_shares)} indirect</small>}</td>
+        <td>{url ? <a href={url} target="_blank" rel="noreferrer">{filing}</a> : filing}
+          <small className="accn">{p.accn ?? "no holding reported"}</small></td>
+      </tr>
+    );
+  });
+  return (
+    <section className="criteria-section management-holdings">
+      <div className="criteria-title"><div><h3>Management holdings</h3>
+        <p>{sec ? "Directors' and officers' latest SEC Form 3, 4 or 5; direct and indirect shares summed."
+                : "Director and auditor list of the latest annual securities report or its correction."}
+          {" "}Total: {total == null ? "unknown" : `${holdings.unknown_holdings ? "at least " : ""}${number(total)} shares`}
+          {holdings.percent_of_outstanding != null && ` (${number(holdings.percent_of_outstanding)}% of shares outstanding)`}
+          {holdings.percent_withheld && " (percent withheld: the filings overlap or predate a share split)"}
+          {holdings.unknown_holdings > 0 && `; ${holdings.unknown_holdings} holding(s) unknown`}.</p></div></div>
+      <table className="criteria-clean">
+        <thead><tr><th>Person</th><th>Shares</th><th>Filing</th></tr></thead>
+        <tbody>{rows(holdings.people)}</tbody>
+      </table>
+      {holdings.possibly_former?.length > 0 && <>
+        <p className="criteria-note">Possibly former: latest filing over two years old, not counted in the total.</p>
+        <table className="criteria-clean"><tbody>{rows(holdings.possibly_former)}</tbody></table>
+      </>}
     </section>
   );
 }
