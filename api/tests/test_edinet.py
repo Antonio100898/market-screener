@@ -1,5 +1,6 @@
 import io
 import zipfile
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import httpx
@@ -74,13 +75,62 @@ def test_edinet_keeps_exact_unit_period_and_dimension():
     assert facts[0]["entity"] == "E01772"
 
 
-def test_edinet_http_failure_does_not_expose_key():
+def test_edinet_http_failure_does_not_expose_key(tmp_path):
     def reject(request):
         assert request.url.params["Subscription-Key"] == "private-test-key"
         return httpx.Response(401)
 
     with httpx.Client(transport=httpx.MockTransport(reject)) as http:
-        client = EdinetClient("private-test-key", http=http)
+        client = EdinetClient("private-test-key", http=http, cache_dir=tmp_path)
         with pytest.raises(EdinetError) as error:
             client.documents_on("2026-06-19")
     assert "private-test-key" not in str(error.value)
+
+
+def test_edinet_cache_replays_closed_days_and_archives_without_key(tmp_path):
+    payload = io.BytesIO()
+    with zipfile.ZipFile(payload, "w") as bundle:
+        bundle.writestr("XBRL/PublicDoc/report.xbrl", "<xbrl/>")
+    today = datetime.now(timezone(timedelta(hours=9))).date().isoformat()
+
+    def respond(request):
+        if request.url.path.endswith("documents.json"):
+            return httpx.Response(200, json={"metadata": {"status": "200"},
+                                             "results": [{"docID": "S100YETA"}]})
+        return httpx.Response(200, content=payload.getvalue())
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as http:
+        online = EdinetClient("private-test-key", http=http, cache_dir=tmp_path)
+        online.documents_on("2026-06-19")
+        online.documents_on(today)
+        online.xbrl_archive("S100YETA")
+
+    offline = EdinetClient(None, cache_dir=tmp_path)
+    offline.api_key = None  # the Actions job exports the real key to this test
+    assert offline.documents_on("2026-06-19") == [{"docID": "S100YETA"}]
+    assert offline.xbrl_archive("S100YETA") == payload.getvalue()
+    with pytest.raises(EdinetError, match="EDINET_API_KEY is required"):
+        offline.documents_on(today)
+
+
+def test_edinet_fetch_retains_annual_reports_and_counts_failures():
+    from datetime import date
+    from screener.sources import edinet
+
+    class Client:
+        fetched = []
+
+        def documents_on(self, day):
+            if day == "2026-06-20":
+                raise EdinetError("list unavailable")
+            return [{"docID": "S100YETA", "docTypeCode": "120", "xbrlFlag": "1",
+                     "edinetCode": "E01772", "secCode": "67520"},
+                    {"docID": "S100OTHR", "docTypeCode": "140", "xbrlFlag": "1",
+                     "edinetCode": "E01772", "secCode": "67520"}]
+
+        def xbrl_archive(self, document_id):
+            self.fetched.append(document_id)
+
+    client = Client()
+    assert edinet.fetch(date(2026, 6, 19), date(2026, 6, 20), client) == 1
+    assert client.fetched == ["S100YETA"]

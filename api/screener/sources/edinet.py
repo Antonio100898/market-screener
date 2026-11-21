@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 import re
 import xml.etree.ElementTree as ET
 import zipfile
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 
 import httpx
 
@@ -16,6 +19,7 @@ _DOCUMENT_ID = re.compile(r"S[0-9A-Z]{7}")
 _XBRLI = "{http://www.xbrl.org/2003/instance}"
 _XBRLDI = "{http://xbrl.org/2006/xbrldi}"
 _XSI_NIL = "{http://www.w3.org/2001/XMLSchema-instance}nil"
+_JST = timezone(timedelta(hours=9))
 
 
 class EdinetError(Exception):
@@ -23,9 +27,14 @@ class EdinetError(Exception):
 
 
 class EdinetClient:
-    def __init__(self, api_key: str | None = None, http: httpx.Client | None = None):
+    """Retains every filing list and archive it fetches, so a copy of the cache
+    replays imports without the API key."""
+
+    def __init__(self, api_key: str | None = None, http: httpx.Client | None = None,
+                 cache_dir: Path | None = None):
         self.api_key = api_key or os.environ.get("EDINET_API_KEY")
         self.http = http or httpx.Client(timeout=45, follow_redirects=True)
+        self.cache = Path(cache_dir or Path.home() / ".cache" / "graham-screener") / "edinet"
 
     def _get(self, path: str, **params) -> httpx.Response:
         if not self.api_key:
@@ -45,15 +54,35 @@ class EdinetClient:
     def documents_on(self, filing_date: str) -> list[dict]:
         if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", filing_date):
             raise ValueError("filing_date must be YYYY-MM-DD")
+        path = self.cache / "lists" / f"{filing_date}.json"
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
         payload = self._get("documents.json", date=filing_date, type=2).json()
         if payload.get("metadata", {}).get("status") != "200":
             raise EdinetError(f"EDINET list unavailable for {filing_date}")
-        return payload.get("results") or []
+        results = payload.get("results") or []
+        # Today's list is still growing in Japan; only closed days are retained.
+        if date.fromisoformat(filing_date) < datetime.now(_JST).date():
+            _write(path, json.dumps(results, ensure_ascii=False).encode("utf-8"))
+        return results
 
     def xbrl_archive(self, document_id: str) -> bytes:
         if not _DOCUMENT_ID.fullmatch(document_id):
             raise ValueError("invalid EDINET document ID")
-        return self._get(f"documents/{document_id}", type=1).content
+        path = self.cache / f"{document_id}.zip"
+        if path.exists():
+            return path.read_bytes()
+        content = self._get(f"documents/{document_id}", type=1).content
+        if zipfile.is_zipfile(io.BytesIO(content)):
+            _write(path, content)
+        return content
+
+
+def _write(path: Path, content: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_bytes(content)
+    temporary.replace(path)
 
 
 def annual_filings(rows: list[dict]) -> list[dict]:
@@ -141,3 +170,32 @@ def xbrl_facts(archive: bytes, document_id: str) -> list[dict]:
                 "source_file": filename,
             })
     return facts
+
+
+def fetch(start: date, end: date, client: EdinetClient | None = None) -> int:
+    """Retain every annual report filed in a date range; returns failures."""
+    client = client or EdinetClient()
+    failures = 0
+    day = start
+    while day <= end:
+        try:
+            records = annual_filings(client.documents_on(day.isoformat()))
+        except EdinetError as exc:
+            records, failures = [], failures + 1
+            print(f"{day}: {exc}", flush=True)
+        for record in records:
+            try:
+                client.xbrl_archive(record["docID"])
+            except EdinetError as exc:
+                failures += 1
+                print(f"{record['docID']}: {exc}", flush=True)
+        print(f"{day}: {len(records)} annual reports", flush=True)
+        day += timedelta(days=1)
+    return failures
+
+
+if __name__ == "__main__":
+    import sys
+
+    raise SystemExit(1 if fetch(date.fromisoformat(sys.argv[1]),
+                                date.fromisoformat(sys.argv[2])) else 0)
